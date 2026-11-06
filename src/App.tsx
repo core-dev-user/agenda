@@ -7,7 +7,9 @@ import type { MediaItem } from "@/lib/types"
 import { importDropped, pasteImages } from "@/components/MediaPicker"
 import { fontFamily } from "@/lib/fonts"
 import { cn, todayISO } from "@/lib/utils"
-import type { WidgetType } from "@/lib/types"
+import type { SectionId, WidgetType } from "@/lib/types"
+import type { BarSync } from "@/lib/bridge"
+import { SECTIONS } from "@/components/sections-meta"
 import { Splash } from "@/components/Splash"
 import { AutoStylePrompt } from "@/components/AutoStylePrompt"
 import { Wallpaper, Overlays } from "@/components/Wallpaper"
@@ -54,6 +56,39 @@ function useDesktopLayer() {
   }, [])
 }
 
+/** barra principal do Windows (janela separada): manda aparência/fixados/avisos e atende os pedidos dela */
+function useMainBar() {
+  useEffect(() => {
+    if (!useUiMode.getState().mainBar) return
+    let last = ""
+    const send = () => {
+      const s = useStore.getState()
+      const st = document.documentElement.style
+      const vars: Record<string, string> = {}
+      for (let i = 0; i < st.length; i++) if (st[i].startsWith("--")) vars[st[i]] = st.getPropertyValue(st[i])
+      const data: BarSync = {
+        vars, theme: s.settings.theme, dark: s.settings.dark, fontScale: s.settings.fontScale,
+        style: s.settings.taskbar.style, showLabels: s.settings.taskbar.showLabels,
+        pins: s.settings.pcPins ?? [], unread: s.notifications.filter((n) => !n.read).length,
+        sections: SECTIONS.map((x) => ({ id: x.id, label: x.label, color: x.color })),
+      }
+      const j = JSON.stringify(data)
+      if (j !== last) { last = j; bridge.bar.sync(data) }
+    }
+    const t = setTimeout(send, 300)
+    const off = useStore.subscribe(() => setTimeout(send, 50))
+    const off2 = bridge.bar.onMain((m) => {
+      const s = useStore.getState()
+      if (m.type === "open") s.openWindow(m.id as SectionId)
+      else if (m.type === "palette") useStore.setState({ paletteOpen: true })
+      else if (m.type === "bell") { s.openWindow("today") }
+      else if (m.type === "pin") { const pins = s.settings.pcPins ?? []; if (!pins.some((p) => p.path.toLowerCase() === m.app.path.toLowerCase())) s.setSettings({ pcPins: [...pins, m.app] }) }
+      else if (m.type === "unpin") s.setSettings({ pcPins: (s.settings.pcPins ?? []).filter((p) => p.path.toLowerCase() !== m.path.toLowerCase()) })
+    })
+    return () => { clearTimeout(t); off(); off2() }
+  }, [])
+}
+
 export function useThemeVars() {
   const s = useStore((x) => x.settings)
   useEffect(() => {
@@ -86,6 +121,8 @@ export default function App() {
   useEffect(() => { if (useStore.getState().settings.todayOnStart) setTimeout(() => useStore.getState().openWindow("today"), 900) }, [])
   useAutosave()
   useDesktopLayer()
+  useMainBar()
+  const mainBar = useUiMode((s) => s.mainBar)
   useDesktopDrop()
   useHistory()
   useAppWidgets()
@@ -124,7 +161,7 @@ export default function App() {
           <AnimatePresence>{widgets.map((w) => <WidgetFrame key={w.id} w={w} />)}</AnimatePresence>
         </div>
         <AnimatePresence>{windows.map((w) => <AppWindow key={w.id} win={w} />)}</AnimatePresence>
-        <Taskbar />
+        {!mainBar && <Taskbar />}
         <AnimatePresence>{ctx && <DesktopMenu at={ctx} close={() => setCtx(null)} />}</AnimatePresence>
       </motion.div>
       <FocusBar />

@@ -2,7 +2,7 @@ import { create } from "zustand"
 import type { UiMode } from "./bridge"
 
 /** Modo de uso escolhido na instalação ("" = ainda não escolheu → boas-vindas). Lido uma vez ao abrir. */
-export const useUiMode = create<{ mode: UiMode | ""; monitors: number }>(() => ({ mode: "screen", monitors: 1 }))
+export const useUiMode = create<{ mode: UiMode | ""; monitors: number; mainBar: boolean }>(() => ({ mode: "screen", monitors: 1, mainBar: false }))
 
 export const MODE_INFO: Record<UiMode, { label: string; desc: string }> = {
   app: { label: "Aplicativo", desc: "Uma janela normal com as abas (Hoje, Hábitos, Finanças…). Abre e fecha como qualquer programa." },

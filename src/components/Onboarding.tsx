@@ -72,6 +72,7 @@ export default function Onboarding() {
   const [music, setMusic] = useState<string>("ytmusic")
   const [extras, setExtras] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState(false)
+  const [mainBar, setMainBar] = useState(false)
 
   useEffect(() => {
     bridge.mode.detectApps().then((r) => {
@@ -99,6 +100,7 @@ export default function Onboarding() {
     }
     st.setSettings({ musicAutostart: music === "ytmusic" ? st.settings.musicAutostart : false })
     bridge.store.flush?.()
+    await bridge.bar.set({ on: mode === "desktop" && mainBar })
     const ok = await bridge.mode.set(mode)
     // sem reabrir (modo de teste): troca aqui mesmo
     if (ok) setTimeout(() => useUiMode.setState({ mode }), 400)
@@ -148,6 +150,15 @@ export default function Onboarding() {
                   </button>
                 )
               })}
+              {mode === "desktop" && (
+                <button onClick={() => setMainBar(!mainBar)} className="flex items-center gap-3 rounded-xl border border-line p-3 text-left sm:col-span-3 hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]">
+                  <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-md border", mainBar ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-line")}>{mainBar && <Check size={12} strokeWidth={3} />}</span>
+                  <span>
+                    <span className="block text-sm font-medium">Usar a barra do Agenda no lugar da barra do Windows</span>
+                    <span className="block text-xs text-fg-muted">Iniciar, programas abertos e fixados e relógio na barra do Agenda. Se o Agenda fechar, a do Windows volta.</span>
+                  </span>
+                </button>
+              )}
             </motion.div>
           ) : (
             <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">

@@ -1,0 +1,31 @@
+/* barra principal e menus: ficam sobre o efeito acrílico do Windows (a janela não é transparente) */
+html[data-bar] body { background: transparent !important; user-select: none; }
+.bar-bg {
+  background: color-mix(in srgb, #0c0810 42%, transparent);
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+}
+html[data-bar="menu"] .bar-bg { border: 1px solid rgb(255 255 255 / 0.1); border-radius: 10px; }
+html:not(.dark) .bar-bg { background: color-mix(in srgb, #fff 45%, transparent); border-color: rgb(0 0 0 / 0.08); }
+.bar-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background-color 0.12s, transform 0.12s;
+}
+.bar-btn:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+.bar-btn:active { transform: scale(0.94); }
+.bar-btn[data-on="true"] { background: color-mix(in srgb, var(--fg) 14%, transparent); }
+.bar-dot {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  height: 3px;
+  width: 6px;
+  translate: -50% 0;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--fg) 55%, transparent);
+  transition: width 0.18s, background-color 0.18s;
+}
+.bar-dot[data-fg="true"] { width: 16px; background: var(--accent); }

@@ -79,6 +79,8 @@ export interface Settings {
   perfPauseInGame?: boolean
   /** minutos sem uso até Discord/WhatsApp/iFood dormirem (0 = nunca) */
   hibernateMin?: number
+  /** programas do PC fixados na barra principal do Windows */
+  pcPins?: { path: string; name: string }[]
 }
 
 export type NotifySource = "tasks" | "whatsapp" | "ifood" | "sports" | "budgets" | "services" | "calendar" | "focus" | "system"

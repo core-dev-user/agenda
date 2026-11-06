@@ -47,6 +47,28 @@ export interface AgendaBridge {
     detectApps(): Promise<{ apps: PcApp[]; monitors: number }>
     onSummon(cb: () => void): Unsub
   }
+  bar: {
+    get(): Promise<BarConfig>
+    set(p: Partial<Pick<BarConfig, "on" | "height" | "position">>): Promise<BarConfig>
+    sync(data: BarSync): void
+    hello(): Promise<BarSync | null>
+    toMain(msg: BarToMain): void
+    /** abre um menu acima da barra (x = centro do botão, em px da barra) */
+    menu(kind: BarMenu, anchorX: number, w: number, h: number): Promise<void>
+    closeMenu(): Promise<void>
+    onMenuState(cb: (kind: BarMenu | "") => void): Unsub
+    click(h: string, wasMin: boolean): Promise<string>
+    win(cmd: "activate" | "minimize" | "close", h: string): Promise<string>
+    desktop(): Promise<string>
+    peek(on: boolean): Promise<string>
+    apps(): Promise<{ name: string; path: string }[]>
+    icon(file: string): Promise<string>
+    launch(file: string): Promise<string>
+    power(kind: "lock" | "sleep" | "restart" | "shutdown" | "settings" | "volume" | "network"): Promise<void>
+    onWins(cb: (d: { wins: PcWindow[]; fg: string }) => void): Unsub
+    onSync(cb: (d: BarSync) => void): Unsub
+    onMain(cb: (m: BarToMain) => void): Unsub
+  }
   pcmedia: { sub(id: string, app?: string): Promise<PcMedia | null>; unsub(id: string): Promise<void>; cmd(c: "toggle" | "next" | "prev"): Promise<void>; onState(cb: (m: PcMedia) => void): Unsub }
   finance: {
     status(): Promise<{ exists: boolean; hasPin: boolean; unlocked: boolean; secure: boolean; waitMs: number }>
@@ -127,6 +149,29 @@ export interface RunningGame { id: string; name: string; color: string; start: n
 export interface ValAgentNow { id: string; locked: boolean; state: string }
 export interface GamesState { playing: RunningGame[]; at: number }
 
+export interface BarConfig { on: boolean; height: number; position: "bottom" | "top"; available: boolean; active: boolean }
+export interface PcWindow { h: string; title: string; exe: string; name: string; min: boolean; icon: string }
+export interface PinnedApp { path: string; name: string }
+/** o que a janela principal manda para a barra: aparência, fixados e avisos */
+export interface BarSync {
+  vars: Record<string, string>
+  theme: string
+  dark: boolean
+  fontScale: number
+  style: "dock" | "bar" | "floating"
+  showLabels: boolean
+  pins: PinnedApp[]
+  unread: number
+  sections: { id: string; label: string; color: string }[]
+}
+export type BarToMain =
+  | { type: "open"; id: string }
+  | { type: "palette" }
+  | { type: "widgets" }
+  | { type: "bell" }
+  | { type: "pin"; app: PinnedApp }
+  | { type: "unpin"; path: string }
+export type BarMenu = "start" | "power" | "clock"
 export type UiMode = "app" | "desktop" | "screen"
 export type PcApp = "spotify" | "deezer" | "applemusic" | "amazonmusic" | "tidal" | "discord" | "whatsapp" | "steam" | "cs2" | "valorant" | "lol" | "epic"
 export interface PcMedia {
@@ -220,6 +265,10 @@ const browserFallback: AgendaBridge = {
   sysmon: { sub: async () => false, unsub: async () => false, onData: noop },
   mode: { get: async () => ({ mode: "screen", monitors: 1 }), set: async () => false, raise: async () => {}, detectApps: async () => ({ apps: [], monitors: 1 }), onSummon: noop },
   pcmedia: { sub: async () => null, unsub: async () => {}, cmd: async () => {}, onState: noop },
+  bar: (() => {
+    const c: BarConfig = { on: false, height: 64, position: "bottom", available: false, active: false }
+    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, onWins: noop, onSync: noop, onMain: noop }
+  })(),
   finance: {
     status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),
     open: async () => ({ ok: true, data: localStorage.getItem("agenda-finance") }),

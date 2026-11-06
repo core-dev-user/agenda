@@ -20,8 +20,11 @@ function Root() {
   return <App />
 }
 
-bridge.mode.get().catch(() => ({ mode: "screen" as const, monitors: 1 })).then((m) => {
-  useUiMode.setState(m)
+Promise.all([
+  bridge.mode.get().catch(() => ({ mode: "screen" as const, monitors: 1 })),
+  bridge.bar.get().catch(() => null),
+]).then(([m, bar]) => {
+  useUiMode.setState({ ...m, mainBar: !!bar?.on && m.mode === "desktop" })
   document.documentElement.dataset.mode = m.mode || "welcome"
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>

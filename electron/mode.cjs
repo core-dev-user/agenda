@@ -7,8 +7,6 @@
 const { app, screen } = require("electron")
 const path = require("node:path")
 const fs = require("node:fs")
-const os = require("node:os")
-const { spawn } = require("node:child_process")
 
 const MODES = ["app", "desktop", "screen"]
 const cfgFile = () => path.join(app.getPath("userData"), "mode.json")
@@ -30,53 +28,9 @@ function windowOptions() {
   return {}
 }
 
-/* ---------------- ajudante nativo (Win32) ----------------
- * Um PowerShell que fica aberto e recebe comandos pela entrada padrão.
- * "own <hwnd>"    → a janela passa a pertencer à área de trabalho (Progman): não some com Win+D
- * "bottom <hwnd>" → manda a janela para baixo de todas as outras */
-const HELPER = `
-$ErrorActionPreference = 'SilentlyContinue'
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public static class AgWin {
-  [DllImport("user32.dll", SetLastError=true)] static extern IntPtr FindWindow(string c, string n);
-  [DllImport("user32.dll", EntryPoint="SetWindowLongPtrW")] static extern IntPtr SetWindowLongPtr(IntPtr h, int i, IntPtr v);
-  [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint f);
-  public static void Own(long h) { SetWindowLongPtr(new IntPtr(h), -8, FindWindow("Progman", null)); }
-  public static void Unown(long h) { SetWindowLongPtr(new IntPtr(h), -8, IntPtr.Zero); }
-  public static void Bottom(long h) { SetWindowPos(new IntPtr(h), new IntPtr(1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); }
-}
-"@
-while ($true) {
-  $l = [Console]::In.ReadLine()
-  if ($l -eq $null) { break }
-  $a = $l.Split(' ')
-  switch ($a[0]) {
-    'own'    { [AgWin]::Own([long]$a[1]) }
-    'unown'  { [AgWin]::Unown([long]$a[1]) }
-    'bottom' { [AgWin]::Bottom([long]$a[1]) }
-  }
-}
-`
-let helper = null
-function native(cmd) {
-  if (process.platform !== "win32") return
-  if (!helper) {
-    const file = path.join(os.tmpdir(), "agenda-win-helper.ps1")
-    try { fs.writeFileSync(file, HELPER) } catch { return }
-    try {
-      helper = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", file], { windowsHide: true, stdio: ["pipe", "ignore", "ignore"] })
-      helper.on("exit", () => { helper = null })
-      app.on("will-quit", () => { try { helper && helper.kill() } catch {} })
-    } catch { helper = null; return }
-  }
-  try { helper.stdin.write(cmd + "\n") } catch {}
-}
-const hwndOf = (win) => {
-  const b = win.getNativeWindowHandle()
-  return (b.length >= 8 ? b.readBigUInt64LE(0) : BigInt(b.readUInt32LE(0))).toString()
-}
+const winh = require("./winhelper.cjs")
+const native = (cmd) => { winh.call(cmd) }
+const hwndOf = winh.hwndOf
 
 /* ---------------- modo área de trabalho ---------------- */
 let raised = false // uma aba aberta: o Agenda vem para a frente como um app normal

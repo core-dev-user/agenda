@@ -8,6 +8,7 @@ import { SECTIONS } from "./sections-meta"
 import { AppIcon } from "./AppIcon"
 import { useViewport } from "@/lib/viewport"
 import { ErrorBoundary } from "./ErrorBoundary"
+import { useUiMode } from "@/lib/uimode"
 
 const LOADERS = {
   today: () => import("@/sections/Today"),
@@ -48,7 +49,8 @@ export function AppWindow({ win }: { win: WinState }) {
   const View = VIEWS[win.id]
   const ref = useRef<HTMLDivElement>(null)
 
-  const reserve = tb.autoHide ? 0 : tb.size + 28
+  // com a barra principal do Windows ligada, a barra interna não existe
+  const reserve = tb.autoHide || useUiMode.getState().mainBar ? 0 : tb.size + 28
   const area = {
     x: tb.position === "left" ? reserve : 0,
     y: tb.position === "top" ? reserve : 0,

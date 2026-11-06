@@ -233,7 +233,22 @@ function ModeSection() {
           </button>
         ))}
       </div>
+      {cur === "desktop" && <MainBarSwitch />}
     </Section>
+  )
+}
+
+function MainBarSwitch() {
+  const on = useUiMode((s) => s.mainBar)
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <Switch
+        label="Usar a barra do Agenda como barra principal do Windows"
+        checked={on}
+        onChange={async (v) => { bridge.store.flush?.(); await bridge.bar.set({ on: v }); location.reload() }}
+      />
+      <div className="text-xs text-fg-muted">Esconde a barra do Windows e põe a do Agenda no lugar: Iniciar, programas abertos e fixados, relógio. Se o Agenda fechar, a barra do Windows volta sozinha. A seta perto do relógio mostra os ícones da bandeja do Windows.</div>
+    </div>
   )
 }
 
