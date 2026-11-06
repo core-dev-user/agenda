@@ -74,7 +74,7 @@ export function Wallpaper() {
         {lock && <LockClock c={lock} />}
         {fg && <div className="absolute inset-0" style={{ backgroundImage: `url("${mediaUrl(fg)}")`, backgroundSize: "cover", backgroundPosition: "center", filter }} />}
       </div>
-      {s.sakura.ambient && <SakuraCanvas density={s.sakura.density} />}
+      {s.sakura.ambient && !s.perfLite && <SakuraCanvas density={s.sakura.density} />}
     </div>
   )
 }

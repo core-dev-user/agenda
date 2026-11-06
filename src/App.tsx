@@ -14,6 +14,7 @@ import { Taskbar } from "@/components/Taskbar"
 import { AppWindow, preloadSections } from "@/components/AppWindow"
 import { WidgetFrame, WIDGET_CHOICES } from "@/widgets/WidgetFrame"
 import { useBackground } from "@/lib/watchers"
+import { usePerf } from "@/lib/perf"
 import { CommandPalette } from "@/components/CommandPalette"
 import { FocusBar, useFocusActive } from "@/components/FocusBar"
 import { DEFAULT_FOCUS } from "@/lib/store"
@@ -45,6 +46,7 @@ export default function App() {
   useEffect(() => { const t = setTimeout(preloadSections, 600); return () => clearTimeout(t) }, [])
   // avisos, agendas, foco, hibernação: tudo em segundo plano
   useBackground()
+  usePerf()
   // tela "Hoje" ao abrir
   useEffect(() => { if (useStore.getState().settings.todayOnStart) setTimeout(() => useStore.getState().openWindow("today"), 900) }, [])
   // salvamento automático extra: regrava a cada 20 s e garante a gravação ao fechar a janela
@@ -149,7 +151,8 @@ function DesktopMenu({ at, close }: { at: { x: number; y: number }; close: () =>
     <>
       <div className="fixed inset-0 z-[900]" onPointerDown={close} />
       <motion.div
-        className="surface fixed z-[901] w-56 p-1.5"
+        data-modal
+        className="surface fixed z-[901] max-h-[calc(100vh-16px)] w-56 overflow-y-auto p-1.5"
         style={{ left: Math.min(at.x, innerWidth - 240), top: Math.max(8, Math.min(at.y, innerHeight - 560)), transformOrigin: "top left" }}
         initial={{ opacity: 0, scale: 0.9, rotateX: 15 }}
         animate={{ opacity: 1, scale: 1, rotateX: 0 }}

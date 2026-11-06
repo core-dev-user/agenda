@@ -3,9 +3,9 @@ export type CursorStyle = "system" | "dot" | "ring" | "sakura" | "pixel" | "cros
 export type CursorEffect = "none" | "trail" | "sakura" | "sparkle" | "glow" | "ripple" | "pixels" | "hearts" | "stars" | "bubbles" | "confetti" | "fire" | "snow" | "rainbow" | "comet" | "leaves" | "magic"
 export type TaskbarPosition = "bottom" | "top" | "left" | "right"
 export type TaskbarStyle = "dock" | "bar" | "floating"
-export type SectionId = "today" | "habits" | "studies" | "services" | "finance" | "lists" | "music" | "games" | "discord" | "whatsapp" | "ifood" | "gallery" | "settings"
+export type SectionId = "today" | "habits" | "studies" | "services" | "finance" | "lists" | "music" | "discord" | "whatsapp" | "ifood" | "gallery" | "settings"
 export type IconStyle = "auto" | "logos" | "color" | "glass" | "metal" | "neon" | "outline" | "flat" | "pixel"
-export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp" | "finance" | "agenda" | "musicstats" | "gaming"
+export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp" | "finance" | "agenda" | "musicstats" | "gaming" | "musicclip" | "valagent"
 
 export interface Settings {
   theme: ThemeId
@@ -73,6 +73,10 @@ export interface Settings {
   focus?: FocusPrefs
   /** abrir a tela Hoje quando o Agenda abre */
   todayOnStart?: boolean
+  /** modo leve: sem efeito de vidro desfocado, pétalas e partículas do cursor */
+  perfLite?: boolean
+  /** pausar as animações enquanto um jogo está aberto (padrão: sim) */
+  perfPauseInGame?: boolean
   /** minutos sem uso até Discord/WhatsApp/iFood dormirem (0 = nunca) */
   hibernateMin?: number
 }

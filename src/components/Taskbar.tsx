@@ -162,7 +162,8 @@ export function Taskbar() {
           <>
             <div className="fixed inset-0 z-[790]" onPointerDown={() => setMenu(null)} />
             <motion.div
-              className={cn("surface fixed z-[810] w-[360px] p-4", {
+              data-modal
+              className={cn("surface fixed z-[810] w-[360px] max-h-[calc(100vh-var(--tb-size)-70px)] overflow-y-auto p-4", {
                 bottom: "bottom-[calc(var(--tb-size)+40px)] left-1/2 -translate-x-1/2",
                 top: "top-[calc(var(--tb-size)+40px)] left-1/2 -translate-x-1/2",
                 left: "left-[calc(var(--tb-size)+40px)] top-1/2 -translate-y-1/2",

@@ -38,10 +38,8 @@ contextBridge.exposeInMainWorld("agenda", {
     scan: () => ipcRenderer.invoke("games:scan"),
     icon: (p) => ipcRenderer.invoke("games:icon", p),
     onState: on("games:state"),
-    stats: () => ipcRenderer.invoke("gamestats:get"),
-    cs2Status: () => ipcRenderer.invoke("gamestats:cs2status"),
-    onLive: on("gamestats:live"),
-    onMatch: on("gamestats:match"),
+    valorantAgent: () => ipcRenderer.invoke("valorant:agent"),
+    onValorantAgent: on("valorant:agent"),
   },
   finance: {
     status: () => ipcRenderer.invoke("finance:status"),
@@ -92,6 +90,7 @@ contextBridge.exposeInMainWorld("agenda", {
   music: {
     open: () => ipcRenderer.invoke("music:open"),
     embed: (b) => ipcRenderer.invoke("music:embed", b),
+    clip: (b) => ipcRenderer.invoke("music:clip", b),
     queue: () => ipcRenderer.invoke("music:queue"),
     popout: () => ipcRenderer.invoke("music:popout"),
     dock: () => ipcRenderer.invoke("music:dock"),

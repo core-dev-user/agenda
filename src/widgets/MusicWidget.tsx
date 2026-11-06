@@ -6,7 +6,7 @@ import { bridge, type QueueItem } from "@/lib/bridge"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { fontFamily } from "@/lib/fonts"
-import { Artwork, Controls, MiniVolume, MusicVideo, NotConnected, Progress, useMusic } from "@/components/MusicPlayer"
+import { Artwork, Controls, MiniVolume, NotConnected, Progress, useMusic } from "@/components/MusicPlayer"
 import { LyricsKaraoke, LyricsScroll, type LyricsLook } from "@/components/Lyrics"
 
 /* ---------------- fila ("A seguir") ---------------- */
@@ -81,10 +81,9 @@ export function MusicWidget({ w }: { w: Widget }) {
   const m = useMusic()
   const open = useStore((s) => s.openWindow)
   const upd = useStore((s) => s.updateWidgetConfig)
-  const [live, setLive] = useState(false)
   const c = w.config
   const style: "card" | "vinyl" | "compact" = c.style ?? "card"
-  const video = !!c.video
+  const video = useStore((st) => st.widgets.some((x) => x.type === "musicclip"))
   const lyrics = c.lyrics !== false
   const queue = !!c.queue
   const scale = c.lyScale ?? 1
@@ -92,21 +91,28 @@ export function MusicWidget({ w }: { w: Widget }) {
   const lookAt = (base: number): LyricsLook => ({ ...look, size: Math.round(base * scale) })
   if (!m.ready) return <NotConnected small />
 
+  // o clipe abre num widget próprio, no formato do vídeo
   const toggleVideo = () => {
-    upd(w.id, { video: !video })
-    // igual ao botão "Vídeo" do app: troca a faixa para a versão com clipe, se houver
-    if (!video && m.hasVideo && !m.videoMode) bridge.music.cmd("videoOn")
+    const st = useStore.getState()
+    const ex = st.widgets.find((x) => x.type === "musicclip")
+    if (ex) { st.removeWidget(ex.id); return }
+    if (m.hasVideo && !m.videoMode) bridge.music.cmd("videoOn")
+    st.addWidget("musicclip")
+    const nw = useStore.getState().widgets.at(-1)!
+    const cw = 480, ch = Math.round(cw * ((m.vh || 9) / (m.vw || 16))) + 26
+    const x = w.x + w.w + 16 + cw < innerWidth ? w.x + w.w + 16 : Math.max(8, w.x - cw - 16)
+    st.setWidgetGeo(nw.id, { x, y: Math.max(8, Math.min(w.y, innerHeight - ch - 90)), w: cw, h: ch })
   }
   const btn = (on: boolean, title: string, onClick: () => void, icon: React.ReactNode) => (
     <button className={cn("btn btn-ghost btn-icon !p-1.5", on && "text-brand")} title={title} onClick={onClick}>{icon}</button>
   )
   const lyricsBtn = btn(lyrics, lyrics ? "Esconder a letra" : "Mostrar a letra", () => upd(w.id, { lyrics: !lyrics }), <MicVocal size={15} />)
   const queueBtn = btn(queue, queue ? "Esconder a fila" : "Ver a fila", () => upd(w.id, { queue: !queue }), <ListMusic size={15} />)
-  const clipBtn = btn(video, video ? "Mostrar a capa" : "Mostrar o clipe", toggleVideo, video ? <ImageIcon size={15} /> : <Clapperboard size={15} />)
+  const clipBtn = btn(video, video ? "Fechar o clipe" : "Abrir o clipe num widget", toggleVideo, <Clapperboard size={15} />)
 
   const title = (
     <button className="min-w-0 text-left" onClick={() => open("music")} title="Abrir a aba Música">
-      <div className={cn("truncate font-semibold", style !== "compact" && !video && "pr-[118px]")}>{m.ad && <span className="mr-1.5 rounded bg-[#ffd36e] px-1 text-[10px] font-bold text-black">ANÚNCIO</span>}{m.title}</div>
+      <div className={cn("truncate font-semibold", style !== "compact" && "pr-[118px]")}>{m.ad && <span className="mr-1.5 rounded bg-[#ffd36e] px-1 text-[10px] font-bold text-black">ANÚNCIO</span>}{m.title}</div>
       <div className="truncate text-sm text-fg-muted">{m.artist}</div>
     </button>
   )
@@ -126,40 +132,12 @@ export function MusicWidget({ w }: { w: Widget }) {
     </AnimatePresence>
   )
 
-  /* ---------- clipe ocupando o widget, controles por cima ---------- */
-  if (video && style !== "compact") {
-    return (
-      <div className="group/clip relative h-full overflow-hidden bg-black text-white">
-        <Artwork size={Math.max(w.w, w.h)} className={cn("!absolute inset-0 !h-full !w-full !rounded-none transition-opacity duration-700", live && "opacity-0")} />
-        <MusicVideo quality={Math.min(1280, Math.round(w.w * devicePixelRatio))} className="absolute inset-0 h-full w-full" onLive={setLive} />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-full bg-black/35 opacity-0 backdrop-blur-md transition-opacity group-hover/clip:opacity-100">
-          <MiniVolume />{lyricsBtn}{queueBtn}{clipBtn}
-        </div>
-        <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-3 [--fg:#fff] [&_.text-fg-muted]:text-white/70">
-          {lyrics && <LyricsKaraoke lines={w.h >= 260 ? 3 : 2} look={lookAt(Math.max(15, Math.min(22, w.w / 24)))} className="drop-shadow-[0_2px_8px_rgb(0_0_0/.8)]" />}
-          {title}
-          <Progress compact />
-          <div className="flex justify-center"><Controls /></div>
-        </div>
-        {queueOverlay}
-      </div>
-    )
-  }
-
   /* ---------- compacto ---------- */
   if (style === "compact") {
     const sz = Math.min(56, w.h - 20)
     return (
       <div className="relative flex h-full items-center gap-3 px-3">
-        {video ? (
-          <div className="relative shrink-0 overflow-hidden rounded-[calc(var(--r)*0.45)] bg-black" style={{ width: sz * 1.78, height: sz }}>
-            <Artwork size={sz} className={cn("!absolute inset-0 !h-full !w-full transition-opacity", live && "opacity-0")} />
-            <MusicVideo quality={320} className="absolute inset-0 h-full w-full" onLive={setLive} />
-          </div>
-        ) : (
-          <Artwork size={sz} />
-        )}
+        <Artwork size={sz} />
         <div className="min-w-0 flex-1 space-y-1">{title}{lyrics && <LyricsKaraoke lines={1} look={lookAt(13)} />}<Progress compact /></div>
         <Controls />
         <div className="flex flex-col items-center">{lyricsBtn}{queueBtn}{clipBtn}</div>

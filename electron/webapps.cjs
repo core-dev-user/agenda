@@ -405,7 +405,13 @@ function register(ipcMain, mainGetter, app) {
     const js = `(() => { const n = ${JSON.stringify(String(name || ""))}; const s = Array.from(document.querySelectorAll('#pane-side span[title]')).find((x) => x.getAttribute('title') === n); if (!s) return false; const row = s.closest('[role="listitem"], [role="row"]') || s; for (const t of ['mousedown', 'mouseup', 'click']) row.dispatchEvent(new MouseEvent(t, { bubbles: true })); return true; })()`
     try { await wc("whatsapp").executeJavaScript(js, true) } catch {}
   })
-  setInterval(() => { if (discordWatchers > 0) pollDiscord() }, 300)
+  // leitura rápida (quem está falando) só durante uma call; fora dela, a cada 3 s
+  let dTick = 0
+  setInterval(() => {
+    if (discordWatchers <= 0) return
+    dTick++
+    if ((S.discord && S.discord.inCall) || dTick % 10 === 0) pollDiscord()
+  }, 300)
 
   // modo foco: silencia o som do app (Discord numa call nunca é silenciado)
   ipcMain.handle("webapp:mute", (_e, id, on) => {

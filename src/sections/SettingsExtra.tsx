@@ -254,6 +254,11 @@ export function SystemExtra() {
         <div className="text-xs text-fg-muted">Vai para a pasta “Agenda backup”. As Finanças vão criptografadas: só abrem nesta conta do Windows.</div>
       </Section>
 
+      <Section title="Desempenho" desc="O Agenda já para as animações sozinho quando está minimizado ou na bandeja.">
+        <Switch label="Pausar as animações enquanto um jogo está aberto (o Agenda em segundo plano não pesa no jogo)" checked={s.perfPauseInGame ?? true} onChange={(v) => set({ perfPauseInGame: v })} />
+        <Switch label="Modo leve: sem vidro desfocado, pétalas e partículas do cursor (para PCs mais fracos)" checked={!!s.perfLite} onChange={(v) => set({ perfLite: v })} />
+      </Section>
+
       <Section title="Economia de memória" desc="Discord, WhatsApp e iFood são, cada um, um navegador inteiro. Os que você não usa por um tempo “dormem” e acordam sozinhos quando você abre ou um widget precisa. O Discord numa call nunca dorme.">
         <div className="flex items-center justify-between gap-3 py-1 text-sm">
           <span>Dormir depois de</span>

@@ -30,6 +30,8 @@ import { FinanceWidget } from "./FinanceWidget"
 import { AgendaWidget } from "./AgendaWidget"
 import { MusicStatsWidget } from "./MusicStatsWidget"
 import { GamingWidget } from "./GamingWidget"
+import { MusicClipWidget } from "./MusicClipWidget"
+import { ValAgentWidget, ValAgentSettings } from "./ValAgentWidget"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { SECTIONS } from "@/components/sections-meta"
 
@@ -54,7 +56,9 @@ export const WIDGET_META: Record<WidgetType, { label: string; emoji: string }> =
   finance: { label: "Finanças (gastos do mês)", emoji: "💸" },
   agenda: { label: "Agenda do Google (próximos eventos)", emoji: "🗓️" },
   musicstats: { label: "Música: o que mais ouço", emoji: "📊" },
-  gaming: { label: "Jogando agora (histórico de jogos)", emoji: "🎮" },
+  gaming: { label: "Jogando agora", emoji: "🎮" },
+  musicclip: { label: "Clipe da música (YouTube Music)", emoji: "🎬" },
+  valagent: { label: "Valorant: agente (templates)", emoji: "🎯" },
 }
 
 /** Opções do menu "Adicionar widget": widgets comuns + um atalho para cada aba. */
@@ -177,6 +181,8 @@ export function WidgetFrame({ w }: { w: Widget }) {
     case "agenda": body = <AgendaWidget w={W} />; break
     case "musicstats": body = <MusicStatsWidget w={W} />; break
     case "gaming": body = <GamingWidget w={W} />; break
+    case "musicclip": body = <MusicClipWidget w={W} />; break
+    case "valagent": body = <ValAgentWidget w={W} />; break
   }
   body = <ErrorBoundary label="widget" compact>{body}</ErrorBoundary>
 
@@ -281,14 +287,14 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
           <>
             <div className="text-sm text-fg-muted">Estilo do player</div>
             <Segmented value={c.style ?? "card"} onChange={(v) => set({ style: v })} options={[{ value: "card", label: "Cartão" }, { value: "vinyl", label: "Vinil girando" }, { value: "compact", label: "Compacto" }]} />
-            <Switch label="Mostrar o clipe passando (como no app)" checked={!!c.video} onChange={(v) => set({ video: v })} />
             <Switch label="Mostrar a letra sincronizada" checked={c.lyrics !== false} onChange={(v) => set({ lyrics: v })} />
             <Switch label="Mostrar a fila (A seguir)" checked={!!c.queue} onChange={(v) => set({ queue: v })} />
             <div className="text-xs text-fg-muted">Com o card alto (aumente a altura), a letra aparece rolando com várias linhas e a fila fica embaixo de tudo. Em cards baixos, a letra vira karaokê e a fila abre por cima.</div>
             {c.lyrics !== false && <LyricsLookSettings c={c} set={set} />}
-            <div className="text-xs text-fg-muted">Dica: no widget, o botão 🎬 alterna entre capa e clipe, e a roda do mouse sobre o ícone de som ajusta o volume.</div>
+            <div className="text-xs text-fg-muted">Dica: no widget, o botão 🎬 abre o clipe num widget próprio, e a roda do mouse sobre o ícone de som ajusta o volume.</div>
           </>
         )}
+        {w.type === "valagent" && <ValAgentSettings w={w} set={set} />}
         {w.type === "whatsapp" && (
           <Switch label="Mostrar só conversas com mensagens novas" checked={!!c.onlyUnread} onChange={(v) => set({ onlyUnread: v })} />
         )}

@@ -22,10 +22,9 @@ export interface AgendaBridge {
     scan(): Promise<void>
     icon(path: string): Promise<string>
     onState(cb: (s: GamesState) => void): Unsub
-    stats(): Promise<Record<string, any>>
-    cs2Status(): Promise<{ installed: boolean; needsRestart: boolean }>
-    onLive(cb: (d: { id: string; data: any }) => void): Unsub
-    onMatch(cb: (m: GameMatch) => void): Unsub
+    /** agente do Valorant em uso (seleção ou partida) */
+    valorantAgent(): Promise<ValAgentNow | null>
+    onValorantAgent(cb: (a: ValAgentNow | null) => void): Unsub
   }
   finance: {
     status(): Promise<{ exists: boolean; hasPin: boolean; unlocked: boolean; secure: boolean; waitMs: number }>
@@ -84,6 +83,8 @@ export interface AgendaBridge {
     open(): Promise<void>
     /** encaixa o player na área indicada (px da janela) ou tira de lá (null) */
     embed(b: { x: number; y: number; w: number; h: number; radius?: number } | null): Promise<void>
+    /** mostra só o clipe do player na área indicada (widget do clipe) ou tira (null) */
+    clip(b: { x: number; y: number; w: number; h: number; radius?: number } | null): Promise<void>
     /** fila ("A seguir") do YouTube Music */
     queue(): Promise<QueueItem[]>
     /** leva o player para uma janela separada */
@@ -100,12 +101,10 @@ export interface AgendaBridge {
 }
 
 export type WebAppId = "discord" | "ifood" | "whatsapp"
-export interface RunningGame { id: string; name: string; color: string; start: number; path: string; exe: string }
+export interface RunningGame { id: string; name: string; color: string; start: number; path: string; exe: string; art?: { logo?: string; hero?: string; icon?: string } }
+export interface ValAgentNow { id: string; locked: boolean; state: string }
 export interface GamesState { playing: RunningGame[]; at: number }
-export interface GameMatch {
-  id: string; game: string; at: number; map?: string; mapImg?: string; mode?: string; agent?: string; agentIcon?: string
-  k?: number; d?: number; a?: number; score?: number; acs?: number; hs?: number | null; mvps?: number; cs?: number; result?: string; rounds?: string; rr?: number | null
-}
+
 export interface SysConfig { closeToTray: boolean; hotkey: string; cloudDir: string; cloudOn: boolean; lastCloud: number; cloudError: string; guesses: { path: string; label: string }[]; hotkeyOk?: boolean }
 export interface WhatsChat { name: string; last: string; unread: number; time: string; avatar: string }
 export interface WhatsRead { loggedIn: boolean; qr?: boolean; loading?: boolean; totalUnread: number; chats: WhatsChat[] }
@@ -147,6 +146,8 @@ export interface MusicState {
   volume?: number
   liked?: boolean
   hasVideo?: boolean
+  vw?: number
+  vh?: number
   videoMode?: boolean
   ad?: boolean
   signedIn?: boolean
@@ -177,7 +178,7 @@ const browserFallback: AgendaBridge = {
   win: { minimize() {}, toggleMaximize() {}, fullscreen(on) { on ? document.documentElement.requestFullscreen() : document.exitFullscreen() }, close() {}, onState: noop },
   app: { autostart: async () => false, openExternal: async (u) => void window.open(u, "_blank"), screenInfo: async () => ({ long: Math.max(screen.width, screen.height) * devicePixelRatio }), show: async () => {}, quit: async () => {} },
   sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
-  games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop, stats: async () => ({}), cs2Status: async () => ({ installed: false, needsRestart: false }), onLive: noop, onMatch: noop },
+  games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop, valorantAgent: async () => null, onValorantAgent: noop },
   finance: {
     status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),
     open: async () => ({ ok: true, data: localStorage.getItem("agenda-finance") }),
@@ -203,7 +204,7 @@ const browserFallback: AgendaBridge = {
   net: { text: async (u) => (await fetch(u)).text() },
   sports: { get: async () => [] },
   webapp: { open: async () => {}, embed: async () => {}, popout: async () => {}, dock: async () => {}, nav: async () => {}, watch: async () => {}, discord: async () => {}, ifoodOrders: async () => ({ loggedOut: false, orders: [] as IfoodOrder[] }), whatsapp: async () => ({ loggedIn: false, totalUnread: 0, chats: [] }), ifoodMap: async () => null, url: async () => "", whatsappOpen: async () => {}, mute: async () => {}, hibernate: async () => {}, status: async () => ({} as any), onState: noop },
-  music: { open: async () => {}, embed: async () => {}, queue: async () => [], popout: async () => {}, dock: async () => {}, cmd: async () => {}, logout: async () => {}, video: async () => {}, onState: noop, onFrame: noop },
+  music: { open: async () => {}, embed: async () => {}, clip: async () => {}, queue: async () => [], popout: async () => {}, dock: async () => {}, cmd: async () => {}, logout: async () => {}, video: async () => {}, onState: noop, onFrame: noop },
 }
 
 export const bridge: AgendaBridge = window.agenda ?? browserFallback

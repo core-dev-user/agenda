@@ -3,14 +3,15 @@ import { persist, createJSONStorage } from "zustand/middleware"
 import { bridge } from "./bridge"
 import { uid, todayISO } from "./utils"
 import type { ListenStats } from "./listening"
-import type { GamingData } from "./gaming"
+import type { RunningGame, ValAgentNow } from "./bridge"
+import type { ValTemplate } from "@/widgets/ValAgentWidget"
 import type {
   Settings, Widget, WidgetType, MediaItem, Geo, Habit, Subject, Service, ShopList, WinState, SectionId, ThemeId, LookTemplate, Task, StudyTimer,
   AppNotification, CalEvent, NotifyPrefs, FocusPrefs,
 } from "./types"
 
 /** Preferências que não são "visual" e por isso não entram nos templates. */
-const NOT_LOOK: (keyof Settings)[] = ["musicAutostart", "layoutRef", "weatherCity", "newsFeed", "notify", "calendars", "favTeams", "focus", "todayOnStart", "hibernateMin"]
+const NOT_LOOK: (keyof Settings)[] = ["musicAutostart", "layoutRef", "weatherCity", "newsFeed", "notify", "calendars", "favTeams", "focus", "todayOnStart", "hibernateMin", "perfLite", "perfPauseInGame"]
 
 export const DEFAULT_NOTIFY: NotifyPrefs = {
   on: { tasks: true, whatsapp: true, ifood: true, sports: true, budgets: true, services: true, calendar: true, focus: true, system: true },
@@ -100,7 +101,9 @@ const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
   finance: [340, 300],
   agenda: [340, 360],
   musicstats: [360, 380],
-  gaming: [360, 360],
+  gaming: [340, 200],
+  musicclip: [480, 296],
+  valagent: [320, 440],
 }
 
 const defaultWidgets = (): Widget[] => [
@@ -126,8 +129,8 @@ interface State {
   notifications: AppNotification[]
   /** histórico de escuta do YouTube Music */
   listening?: ListenStats
-  /** histórico de jogos */
-  gaming?: GamingData
+  /** templates do widget de agente do Valorant */
+  valTemplates: ValTemplate[]
   // não persistido
   windows: WinState[]
   splashDone: boolean
@@ -137,8 +140,10 @@ interface State {
   focusManual: boolean
   /** busca rápida (Ctrl+K) aberta */
   paletteOpen: boolean
-  /** dados ao vivo dos jogos (CS2, Valorant, LoL) */
-  gameLive: Record<string, any>
+  /** jogos abertos agora (detectados no PC) */
+  gamesRunning: RunningGame[]
+  /** agente do Valorant em uso */
+  valAgentNow: ValAgentNow | null
   /** aba Música: player ou estatísticas */
   musicTab: "player" | "stats"
 
@@ -206,13 +211,15 @@ export const useStore = create<State>()(
       templates: [],
       templateUndo: null,
       notifications: [],
+      valTemplates: [],
       windows: [],
       splashDone: false,
       calEvents: [],
       focusManual: false,
       paletteOpen: false,
       musicTab: "player",
-      gameLive: {},
+      gamesRunning: [],
+      valAgentNow: null,
 
       setSettings: (patch) =>
         set((s) => ({ settings: { ...s.settings, ...(typeof patch === "function" ? patch(s.settings) : patch) } })),
@@ -379,7 +386,7 @@ export const useStore = create<State>()(
         templateUndo: s.templateUndo,
         notifications: s.notifications,
         listening: s.listening,
-        gaming: s.gaming,
+        valTemplates: s.valTemplates,
       }),
       merge: (persisted: any, current) => ({
         ...current,

@@ -60,6 +60,8 @@ const POLL = `(() => {
       const vb = t && t.querySelector('.video-button');
       return !!(vb && (vb.getAttribute('aria-pressed') === 'true' || vb.classList.contains('selected') || vb.hasAttribute('active')));
     })(),
+    vw: v ? v.videoWidth : 0,
+    vh: v ? v.videoHeight : 0,
     ad: !!document.querySelector('#movie_player.ad-showing, .ytp-ad-player-overlay, .ytp-ad-module .ytp-ad-text'),
     signedIn: !!document.querySelector('ytmusic-settings-button img, #avatar img, ytmusic-nav-bar img.ytmusic-settings-button'),
   };
@@ -123,6 +125,54 @@ async function poll() {
   }
 }
 
+/* ---------------- widget do clipe ----------------
+ * O mesmo painel do YouTube Music vai para o widget, mostrando SÓ o vídeo (CSS por cima da página).
+ * O vídeo é decodificado pela placa de vídeo e fica sincronizado com o som: liso, sem transmitir quadros.
+ * A aba Música tem prioridade: se ela estiver na frente, o widget mostra a capa.
+ */
+let owner = null // "section" | "clip" | null
+let clipCssKey = null
+const CLIP_CSS = `
+html.agenda-clip, html.agenda-clip body { background: #000 !important; overflow: hidden !important; }
+html.agenda-clip body * { visibility: hidden !important; pointer-events: none !important; }
+html.agenda-clip #movie_player, html.agenda-clip #movie_player video { visibility: visible !important; }
+html.agenda-clip #movie_player { position: fixed !important; left: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 2147483647 !important; background: #000 !important; transform: none !important; }
+html.agenda-clip #movie_player .html5-video-container { width: 100% !important; height: 100% !important; }
+html.agenda-clip video.html5-main-video { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; object-fit: contain !important; }
+`
+const CLIP_ON = `(() => {
+  document.documentElement.classList.add('agenda-clip');
+  // o vídeo só existe com a tela do player aberta
+  const lay = document.querySelector('ytmusic-app-layout');
+  if (lay && !lay.hasAttribute('player-page-open')) { const b = document.querySelector('ytmusic-player-bar .toggle-player-page-button, ytmusic-player-bar .thumbnail-image-wrapper'); b && b.click(); }
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+})()`
+const CLIP_OFF = `(() => { document.documentElement.classList.remove('agenda-clip'); setTimeout(() => window.dispatchEvent(new Event('resize')), 50); })()`
+async function setClipCss(on) {
+  if (!alive()) return
+  try {
+    if (on && !clipCssKey) clipCssKey = await wc().insertCSS(CLIP_CSS)
+    await wc().executeJavaScript(on ? CLIP_ON : CLIP_OFF, true)
+  } catch {}
+}
+let clipOn = false
+function clip(b) {
+  if (popup) return
+  const main = getMain()
+  if (!main || main.isDestroyed()) return
+  if (!b) {
+    if (owner === "clip") { owner = null; clipOn = false; detach(); setClipCss(false) }
+    return
+  }
+  if (owner === "section") return
+  ensure()
+  owner = "clip"
+  if (!embedded) { main.contentView.addChildView(view); embedded = true }
+  if (typeof view.setBorderRadius === "function") view.setBorderRadius(Math.round(b.radius || 0))
+  view.setBounds({ x: Math.round(b.x), y: Math.round(b.y), width: Math.max(1, Math.round(b.w)), height: Math.max(1, Math.round(b.h)) })
+  if (!clipOn) { clipOn = true; setClipCss(true) }
+}
+
 /** tira o painel de onde estiver (continua tocando em segundo plano) */
 function detach() {
   if (!view) return
@@ -147,8 +197,8 @@ function ensure() {
     if (/^https?:/.test(url)) shell.openExternal(url)
     return { action: "deny" }
   })
-  // a página recarrega ao navegar: reenvia se alguém está vendo o clipe
-  wc().on("dom-ready", pushVideo)
+  // a página recarrega ao navegar: reaplica o modo clipe
+  wc().on("dom-ready", () => { clipCssKey = null; if (clipOn) setClipCss(true) })
   wc().loadURL(HOME)
   if (!timer) timer = setInterval(poll, 1000)
   return view
@@ -160,10 +210,12 @@ function embed(b) {
   const main = getMain()
   if (!main || main.isDestroyed()) return
   if (!b) {
-    if (embedded) { detach(); poll() }
+    if (embedded && owner === "section") { owner = null; detach(); poll() }
     return
   }
   ensure()
+  if (owner === "clip") { detach(); clipOn = false; setClipCss(false) }
+  owner = "section"
   const r = { x: Math.round(b.x), y: Math.round(b.y), width: Math.max(1, Math.round(b.w)), height: Math.max(1, Math.round(b.h)) }
   if (!embedded) {
     main.contentView.addChildView(view)
@@ -179,6 +231,8 @@ function popOut() {
   ensure()
   if (popup && !popup.isDestroyed()) { popup.show(); popup.focus(); return }
   detach()
+  if (owner === "clip") { clipOn = false; setClipCss(false) }
+  owner = null
   popup = new BrowserWindow({
     width: 1240,
     height: 820,
@@ -216,6 +270,7 @@ function register(ipcMain, mainGetter, app) {
     try { return await wc().executeJavaScript(QUEUE, true) } catch { return [] }
   })
   ipcMain.handle("music:embed", (_e, b) => embed(b))
+  ipcMain.handle("music:clip", (_e, b) => clip(b))
   ipcMain.handle("music:popout", () => popOut())
   ipcMain.handle("music:dock", () => dock())
   ipcMain.handle("music:video", (_e, id, on, width) => {

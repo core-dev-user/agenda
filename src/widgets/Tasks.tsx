@@ -294,8 +294,7 @@ export function TasksWidget({ w }: { w: Widget }) {
       {/* lista */}
       <div className="min-h-0 flex-1 overflow-auto pr-0.5" data-nodrag>
         {groups.every((g) => g.items.length === 0) && (
-          <div className="flex flex-col items-center gap-1 py-6 text-center text-sm text-fg-muted">
-            <span className="text-2xl">✨</span>
+          <div className="py-6 text-center text-sm text-fg-muted">
             {day ? `Nada marcado para ${dayLabel(day).toLowerCase()}.` : "Nenhuma tarefa pendente."}
           </div>
         )}

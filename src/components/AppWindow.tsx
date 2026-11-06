@@ -12,7 +12,6 @@ import { ErrorBoundary } from "./ErrorBoundary"
 const LOADERS = {
   today: () => import("@/sections/Today"),
   finance: () => import("@/sections/Finance"),
-  games: () => import("@/sections/Games"),
   habits: () => import("@/sections/Habits"),
   studies: () => import("@/sections/Studies"),
   services: () => import("@/sections/Services"),
@@ -99,6 +98,7 @@ export function AppWindow({ win }: { win: WinState }) {
     <motion.div
       ref={ref}
       className="absolute"
+      data-appwin
       style={{ left: g.x, top: g.y, width: g.w, height: g.h, zIndex: win.z, pointerEvents: win.minimized ? "none" : "auto" }}
       // abertura curta e opaca: a opacidade chega a 100% em 0,12s (antes uma mola longa deixava a janela "meio transparente")
       initial={{ opacity: 0, scale: 0.94, y: 16 }}

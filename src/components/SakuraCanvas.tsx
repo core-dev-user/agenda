@@ -1,3 +1,4 @@
+import { perfPaused } from "@/lib/perf"
 import { useEffect, useRef } from "react"
 
 interface Petal {
@@ -119,6 +120,7 @@ export function SakuraCanvas({
     window.addEventListener("resize", resize)
 
     const frame = (now: number) => {
+      if (perfPaused()) { raf = requestAnimationFrame(frame); return }
       const dt = Math.min(3, (now - last) / 16.67)
       last = now
       t += dt * 0.016

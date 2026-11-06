@@ -26,7 +26,7 @@ export default function Today() {
     <div className="space-y-5 p-6">
       <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-end gap-4">
         <div className="flex-1">
-          <div className="font-display text-3xl font-semibold">{greet(now.getHours())} ✨</div>
+          <div className="font-display text-3xl font-semibold">{greet(now.getHours())}</div>
           <div className="text-fg-muted capitalize">{now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
         </div>
         <WeatherChip city={s.weatherCity} />

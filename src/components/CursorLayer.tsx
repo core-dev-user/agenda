@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { useSettings } from "@/lib/store"
+import { perfPaused } from "@/lib/perf"
 
 const CLICKABLE = "button,a,[role=button],select,label,.clickable,[data-clickable]"
 const TEXT = "input:not([type=range]):not([type=checkbox]):not([type=color]),textarea,[contenteditable=true]"
@@ -75,7 +76,10 @@ export function CursorLayer() {
       const c = cfg.current
       const speed = Math.hypot(m.x - m.px, m.y - m.py)
       const color = c.cursorColor
-      if (c.cursorEffect === "sakura" && Math.random() < Math.min(0.9, speed / 18)) {
+      // modo leve: sem partículas
+      const lite = document.documentElement.classList.contains("lite")
+      if (lite) { /* nada */ }
+      else if (c.cursorEffect === "sakura" && Math.random() < Math.min(0.9, speed / 18)) {
         parts.push({ x: m.x, y: m.y, vx: (Math.random() - 0.5) * 1.5, vy: Math.random() * 0.8, life: 0, max: 90 + Math.random() * 60, size: 1.2 + Math.random() * 1.4, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.15, kind: 0, color })
       } else if (c.cursorEffect === "sparkle" && Math.random() < Math.min(1, speed / 10)) {
         parts.push({ x: m.x + (Math.random() - 0.5) * 14, y: m.y + (Math.random() - 0.5) * 14, vx: (Math.random() - 0.5) * 0.6, vy: (Math.random() - 0.5) * 0.6 + 0.2, life: 0, max: 40 + Math.random() * 30, size: 2 + Math.random() * 4, rot: 0, vr: 0, kind: 1, color })
@@ -116,6 +120,8 @@ export function CursorLayer() {
 
     let raf = 0
     const loop = () => {
+      // Agenda escondido ou jogo aberto: não desenha nada
+      if (perfPaused()) { raf = requestAnimationFrame(loop); return }
       const c = cfg.current
       const [r, g, b] = hexToRgb(c.cursorColor)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)

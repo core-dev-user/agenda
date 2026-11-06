@@ -341,3 +341,8 @@ html.dark[data-theme="retro"] .btn, html.dark[data-theme="retro"] .btn-accent { 
 /* cores dos gráficos (Finanças): entradas / gastos — passos validados para fundo escuro e claro */
 :root { --viz-1: #2a78d6; --viz-2: #eb6834; }
 html.dark { --viz-1: #3987e5; --viz-2: #d95926; }
+
+/* desempenho: Agenda escondido / jogo aberto → animações CSS paradas; modo leve → sem vidro desfocado */
+html.perf-paused *, html.perf-paused *::before, html.perf-paused *::after { animation-play-state: paused !important; }
+html.lite .surface, html.lite .surface::before { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+html.lite [class*="backdrop-blur"] { backdrop-filter: none !important; }
