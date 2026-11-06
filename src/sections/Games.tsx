@@ -5,6 +5,8 @@ import { useStore } from "@/lib/store"
 import { bridge } from "@/lib/bridge"
 import { emptyGaming, fmtDur, gamingStats, type GamingData, type GPeriod } from "@/lib/gaming"
 import { GameIcon } from "@/components/GameIcon"
+import { CS2Live, LastMatch, LolLive, RESULT, ValorantLive } from "@/components/GameLive"
+import { periodStart } from "@/lib/gaming"
 import { Card, Segmented } from "@/components/ui/controls"
 import { useNow } from "@/widgets/Clock"
 import { todayISO } from "@/lib/utils"
@@ -19,6 +21,7 @@ const hm = (t: number) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-dig
 export default function Games() {
   const g = useStore((s) => s.gaming) ?? emptyGaming()
   const [p, setP] = useState<GPeriod>("7")
+  const lv = useStore((s) => s.gameLive)
   const now = useNow(30000)
   const st = useMemo(() => gamingStats(g, p), [g, p, Math.floor(now.getTime() / 60000)])
   const playing = g.sessions.filter((s) => s.open)
@@ -42,6 +45,13 @@ export default function Games() {
               <div className="font-display text-2xl font-semibold">{info?.name}</div>
               <div className="text-sm text-fg-muted">desde {hm(s.start)} · <b className="font-num text-fg">{fmtDur(now.getTime() - s.start)}</b></div>
             </div>
+            {["cs2", "valorant", "lol"].includes(s.game) && (
+              <div className="relative w-[380px] max-w-[45%]">
+                {s.game === "cs2" && <CS2Live d={lv.cs2} />}
+                {s.game === "valorant" && <ValorantLive d={lv.valorant} />}
+                {s.game === "lol" && <LolLive d={lv.lol} />}
+              </div>
+            )}
           </motion.div>
         )
       })}
@@ -92,6 +102,7 @@ export default function Games() {
         </>
       )}
 
+      <Matches g={g} p={p} />
       <SessionLog g={g} />
       <GameSettings g={g} />
     </div>
@@ -218,6 +229,52 @@ function GameSettings({ g }: { g: GamingData }) {
         <div className="mt-2 text-xs text-fg-muted">
           Ignorados: {g.ignored.map((id) => <button key={id} className="mr-2 underline" title="Voltar a registrar" onClick={() => setG((d) => ({ ...d, ignored: d.ignored.filter((x) => x !== id) }))}>{g.games[id]?.name ?? id}</button>)}
         </div>
+      )}
+    </Card>
+  )
+}
+
+/** partidas com KDA (CS2, Valorant, LoL) */
+function Matches({ g, p }: { g: GamingData; p: GPeriod }) {
+  const from = periodStart(p)
+  const list = (g.matches ?? []).filter((m) => m.at >= from)
+  const [limit, setLimit] = useState(15)
+  if (!(g.matches ?? []).length) return null
+  const by = new Map<string, typeof list>()
+  for (const m of list) by.set(m.game, [...(by.get(m.game) ?? []), m])
+  return (
+    <Card>
+      <div className="mb-2 flex items-center gap-1.5 font-semibold"><Trophy size={15} /> Partidas</div>
+      {list.length === 0 ? <div className="text-sm text-fg-muted">Nenhuma partida registrada neste período.</div> : (
+        <>
+          <div className="mb-3 grid gap-2 md:grid-cols-3">
+            {[...by].map(([game, ms]) => {
+              const w = ms.filter((m) => m.result === "win").length, l = ms.filter((m) => m.result === "loss").length
+              const avg = (k: "k" | "d" | "a") => (ms.reduce((s, m) => s + (m[k] ?? 0), 0) / ms.length).toFixed(1)
+              const kd = ms.reduce((s, m) => s + (m.k ?? 0), 0) / Math.max(1, ms.reduce((s, m) => s + (m.d ?? 0), 0))
+              return (
+                <div key={game} className="flex items-center gap-3 rounded-xl border border-line p-2.5">
+                  <GameIcon info={g.games[game]} size={36} />
+                  <div className="min-w-0 flex-1 text-xs">
+                    <div className="truncate text-sm font-semibold">{g.games[game]?.name ?? game}</div>
+                    <div><span style={{ color: RESULT.win.c }}>{w}V</span> · <span style={{ color: RESULT.loss.c }}>{l}D</span>{w + l ? ` · ${Math.round((w / (w + l)) * 100)}% de vitórias` : ""}</div>
+                    <div className="text-fg-muted">média {avg("k")}/{avg("d")}/{avg("a")} · K/D {kd.toFixed(2)}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="space-y-1">
+            {list.slice(0, limit).map((m) => (
+              <div key={m.id} className="flex items-center gap-2">
+                <GameIcon info={g.games[m.game]} size={22} />
+                <span className="w-24 text-xs text-fg-muted">{new Date(m.at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} {hm(m.at)}</span>
+                <div className="min-w-0 flex-1"><LastMatch m={m} compact /></div>
+              </div>
+            ))}
+          </div>
+          {list.length > limit && <button className="mt-2 w-full text-sm text-fg-muted hover:text-fg" onClick={() => setLimit((l) => l + 30)}>Mostrar mais ({list.length - limit})</button>}
+        </>
       )}
     </Card>
   )

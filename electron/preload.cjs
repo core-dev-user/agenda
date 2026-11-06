@@ -38,6 +38,10 @@ contextBridge.exposeInMainWorld("agenda", {
     scan: () => ipcRenderer.invoke("games:scan"),
     icon: (p) => ipcRenderer.invoke("games:icon", p),
     onState: on("games:state"),
+    stats: () => ipcRenderer.invoke("gamestats:get"),
+    cs2Status: () => ipcRenderer.invoke("gamestats:cs2status"),
+    onLive: on("gamestats:live"),
+    onMatch: on("gamestats:match"),
   },
   finance: {
     status: () => ipcRenderer.invoke("finance:status"),

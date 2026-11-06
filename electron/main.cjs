@@ -175,6 +175,7 @@ require("./sports.cjs").register(ipcMain)
 require("./webapps.cjs").register(ipcMain, () => win, app)
 system.register(ipcMain, () => win)
 require("./games.cjs").register(ipcMain, () => win)
+require("./gamestats.cjs").register(ipcMain, () => win)
 require("./finance.cjs").register(ipcMain, { onBackup: (f, n) => system.cloudCopy(f, n) })
 
 /* ---------------- Janela ---------------- */

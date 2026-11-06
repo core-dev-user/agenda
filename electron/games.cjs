@@ -60,7 +60,6 @@ const KNOWN_MAP = new Map(KNOWN.map(([exe, id, name, color]) => [exe, { id, name
 const STORES = [/\\steamapps\\common\\([^\\]+)\\/i, /\\Epic Games\\([^\\]+)\\/i, /\\XboxGames\\([^\\]+)\\/i, /\\EA Games\\([^\\]+)\\/i, /\\Ubisoft Game Launcher\\games\\([^\\]+)\\/i, /\\GOG Galaxy\\Games\\([^\\]+)\\/i]
 // programas auxiliares que ficam dentro das pastas dos jogos (não são o jogo)
 const NOT_GAME = /crash|report|launcher|helper|setup|redist|unins|vcredist|dxsetup|easyanticheat|eac|battleye|beservice|update|patcher|service|overlay|webhelper|cefprocess|bootstrap|installer|prereq|riotclient|epicgames|steam\.exe|steamwebhelper|ubisoftconnect|eadesktop|origin|ealink|vanguard|vgc|vgtray/i
-const MC_TITLE = /^minecraft/i
 
 let getMain = () => null
 let custom = [] // { exe, name }
@@ -69,7 +68,8 @@ let last = ""
 let lastList = []
 let busy = false
 
-const PS = `$ErrorActionPreference='SilentlyContinue'; Get-Process | Where-Object { $_.Path } | ForEach-Object { [pscustomobject]@{ n = $_.ProcessName; p = $_.Path; s = $(if ($_.StartTime) { $_.StartTime.ToUniversalTime().ToString('o') } else { '' }); t = $_.MainWindowTitle } } | ConvertTo-Json -Compress`
+// lista de processos pelo WMI: rápido (~1 s) e funciona até com jogos protegidos por anti-cheat
+const PS = `$ErrorActionPreference='SilentlyContinue'; Get-CimInstance Win32_Process -Property Name,ExecutablePath,CreationDate,SessionId,CommandLine | Where-Object { $_.SessionId -ne 0 } | ForEach-Object { [pscustomobject]@{ n = $_.Name; p = $_.ExecutablePath; s = $(if ($_.CreationDate) { $_.CreationDate.ToUniversalTime().ToString('o') } else { '' }); c = $(if ($_.Name -eq 'javaw.exe') { $_.CommandLine } else { '' }) } } | ConvertTo-Json -Compress`
 
 function scan() {
   if (busy || process.platform !== "win32") return
@@ -82,13 +82,15 @@ function scan() {
     const found = new Map()
     for (const pr of procs) {
       const p = String(pr.p || "")
-      const exe = path.basename(p).toLowerCase()
+      // jogos protegidos por anti-cheat (Valorant/Vanguard) não mostram a pasta: usa o nome do processo
+      const exe = (p ? path.basename(p) : String(pr.n || "")).toLowerCase()
+      if (!p && !KNOWN_MAP.has(exe) && !custom.some((x) => x.exe && x.exe.toLowerCase() === exe)) continue
       const start = pr.s ? Date.parse(pr.s) : Date.now()
       let g = null
       const c = custom.find((x) => x.exe && x.exe.toLowerCase() === exe)
       if (c) g = { id: "custom:" + exe, name: c.name || exe, color: "#8f9bff" }
       else if (KNOWN_MAP.has(exe)) g = KNOWN_MAP.get(exe)
-      else if (exe === "javaw.exe" && MC_TITLE.test(pr.t || "")) g = { id: "minecraft", name: "Minecraft", color: "#62b47a" }
+      else if (exe === "javaw.exe" && /minecraft/i.test(pr.c || "")) g = { id: "minecraft", name: "Minecraft", color: "#62b47a" }
       else if (!NOT_GAME.test(exe)) {
         for (const re of STORES) {
           const m = p.match(re)
@@ -103,6 +105,7 @@ function scan() {
     const list = [...found.values()].sort((a, b) => a.start - b.start)
     const key = list.map((g) => g.id + "@" + g.start).join("|")
     lastList = list
+    try { require("./gamestats.cjs").onPlaying(list) } catch (e) { console.error(e) }
     if (key !== last) { last = key; push() }
   })
 }
@@ -114,7 +117,7 @@ function push() {
 
 function register(ipcMain, mainGetter) {
   getMain = mainGetter
-  if (!process.env.AGENDA_SHOT) app.whenReady().then(() => { setTimeout(scan, 4000); setInterval(scan, 30000) })
+  if (!process.env.AGENDA_SHOT) app.whenReady().then(() => { setTimeout(scan, 4000); setInterval(scan, 20000) })
   ipcMain.handle("games:get", () => ({ playing: lastList, at: Date.now() }))
   ipcMain.handle("games:config", (_e, cfg) => {
     custom = Array.isArray(cfg && cfg.custom) ? cfg.custom : []

@@ -100,7 +100,7 @@ const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
   finance: [340, 300],
   agenda: [340, 360],
   musicstats: [360, 380],
-  gaming: [340, 230],
+  gaming: [360, 360],
 }
 
 const defaultWidgets = (): Widget[] => [
@@ -137,6 +137,8 @@ interface State {
   focusManual: boolean
   /** busca rápida (Ctrl+K) aberta */
   paletteOpen: boolean
+  /** dados ao vivo dos jogos (CS2, Valorant, LoL) */
+  gameLive: Record<string, any>
   /** aba Música: player ou estatísticas */
   musicTab: "player" | "stats"
 
@@ -210,6 +212,7 @@ export const useStore = create<State>()(
       focusManual: false,
       paletteOpen: false,
       musicTab: "player",
+      gameLive: {},
 
       setSettings: (patch) =>
         set((s) => ({ settings: { ...s.settings, ...(typeof patch === "function" ? patch(s.settings) : patch) } })),

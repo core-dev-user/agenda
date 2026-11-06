@@ -3,7 +3,8 @@
  * (jogo, começo, fim) guardadas no Agenda. Fechar e abrir de novo em menos de 3 min continua a mesma sessão.
  */
 import { useStore } from "./store"
-import { bridge, type GamesState } from "./bridge"
+import { bridge, type GameMatch, type GamesState } from "./bridge"
+import { notify } from "./notify"
 import { todayISO, uid } from "./utils"
 
 export interface GameInfo { name: string; color?: string; icon?: string; exe?: string }
@@ -13,8 +14,10 @@ export interface GamingData {
   sessions: GameSession[]
   custom: { exe: string; name: string }[]
   ignored: string[]
+  /** partidas com estatísticas (CS2, Valorant, LoL) */
+  matches?: GameMatch[]
 }
-export const emptyGaming = (): GamingData => ({ games: {}, sessions: [], custom: [], ignored: [] })
+export const emptyGaming = (): GamingData => ({ games: {}, sessions: [], custom: [], ignored: [], matches: [] })
 const G = () => useStore.getState().gaming ?? emptyGaming()
 const setG = (fn: (g: GamingData) => GamingData) => useStore.setState((s) => ({ gaming: fn(s.gaming ?? emptyGaming()) }))
 
@@ -57,6 +60,17 @@ export function startGaming() {
   started = true
   // sessões que ficaram "abertas" de quando o Agenda foi fechado: o processo dirá se ainda estão rodando
   bridge.games.onState(apply)
+  bridge.games.onState(autoWidget)
+  // estatísticas ao vivo e partidas terminadas
+  bridge.games.stats().then((l) => useStore.setState({ gameLive: Object.fromEntries(Object.entries(l || {}).filter(([, v]) => v)) })).catch(() => {})
+  bridge.games.onLive(({ id, data }) => useStore.setState((s) => {
+    const next = { ...s.gameLive }
+    if (data) next[id] = data; else delete next[id]
+    // a última partida do Valorant também entra no histórico
+    if (id === "valorant" && data?.last) addMatch(data.last, false)
+    return { gameLive: next }
+  }))
+  bridge.games.onMatch((m) => addMatch(m, true))
   bridge.games.get().then(apply).catch(() => {})
   const sync = () => { const g = G(); bridge.games.config({ custom: g.custom, ignored: g.ignored }) }
   sync()
@@ -67,6 +81,31 @@ export function startGaming() {
     if (G().sessions.some((s) => s.open)) bridge.games.get().then(apply).catch(() => {})
   }, 60000)
 }
+
+const RESULT: Record<string, string> = { win: "Vitória", loss: "Derrota", draw: "Empate" }
+function addMatch(m: GameMatch, announce: boolean) {
+  if (!m?.id) return
+  if ((G().matches ?? []).some((x) => x.id === m.id)) return
+  setG((g) => ({ ...g, matches: [m, ...(g.matches ?? [])].slice(0, 500) }))
+  if (announce) {
+    const name = G().games[m.game]?.name ?? m.game
+    const kda = m.k != null ? `${m.k}/${m.d}/${m.a}` : ""
+    notify({ source: "system", title: `${name}: ${RESULT[m.result ?? ""] ?? "Partida terminada"}${m.rounds ? ` ${m.rounds}` : ""}`, body: [m.agent, m.map, kda && `KDA ${kda}`, m.rr != null ? `${m.rr > 0 ? "+" : ""}${m.rr} RR` : ""].filter(Boolean).join(" · "), open: "games", icon: "🎮" })
+  }
+}
+
+/** na primeira vez que um jogo é reconhecido, coloca o widget "Jogando agora" na área de trabalho */
+function autoWidget(st: GamesState) {
+  if (!st.playing.length) return
+  try { if (localStorage.getItem("gaming-widget-auto")) return; localStorage.setItem("gaming-widget-auto", "1") } catch { return }
+  const s = useStore.getState()
+  if (s.widgets.some((w) => w.type === "gaming")) return
+  s.addWidget("gaming")
+  const w = useStore.getState().widgets.at(-1)!
+  s.setWidgetGeo(w.id, { x: innerWidth - 400, y: 60, w: 360, h: 340 })
+}
+
+export const kdRatio = (m: { k?: number; d?: number }) => (m.k ?? 0) / Math.max(1, m.d ?? 0)
 
 /* ---------------- números ---------------- */
 export type GPeriod = "today" | "7" | "30" | "year" | "all"
