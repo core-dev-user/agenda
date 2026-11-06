@@ -38,6 +38,16 @@ export interface AgendaBridge {
     onValorantAgent(cb: (a: ValAgentNow | null) => void): Unsub
   }
   sysmon: { sub(id: string): Promise<boolean>; unsub(id: string): Promise<boolean>; onData(cb: (d: SysStats) => void): Unsub }
+  mode: {
+    get(): Promise<{ mode: UiMode | ""; monitors: number }>
+    /** salva e reabre o app no novo modo */
+    set(m: UiMode): Promise<boolean>
+    /** modo área de trabalho: true = vem para a frente (aba aberta), false = volta para o fundo */
+    raise(on: boolean): Promise<void>
+    detectApps(): Promise<{ apps: PcApp[]; monitors: number }>
+    onSummon(cb: () => void): Unsub
+  }
+  pcmedia: { sub(id: string, app?: string): Promise<PcMedia | null>; unsub(id: string): Promise<void>; cmd(c: "toggle" | "next" | "prev"): Promise<void>; onState(cb: (m: PcMedia) => void): Unsub }
   finance: {
     status(): Promise<{ exists: boolean; hasPin: boolean; unlocked: boolean; secure: boolean; waitMs: number }>
     open(pin?: string): Promise<{ ok: boolean; data?: string | null; error?: "pin" | "wait"; waitMs?: number }>
@@ -117,6 +127,22 @@ export interface RunningGame { id: string; name: string; color: string; start: n
 export interface ValAgentNow { id: string; locked: boolean; state: string }
 export interface GamesState { playing: RunningGame[]; at: number }
 
+export type UiMode = "app" | "desktop" | "screen"
+export type PcApp = "spotify" | "deezer" | "applemusic" | "amazonmusic" | "tidal" | "discord" | "whatsapp" | "steam" | "cs2" | "valorant" | "lol" | "epic"
+export interface PcMedia {
+  none?: boolean
+  app?: string
+  title?: string
+  artist?: string
+  album?: string
+  playing?: boolean
+  pos?: number
+  dur?: number
+  canNext?: boolean
+  canPrev?: boolean
+  art?: string | null
+  newTrack?: boolean
+}
 export interface SysConfig { closeToTray: boolean; hotkey: string; cloudDir: string; cloudOn: boolean; lastCloud: number; cloudError: string; guesses: { path: string; label: string }[]; hotkeyOk?: boolean }
 export interface WhatsChat { name: string; last: string; unread: number; time: string; avatar: string }
 export interface WhatsRead { loggedIn: boolean; qr?: boolean; loading?: boolean; totalUnread: number; chats: WhatsChat[] }
@@ -192,6 +218,8 @@ const browserFallback: AgendaBridge = {
   sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
   games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop, valorantAgent: async () => null, onValorantAgent: noop },
   sysmon: { sub: async () => false, unsub: async () => false, onData: noop },
+  mode: { get: async () => ({ mode: "screen", monitors: 1 }), set: async () => false, raise: async () => {}, detectApps: async () => ({ apps: [], monitors: 1 }), onSummon: noop },
+  pcmedia: { sub: async () => null, unsub: async () => {}, cmd: async () => {}, onState: noop },
   finance: {
     status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),
     open: async () => ({ ok: true, data: localStorage.getItem("agenda-finance") }),

@@ -1,15 +1,31 @@
-import React from "react"
+import React, { lazy, Suspense } from "react"
 import ReactDOM from "react-dom/client"
 import "@/lib/fonts"
 import "./index.css"
 import App from "./App"
 import { useStore } from "@/lib/store"
+import { bridge } from "@/lib/bridge"
+import { useUiMode } from "@/lib/uimode"
 
 ;(window as any).__agenda = useStore
 import("@/lib/webapps").then((m) => { (window as any).__webapps = m.useWebApps })
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-)
+const Onboarding = lazy(() => import("@/components/Onboarding"))
+const AppShell = lazy(() => import("@/components/AppShell"))
+
+function Root() {
+  const mode = useUiMode((s) => s.mode)
+  if (mode === "") return <Suspense fallback={null}><Onboarding /></Suspense>
+  if (mode === "app") return <Suspense fallback={null}><AppShell /></Suspense>
+  return <App />
+}
+
+bridge.mode.get().catch(() => ({ mode: "screen" as const, monitors: 1 })).then((m) => {
+  useUiMode.setState(m)
+  document.documentElement.dataset.mode = m.mode || "welcome"
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <Root />
+    </React.StrictMode>
+  )
+})

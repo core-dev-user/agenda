@@ -41,6 +41,19 @@ contextBridge.exposeInMainWorld("agenda", {
     valorantAgent: () => ipcRenderer.invoke("valorant:agent"),
     onValorantAgent: on("valorant:agent"),
   },
+  mode: {
+    get: () => ipcRenderer.invoke("mode:get"),
+    set: (m) => ipcRenderer.invoke("mode:set", m),
+    raise: (on) => ipcRenderer.invoke("mode:raise", on),
+    detectApps: () => ipcRenderer.invoke("apps:detect"),
+    onSummon: on("app:summon"),
+  },
+  pcmedia: {
+    sub: (id, app) => ipcRenderer.invoke("media:sub", id, app),
+    unsub: (id) => ipcRenderer.invoke("media:unsub", id),
+    cmd: (c) => ipcRenderer.invoke("media:cmd", c),
+    onState: on("media:state"),
+  },
   sysmon: {
     sub: (id) => ipcRenderer.invoke("sysmon:sub", id),
     unsub: (id) => ipcRenderer.invoke("sysmon:unsub", id),

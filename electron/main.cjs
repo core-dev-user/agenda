@@ -8,6 +8,7 @@ const { spawn, execFile } = require("node:child_process")
 const { pathToFileURL, fileURLToPath } = require("node:url")
 const music = require("./music.cjs")
 const system = require("./system.cjs")
+const modes = require("./mode.cjs")
 
 const isDev = !!process.env.AGENDA_DEV
 // timers no horário certo em segundo plano (avisos, leituras) e o YouTube Music nunca pausa sozinho em segundo plano.
@@ -55,10 +56,12 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+    ...modes.windowOptions(),
   })
-  // iniciado junto com o Windows: abre direto na bandeja (perto do relógio)
-  const hidden = system.startHidden && !process.env.AGENDA_SHOT
-  if (!hidden) win.maximize()
+  // iniciado junto com o Windows: abre direto na bandeja (perto do relógio) — no modo área de trabalho ele já fica no fundo
+  const hidden = system.startHidden && !process.env.AGENDA_SHOT && modes.mode() !== "desktop"
+  if (!hidden && (modes.mode() === "screen" || !modes.mode())) win.maximize()
+  modes.attach(win)
   system.attachWindow(win)
   // fechar pelo X manda para a bandeja; "Sair" na bandeja encerra tudo
   win.on("closed", () => { win = null; app.quit() })
@@ -176,6 +179,8 @@ music.register(ipcMain, () => win, app)
 require("./sports.cjs").register(ipcMain)
 require("./webapps.cjs").register(ipcMain, () => win, app)
 system.register(ipcMain, () => win)
+modes.register(ipcMain, () => win, () => system.quit())
+require("./media.cjs").register(ipcMain, () => win)
 require("./games.cjs").register(ipcMain, () => win)
 require("./gamestats.cjs").register(ipcMain, () => win)
 require("./sysmon.cjs").register(ipcMain, () => win)

@@ -24,7 +24,7 @@ const LOADERS = {
   whatsapp: () => import("@/sections/WebApp").then((m) => ({ default: m.WhatsappView })),
   settings: () => import("@/sections/SettingsView"),
 }
-const VIEWS = Object.fromEntries(Object.entries(LOADERS).map(([k, f]) => [k, lazy(f)])) as unknown as Record<keyof typeof LOADERS, React.LazyExoticComponent<() => React.JSX.Element>>
+export const VIEWS = Object.fromEntries(Object.entries(LOADERS).map(([k, f]) => [k, lazy(f)])) as unknown as Record<keyof typeof LOADERS, React.LazyExoticComponent<() => React.JSX.Element>>
 
 /** Carrega o código de todas as abas logo depois da abertura: clicar abre na hora, sem "Carregando…". */
 export function preloadSections() {

@@ -16,19 +16,25 @@ let tray = null
 let quitting = false
 const startHidden = process.argv.includes("--hidden")
 
+const uiMode = () => require("./mode.cjs").mode()
 function show() {
   const w = getMain()
   if (!w || w.isDestroyed()) return
-  if (!w.isVisible()) { w.show(); if (!w.isMaximized()) w.maximize() }
+  const m = uiMode()
+  if (!w.isVisible()) { w.show(); if ((m === "screen" || !m) && !w.isMaximized()) w.maximize() }
   if (w.isMinimized()) w.restore()
+  // modo área de trabalho: o atalho/bandeja abre a busca rápida por cima de tudo
+  if (m === "desktop") { w.webContents.send("app:summon"); return }
   w.focus()
 }
 function toggle() {
   const w = getMain()
   if (!w || w.isDestroyed()) return
+  if (uiMode() === "desktop") return show()
   if (w.isVisible() && w.isFocused() && !w.isMinimized()) { cfg.closeToTray ? w.hide() : w.minimize() }
   else show()
 }
+function quit() { quitting = true; app.quit() }
 
 function makeTray() {
   if (tray) return
@@ -123,8 +129,10 @@ function register(ipcMain, mainGetter) {
 /** Fechar a janela: vai para a bandeja (o YouTube Music e as calls continuam) */
 function attachWindow(win) {
   win.on("close", (e) => {
+    // a área de trabalho não "fecha" (Alt+F4 nela não derruba o Agenda)
+    if (!quitting && uiMode() === "desktop") { e.preventDefault(); return }
     if (!quitting && cfg.closeToTray && tray) { e.preventDefault(); win.hide() }
   })
 }
 
-module.exports = { register, attachWindow, cloudCopy, startHidden, show, isQuitting: () => quitting }
+module.exports = { register, attachWindow, cloudCopy, startHidden, show, quit, isQuitting: () => quitting }

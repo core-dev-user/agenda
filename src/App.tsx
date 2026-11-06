@@ -23,8 +23,38 @@ import { usePerf } from "@/lib/perf"
 import { CommandPalette } from "@/components/CommandPalette"
 import { FocusBar, useFocusActive } from "@/components/FocusBar"
 import { DEFAULT_FOCUS } from "@/lib/store"
+import { useUiMode } from "@/lib/uimode"
 
-function useThemeVars() {
+/** salvamento automático extra: regrava a cada 20 s e garante a gravação ao fechar a janela */
+export function useAutosave() {
+  useEffect(() => {
+    const save = () => useStore.setState({})
+    const id = setInterval(save, 20000)
+    const bye = () => { save(); bridge.store.flush?.() }
+    window.addEventListener("beforeunload", bye)
+    return () => { clearInterval(id); window.removeEventListener("beforeunload", bye) }
+  }, [])
+}
+
+/** modo área de trabalho: com alguma aba aberta o Agenda vem para a frente; sem nenhuma, volta para o fundo */
+function useDesktopLayer() {
+  useEffect(() => {
+    if (useUiMode.getState().mode !== "desktop") return
+    let up = false
+    const sync = () => {
+      const s = useStore.getState()
+      const want = s.windows.some((w) => !w.minimized) || s.paletteOpen
+      if (want !== up) { up = want; bridge.mode.raise(want) }
+    }
+    const off = useStore.subscribe(sync)
+    // atalho global / bandeja: abre a busca rápida por cima de tudo
+    const off2 = bridge.mode.onSummon(() => useStore.setState({ paletteOpen: true }))
+    sync()
+    return () => { off(); off2() }
+  }, [])
+}
+
+export function useThemeVars() {
   const s = useStore((x) => x.settings)
   useEffect(() => {
     const r = document.documentElement
@@ -54,14 +84,8 @@ export default function App() {
   usePerf()
   // tela "Hoje" ao abrir
   useEffect(() => { if (useStore.getState().settings.todayOnStart) setTimeout(() => useStore.getState().openWindow("today"), 900) }, [])
-  // salvamento automático extra: regrava a cada 20 s e garante a gravação ao fechar a janela
-  useEffect(() => {
-    const save = () => useStore.setState({})
-    const id = setInterval(save, 20000)
-    const bye = () => { save(); bridge.store.flush?.() }
-    window.addEventListener("beforeunload", bye)
-    return () => { clearInterval(id); window.removeEventListener("beforeunload", bye) }
-  }, [])
+  useAutosave()
+  useDesktopLayer()
   useDesktopDrop()
   useHistory()
   useAppWidgets()

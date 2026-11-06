@@ -2,7 +2,8 @@ import { useEffect, useState, type ReactNode } from "react"
 import { Glyph } from "@/components/Glyph"
 import { CheckCircle2, Cloud, FolderOpen, Keyboard, Loader2, Moon, Plus, RefreshCw, Trash2, XCircle, AlertTriangle, Star } from "lucide-react"
 import { useStore, DEFAULT_NOTIFY, DEFAULT_FOCUS } from "@/lib/store"
-import { bridge, type SysConfig } from "@/lib/bridge"
+import { bridge, type SysConfig, type UiMode } from "@/lib/bridge"
+import { MODE_INFO, useUiMode } from "@/lib/uimode"
 import { SOURCE_META, notify } from "@/lib/notify"
 import { eventsFrom, feedUrl } from "@/lib/ical"
 import { Card, Switch } from "@/components/ui/controls"
@@ -213,6 +214,29 @@ export function IntegrationsTab() {
 const HOTKEYS = ["Control+Alt+Space", "Alt+Shift+A", "Control+Shift+Space", "Control+Alt+A", "Super+Alt+A", ""]
 const hotkeyLabel = (k: string) => (k ? k.replace("Control", "Ctrl").replace("Super", "Win").replace("Space", "Espaço").replace(/\+/g, " + ") : "Desligado")
 
+/** trocar entre Aplicativo / Área de trabalho / Tela própria (o app reabre) */
+function ModeSection() {
+  const cur = useUiMode((s) => s.mode)
+  const [busy, setBusy] = useState(false)
+  return (
+    <Section title="Modo de uso" desc="Trocar o modo reabre o Agenda. Seus dados, widgets e abas continuam iguais.">
+      <div className="grid gap-2 sm:grid-cols-3">
+        {(["desktop", "app", "screen"] as UiMode[]).map((m) => (
+          <button
+            key={m}
+            disabled={busy}
+            onClick={async () => { if (m === cur) return; setBusy(true); bridge.store.flush?.(); await bridge.mode.set(m) }}
+            className={cn("rounded-xl border p-3 text-left transition-colors", m === cur ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]")}
+          >
+            <div className="text-sm font-semibold">{MODE_INFO[m].label}{m === cur && <span className="ml-1.5 text-xs font-normal text-fg-muted">(atual)</span>}</div>
+            <div className="mt-1 text-xs leading-relaxed text-fg-muted">{MODE_INFO[m].desc}</div>
+          </button>
+        ))}
+      </div>
+    </Section>
+  )
+}
+
 export function SystemExtra() {
   const [cfg, setCfg] = useState<SysConfig | null>(null)
   const s = useStore((x) => x.settings)
@@ -224,6 +248,7 @@ export function SystemExtra() {
   const hib = s.hibernateMin ?? 15
   return (
     <>
+      <ModeSection />
       <Section title="Bandeja e atalho" desc="O Agenda pode ficar rodando perto do relógio do Windows: o YouTube Music, as calls e os avisos continuam funcionando.">
         <Switch label="Fechar no X manda para a bandeja (em vez de encerrar)" checked={cfg.closeToTray} onChange={(v) => upd({ closeToTray: v })} />
         <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
