@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Image, Lock, LockOpen, Settings } from "lucide-react"
+import { ChevronRight, Image, Lock, LockOpen, Settings } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge } from "@/lib/bridge"
 import type { MediaItem } from "@/lib/types"
@@ -14,7 +14,7 @@ import { Wallpaper, Overlays } from "@/components/Wallpaper"
 import { CursorLayer } from "@/components/CursorLayer"
 import { Taskbar } from "@/components/Taskbar"
 import { AppWindow, preloadSections } from "@/components/AppWindow"
-import { WidgetFrame, WIDGET_CHOICES, hoveredWidget } from "@/widgets/WidgetFrame"
+import { WidgetFrame, WIDGET_CATS, WIDGET_CHOICES, hoveredWidget, type WidgetCat } from "@/widgets/WidgetFrame"
 import { useHistory } from "@/lib/history"
 import { copyWidget, pasteWidget, widgetClip } from "@/lib/widgetClip"
 import { toast } from "@/lib/toast"
@@ -219,26 +219,43 @@ function DesktopMenu({ at, close }: { at: { x: number; y: number }; close: () =>
   const open = useStore((s) => s.openWindow)
   const s = useStore((x) => x.settings)
   const setSettings = useStore((x) => x.setSettings)
+  const [sub, setSub] = useState<WidgetCat | null>(null)
   const item = "flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]"
+  const left = Math.min(at.x, innerWidth - 240)
+  const top = Math.max(8, Math.min(at.y, innerHeight - 420))
+  const subItems = sub ? WIDGET_CHOICES.filter((c) => c.cat === sub) : []
+  const subLeft = left + 224 + 4 + 260 > innerWidth ? left - 264 : left + 228
   return (
     <>
       <div className="fixed inset-0 z-[900]" onPointerDown={close} />
+      {sub && (
+        <div
+          data-modal
+          key={sub}
+          className="surface fixed z-[902] max-h-[calc(100vh-16px)] w-[260px] overflow-y-auto p-1.5"
+          style={{ left: subLeft, top: Math.max(8, Math.min(top, innerHeight - 16 - subItems.length * 34 - 12)) }}
+        >
+          {subItems.map((c) => (
+            <button key={c.label} className={item} onClick={() => { add(c.type, c.config); close() }}><c.icon size={15} className="shrink-0" style={{ color: c.color }} /> <span className="truncate">{c.label}</span></button>
+          ))}
+        </div>
+      )}
       <motion.div
         data-modal
         className="surface fixed z-[901] max-h-[calc(100vh-16px)] w-56 overflow-y-auto p-1.5"
-        style={{ left: Math.min(at.x, innerWidth - 240), top: Math.max(8, Math.min(at.y, innerHeight - 560)), transformOrigin: "top left" }}
+        style={{ left, top, transformOrigin: "top left" }}
         initial={{ opacity: 0, scale: 0.9, rotateX: 15 }}
         animate={{ opacity: 1, scale: 1, rotateX: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.15 }}
       >
         <div className="px-3 py-1 text-xs text-fg-muted uppercase">Adicionar widget</div>
-        {WIDGET_CHOICES.filter((c) => c.group === "widget").map((c) => (
-          <button key={c.label} className={item} onClick={() => { add(c.type, c.config); close() }}><c.icon size={15} className="shrink-0 text-fg-muted" /> <span className="truncate">{c.label}</span></button>
-        ))}
-        <div className="px-3 pt-2 pb-1 text-xs text-fg-muted uppercase">Atalho de aba</div>
-        {WIDGET_CHOICES.filter((c) => c.group === "atalho").map((c) => (
-          <button key={c.label} className={item} onClick={() => { add(c.type, c.config); close() }}><c.icon size={15} className="shrink-0 text-fg-muted" /> <span className="truncate">{c.label}</span></button>
+        {WIDGET_CATS.map((k) => (
+          <div key={k.id} className="relative" onPointerEnter={() => setSub(k.id)}>
+            <button className={cn(item, sub === k.id && "bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]")} onClick={() => setSub(k.id)}>
+              <k.icon size={15} className="shrink-0 text-fg-muted" /> <span className="flex-1 truncate">{k.label}</span> <ChevronRight size={13} className="text-fg-muted" />
+            </button>
+          </div>
         ))}
         <div className="my-1 h-px bg-line" />
         <button className={item} onClick={() => { setSettings({ widgetsLocked: !s.widgetsLocked }); close() }}>{s.widgetsLocked ? <><LockOpen size={15} className="text-fg-muted" /> Destravar widgets</> : <><Lock size={15} className="text-fg-muted" /> Travar widgets</>}</button>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Lock, Maximize, Minus, Plus, Power, Square, Unlock, X } from "lucide-react"
+import { Lock, Maximize, Minus, Plus, Power, Search, Square, Unlock, X } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge } from "@/lib/bridge"
 import { cn } from "@/lib/utils"
@@ -9,7 +9,7 @@ import { SECTIONS } from "./sections-meta"
 import { Logo } from "./Logo"
 import { AppIcon } from "./AppIcon"
 import { GlyphTile } from "./Glyph"
-import { WIDGET_CHOICES } from "@/widgets/WidgetFrame"
+import { WIDGET_CATS, WIDGET_CHOICES, type WidgetCat } from "@/widgets/WidgetFrame"
 import { useNow } from "@/widgets/Clock"
 import { BellIcon, NotificationPanel } from "./NotificationCenter"
 
@@ -164,7 +164,7 @@ export function Taskbar() {
             <div className="fixed inset-0 z-[790]" onPointerDown={() => setMenu(null)} />
             <motion.div
               data-modal
-              className={cn("surface fixed z-[810] w-[360px] max-h-[calc(100vh-var(--tb-size)-70px)] overflow-y-auto p-4", {
+              className={cn("surface fixed z-[810]", menu === "widgets" ? "w-[min(640px,calc(100vw-32px))]" : "w-[360px]", "max-h-[calc(100vh-var(--tb-size)-70px)] overflow-y-auto p-4", {
                 bottom: "bottom-[calc(var(--tb-size)+40px)] left-1/2 -translate-x-1/2",
                 top: "top-[calc(var(--tb-size)+40px)] left-1/2 -translate-x-1/2",
                 left: "left-[calc(var(--tb-size)+40px)] top-1/2 -translate-y-1/2",
@@ -278,24 +278,52 @@ function StartMenu({ onPick, close }: { onPick: (id: SectionId) => void; close: 
   )
 }
 
+const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+
 function WidgetMenu({ close }: { close: () => void }) {
   const add = useStore((s) => s.addWidget)
+  const [cat, setCat] = useState<WidgetCat>("rotina")
+  const [q, setQ] = useState("")
+  const query = norm(q.trim())
+  const list = query
+    ? WIDGET_CHOICES.filter((c) => norm(c.label).includes(query) || norm(WIDGET_CATS.find((k) => k.id === c.cat)!.label).includes(query))
+    : WIDGET_CHOICES.filter((c) => c.cat === cat)
+  const pickBtn = "flex items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]"
   return (
     <div>
-      <div className="mb-3 font-display text-lg font-semibold">Adicionar widget</div>
-      {(["widget", "atalho"] as const).map((g) => (
-        <div key={g}>
-          {g === "atalho" && <div className="mt-3 mb-1.5 text-xs tracking-wide text-fg-muted uppercase">Atalhos das abas (com prévia)</div>}
-          <div className="grid grid-cols-2 gap-1.5">
-            {WIDGET_CHOICES.filter((c) => c.group === g).map((c) => (
-              <button key={c.type + c.label} onClick={() => { add(c.type, c.config); close() }} className="flex items-center gap-2 rounded-xl p-2.5 text-left text-sm transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]">
+      <div className="mb-3 flex items-center gap-3">
+        <div className="font-display text-lg font-semibold">Adicionar widget</div>
+        <label className="ml-auto flex h-8 w-48 items-center gap-1.5 rounded-lg border border-line px-2 text-sm">
+          <Search size={13} className="shrink-0 text-fg-muted" />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Procurar…" className="min-w-0 flex-1 bg-transparent outline-none" />
+        </label>
+      </div>
+      <div className="flex gap-3">
+        <div className={cn("flex w-40 shrink-0 flex-col gap-0.5 border-r border-line pr-2", query && "opacity-40")}>
+          {WIDGET_CATS.map((k) => (
+            <button
+              key={k.id}
+              onClick={() => { setCat(k.id); setQ("") }}
+              className={cn(pickBtn, "!py-1.5", !query && cat === k.id && "bg-[color-mix(in_srgb,var(--fg)_12%,transparent)] font-medium")}
+            >
+              <k.icon size={15} className="shrink-0 text-fg-muted" />
+              <span className="truncate">{k.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="min-h-[300px] flex-1">
+          {cat === "abas" && !query && <div className="mb-1.5 text-xs text-fg-muted">Um atalho para abrir a aba, com prévia do conteúdo.</div>}
+          <div className="grid grid-cols-2 gap-1">
+            {list.map((c) => (
+              <button key={c.type + c.label} onClick={() => { add(c.type, c.config); close() }} className={pickBtn}>
                 <GlyphTile icon={c.icon} color={c.color} size={28} />
-                {c.label}
+                <span className="leading-tight">{c.label}</span>
               </button>
             ))}
           </div>
+          {!list.length && <div className="py-8 text-center text-sm text-fg-muted">Nenhum widget com esse nome.</div>}
         </div>
-      ))}
+      </div>
       <button className="btn btn-ghost mt-2 w-full text-xs text-fg-muted" onClick={close}><X size={12} /> Fechar</button>
     </div>
   )

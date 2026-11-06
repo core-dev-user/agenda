@@ -71,11 +71,36 @@ export const WIDGET_META: Record<WidgetType, { label: string; icon: LucideIcon; 
   sysmon: { label: "Desempenho do PC (CPU, GPU, RAM)", icon: Cpu, color: "#3ccfcf" },
 }
 
+/** Tópicos do menu "Adicionar widget" (na ordem em que aparecem). */
+export const WIDGET_CATS = [
+  { id: "rotina", label: "Rotina", icon: ListChecks },
+  { id: "info", label: "Notícias e clima", icon: CloudSun },
+  { id: "musica", label: "Música", icon: Music },
+  { id: "esportes", label: "Esportes", icon: Volleyball },
+  { id: "esports", label: "E-sports e jogos", icon: Gamepad2 },
+  { id: "apps", label: "Conversas e apps", icon: MessageCircle },
+  { id: "fotos", label: "Fotos", icon: Image },
+  { id: "pc", label: "Computador", icon: Cpu },
+  { id: "abas", label: "Atalhos das abas", icon: Link },
+] as const satisfies readonly { id: string; label: string; icon: LucideIcon }[]
+export type WidgetCat = (typeof WIDGET_CATS)[number]["id"]
+
+const CAT_OF: Record<Exclude<WidgetType, "shortcut">, WidgetCat> = {
+  clock: "rotina", stopwatch: "rotina", calendar: "rotina", agenda: "rotina", tasks: "rotina", note: "rotina", finance: "rotina",
+  weather: "info", news: "info",
+  music: "musica", musicclip: "musica", lyrics: "musica", musicstats: "musica",
+  football: "esportes",
+  cs2: "esports", valorant: "esports", valagent: "esports", gaming: "esports",
+  discord: "apps", whatsapp: "apps", ifood: "apps",
+  photo: "fotos",
+  sysmon: "pc",
+}
+
 /** Opções do menu "Adicionar widget": widgets comuns + um atalho para cada aba. */
-export const WIDGET_CHOICES: { type: WidgetType; config: Record<string, any>; label: string; icon: LucideIcon; color: string; group: "widget" | "atalho" }[] = [
+export const WIDGET_CHOICES: { type: WidgetType; config: Record<string, any>; label: string; icon: LucideIcon; color: string; group: "widget" | "atalho"; cat: WidgetCat }[] = [
   ...(Object.keys(WIDGET_META) as WidgetType[])
-    .filter((t) => t !== "shortcut")
-    .map((t) => ({ type: t, config: {}, label: WIDGET_META[t].label, icon: WIDGET_META[t].icon, color: WIDGET_META[t].color, group: "widget" as const })),
+    .filter((t): t is Exclude<WidgetType, "shortcut"> => t !== "shortcut")
+    .map((t) => ({ type: t, config: {}, label: WIDGET_META[t].label, icon: WIDGET_META[t].icon, color: WIDGET_META[t].color, group: "widget" as const, cat: CAT_OF[t] })),
   ...SECTIONS.filter((s) => !["settings", "music", "discord", "ifood", "whatsapp"].includes(s.id)).map((s) => ({
     type: "shortcut" as WidgetType,
     config: { section: s.id },
@@ -83,6 +108,7 @@ export const WIDGET_CHOICES: { type: WidgetType; config: Record<string, any>; la
     icon: s.icon,
     color: s.color,
     group: "atalho" as const,
+    cat: "abas" as const,
   })),
 ]
 
