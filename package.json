@@ -29,7 +29,18 @@
     ],
     "win": {
       "icon": "build/icon.png",
-      "target": "dir"
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Agenda",
+      "artifactName": "Agenda-Setup-${version}.exe",
+      "uninstallDisplayName": "Agenda",
+      "deleteAppDataOnUninstall": false
     }
   },
   "dependencies": {
