@@ -82,7 +82,7 @@ export const DEFAULT_SETTINGS: Settings = {
   newsFeed: "https://g1.globo.com/rss/g1/",
 }
 
-const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
+export const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
   clock: [320, 170],
   stopwatch: [300, 200],
   weather: [300, 190],

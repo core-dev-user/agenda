@@ -9,7 +9,7 @@
  */
 import type { CursorEffect, CursorStyle, LockClock, Settings, Widget, WidgetType } from "./types"
 import type { WidgetLook } from "@/widgets/widgetLook"
-import { uid } from "./utils"
+import { WIDGET_SIZES } from "./store"
 
 type RGB = [number, number, number]
 export interface Swatch { hex: string; rgb: RGB; weight: number; h: number; s: number; l: number }
@@ -360,11 +360,19 @@ export interface PlanOptions {
   lockClock: boolean
   /** área da barra de tarefas para não pôr widget embaixo */
   taskbar: { position: Settings["taskbar"]["position"]; size: number }
+  /** widgets que você já posicionou à mão na prévia: ficam onde estão e os outros desviam deles */
+  fixed?: Record<string, { x: number; y: number; w: number; h: number }>
+  /** widgets tirados (modo reorganizar) */
+  exclude?: string[]
+  /** relógio grande movido à mão */
+  lockAt?: { x: number; y: number }
 }
 export interface Plan {
   settings: Partial<Settings>
   wallpaper: Partial<Settings["wallpaper"]>
   lock?: LockClock
+  /** aparência pensada para um retângulo qualquer da tela (usada quando você move um widget na prévia) */
+  lookAt: (t: WidgetType, r: { x: number; y: number; w: number; h: number }) => WidgetLook
   widgets: Widget[]
   mood: MoodId
   moods: MoodId[]
@@ -538,14 +546,19 @@ export function buildPlan(a: Analysis, o: PlanOptions): Plan {
     items = o.current.map((w) => ({ id: w.id, type: w.type, config: w.config, w: w.w, h: w.h, portrait: w.portrait }))
   } else {
     const pick = o.pick.filter((t) => !(t === "clock" && lock?.on))
-    items = pick.map((t) => ({ id: uid(), type: t, config: {}, w: SIZES[t]?.[0] ?? 320, h: SIZES[t]?.[1] ?? 240 }))
+    items = pick.map((t) => ({ id: "auto-" + t, type: t, config: {}, w: SIZES[t]?.[0] ?? WIDGET_SIZES[t][0], h: SIZES[t]?.[1] ?? WIDGET_SIZES[t][1] }))
     if (lock?.on && o.pick.includes("clock")) notes.push("O relógio virou o relógio grande da tela")
   }
   // maiores primeiro; relógio e clima preferem o alto da tela
+  if (o.exclude?.length) items = items.filter((it) => !o.exclude!.includes(it.id))
+  if (lockRect && o.lockAt) { lockRect.x = o.lockAt.x; lockRect.y = o.lockAt.y }
+  const fixed = o.fixed ?? {}
+  for (const it of items) if (fixed[it.id]) placed.push(fixed[it.id])
   const order = [...items].sort((x, y) => (y.type === "clock" ? 1e9 : 0) - (x.type === "clock" ? 1e9 : 0) || y.w * y.h - x.w * x.h)
   const out: Widget[] = []
   for (const it of order) {
-    let r = place(it.w, it.h, it.type === "clock" || it.type === "weather" ? "top" : "any")
+    const fx = fixed[it.id]
+    let r = fx ? { ...fx } : place(it.w, it.h, it.type === "clock" || it.type === "weather" ? "top" : "any")
     if (!r) r = place(Math.round(it.w * 0.8), Math.round(it.h * 0.8), "any")
     if (!r) { notes.push(`Sem espaço livre para: ${it.type}`); continue }
     const { look } = lookFor(it.type, r)
@@ -573,5 +586,6 @@ export function buildPlan(a: Analysis, o: PlanOptions): Plan {
     overlay: { scanlines: false, grain: false, vignette: false, ...(prof.overlay ?? {}) },
   } as Partial<Settings>
   const wallpaper = { dim: brightImg ? 0.16 : a.lum > 0.45 ? 0.06 : 0, blur: 0, parallax: true }
-  return { settings, wallpaper, lock, widgets: out, mood, moods: a.moods.slice(0, 3).map((m) => m.id), accent, notes, lockRect }
+  const lookAt = (t: WidgetType, r: { x: number; y: number; w: number; h: number }) => lookFor(t, r).look
+  return { settings, wallpaper, lock, lookAt, widgets: out, mood, moods: a.moods.slice(0, 3).map((m) => m.id), accent, notes, lockRect }
 }
