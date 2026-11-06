@@ -10,11 +10,10 @@ const music = require("./music.cjs")
 const system = require("./system.cjs")
 
 const isDev = !!process.env.AGENDA_DEV
-// a janela do YouTube Music fica escondida: sem isso o Chromium para de decodificar o vídeo (o clipe do widget congelaria)
-app.commandLine.appendSwitch("disable-renderer-backgrounding")
+// timers no horário certo em segundo plano (avisos, leituras) e o YouTube Music nunca pausa sozinho em segundo plano.
+// A detecção de janela coberta do Windows fica LIGADA: com um jogo ou outro programa por cima, o Agenda para de desenhar.
 app.commandLine.appendSwitch("disable-background-timer-throttling")
-app.commandLine.appendSwitch("disable-backgrounding-occluded-windows")
-app.commandLine.appendSwitch("disable-features", "BackgroundVideoTrackOptimization,BackgroundVideoPauseOptimization,CalculateNativeWinOcclusion")
+app.commandLine.appendSwitch("disable-features", "BackgroundVideoTrackOptimization,BackgroundVideoPauseOptimization")
 if (process.env.AGENDA_SHOT) {
   app.setPath("userData", path.join(process.env.AGENDA_SHOT, "userdata"))
   app.disableHardwareAcceleration()

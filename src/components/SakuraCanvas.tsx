@@ -121,6 +121,8 @@ export function SakuraCanvas({
 
     const frame = (now: number) => {
       if (perfPaused()) { raf = requestAnimationFrame(frame); return }
+      // 30 quadros por segundo bastam para as pétalas e custam metade (o vidro desfocado por cima é recalculado a cada quadro)
+      if (now - last < 31) { raf = requestAnimationFrame(frame); return }
       const dt = Math.min(3, (now - last) / 16.67)
       last = now
       t += dt * 0.016

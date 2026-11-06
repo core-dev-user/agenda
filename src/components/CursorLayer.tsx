@@ -119,9 +119,13 @@ export function CursorLayer() {
     document.addEventListener("pointerleave", onLeave)
 
     let raf = 0
+    let lastX = -1, lastY = -1
     const loop = () => {
       // Agenda escondido ou jogo aberto: não desenha nada
       if (perfPaused()) { raf = requestAnimationFrame(loop); return }
+      // mouse parado, sem partículas nem rastro: nada mudou, não redesenha
+      if (!parts.length && !ripples.length && trail.length < 2 && Math.abs(m.x - m.rx) < 0.2 && Math.abs(m.y - m.ry) < 0.2 && m.x === lastX && m.y === lastY) { raf = requestAnimationFrame(loop); return }
+      lastX = m.x; lastY = m.y
       const c = cfg.current
       const [r, g, b] = hexToRgb(c.cursorColor)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
