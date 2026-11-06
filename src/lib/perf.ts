@@ -26,18 +26,32 @@ export function usePerf() {
   const pauseInGame = useStore((s) => s.settings.perfPauseInGame ?? true)
   const lite = useStore((s) => !!s.settings.perfLite)
   useEffect(() => {
+    // mouse em cima do Agenda (mesmo sem clicar, com o jogo no outro monitor) = alguém está olhando:
+    // volta a desenhar na hora, senão a seta personalizada some até o primeiro clique
+    let lastMove = 0
+    let t: ReturnType<typeof setTimeout> | undefined
     const update = () => {
-      paused = document.hidden || (gaming && pauseInGame && !document.hasFocus())
+      const looking = document.hasFocus() || Date.now() - lastMove < 4000
+      paused = document.hidden || (gaming && pauseInGame && !looking)
       document.documentElement.classList.toggle("perf-paused", paused)
+    }
+    const moved = () => {
+      lastMove = Date.now()
+      if (paused) update()
+      clearTimeout(t)
+      t = setTimeout(update, 4100)
     }
     update()
     document.addEventListener("visibilitychange", update)
     window.addEventListener("focus", update)
     window.addEventListener("blur", update)
+    window.addEventListener("pointermove", moved, { passive: true })
     return () => {
+      clearTimeout(t)
       document.removeEventListener("visibilitychange", update)
       window.removeEventListener("focus", update)
       window.removeEventListener("blur", update)
+      window.removeEventListener("pointermove", moved)
     }
   }, [gaming, pauseInGame])
   useEffect(() => { document.documentElement.classList.toggle("lite", lite) }, [lite])

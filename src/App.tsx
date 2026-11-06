@@ -14,7 +14,10 @@ import { Wallpaper, Overlays } from "@/components/Wallpaper"
 import { CursorLayer } from "@/components/CursorLayer"
 import { Taskbar } from "@/components/Taskbar"
 import { AppWindow, preloadSections } from "@/components/AppWindow"
-import { WidgetFrame, WIDGET_CHOICES } from "@/widgets/WidgetFrame"
+import { WidgetFrame, WIDGET_CHOICES, hoveredWidget } from "@/widgets/WidgetFrame"
+import { useHistory } from "@/lib/history"
+import { copyWidget, pasteWidget, widgetClip } from "@/lib/widgetClip"
+import { toast } from "@/lib/toast"
 import { useBackground } from "@/lib/watchers"
 import { usePerf } from "@/lib/perf"
 import { CommandPalette } from "@/components/CommandPalette"
@@ -60,6 +63,8 @@ export default function App() {
     return () => { clearInterval(id); window.removeEventListener("beforeunload", bye) }
   }, [])
   useDesktopDrop()
+  useHistory()
+  useAppWidgets()
   useEffect(() => {
     // liga versões ampliadas antigas à original (para o comparador antes/depois)
     const { media } = useStore.getState()
@@ -103,9 +108,60 @@ export default function App() {
       <AutoStylePrompt />
       <Overlays />
       <AnimatePresence>{showSplash && <Splash />}</AnimatePresence>
+      <Toast />
       <CursorLayer />
     </div>
   )
+}
+
+/** aviso curtinho no rodapé ("Desfeito", "Configuração copiada") */
+function Toast() {
+  const [t, setT] = useState<{ text: string; k: number } | null>(null)
+  useEffect(() => {
+    let k = 0
+    let id: ReturnType<typeof setTimeout>
+    const on = (e: Event) => {
+      setT({ text: String((e as CustomEvent).detail), k: ++k })
+      clearTimeout(id)
+      id = setTimeout(() => setT(null), 1400)
+    }
+    window.addEventListener("agenda:toast", on)
+    return () => { clearTimeout(id); window.removeEventListener("agenda:toast", on) }
+  }, [])
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--tb-size)+28px)] z-[6000] flex justify-center">
+      <AnimatePresence>
+        {t && (
+          <motion.div
+            key={t.k}
+            className="surface !rounded-full px-4 py-1.5 text-sm"
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, transition: { duration: 0.15 } }}
+            transition={{ type: "spring", stiffness: 500, damping: 34 }}
+          >
+            {t.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/** abrir a aba de um app (Discord, WhatsApp, iFood, YouTube Music) já coloca o widget dele na tela */
+const APP_WIDGET: Partial<Record<string, WidgetType>> = { discord: "discord", whatsapp: "whatsapp", ifood: "ifood", music: "music" }
+function useAppWidgets() {
+  useEffect(() =>
+    useStore.subscribe((s, prev) => {
+      if (s.windows === prev.windows) return
+      for (const win of s.windows) {
+        const type = APP_WIDGET[win.id]
+        if (!type || prev.windows.some((p) => p.id === win.id)) continue
+        const ex = s.widgets.find((w) => w.type === type)
+        if (!ex) s.addWidget(type)
+        else if (ex.config.rest) s.updateWidgetConfig(ex.id, { rest: false })
+      }
+    }), [])
 }
 
 /** Colar (Ctrl+V) ou soltar imagens na área de trabalho cria um quadro de fotos. */
@@ -123,8 +179,22 @@ function useDesktopDrop() {
       }
     }
     const key = async (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "v" || typing(e.target) || busy()) return
+      if (!(e.ctrlKey || e.metaKey) || typing(e.target) || busy()) return
+      const k = e.key.toLowerCase()
+      // com o mouse em cima de um widget: Ctrl+C copia a configuração dele, Ctrl+V cola
+      const hw = hoveredWidget ? useStore.getState().widgets.find((w) => w.id === hoveredWidget) : undefined
+      if (k === "c" && hw && !window.getSelection()?.toString()) {
+        copyWidget(hw)
+        toast("Configuração copiada")
+        return
+      }
+      if (k !== "v") return
       e.preventDefault()
+      if (hw && widgetClip()) {
+        const r = pasteWidget(hw.id)
+        if (r) toast(r === "tudo" ? "Configuração colada" : "Aparência colada (widget de outro tipo)")
+        return
+      }
       place(await pasteImages())
     }
     const over = (e: DragEvent) => { if (!busy() && e.dataTransfer?.types.includes("Files")) e.preventDefault() }

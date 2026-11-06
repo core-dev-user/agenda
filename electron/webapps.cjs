@@ -230,7 +230,8 @@ function ensure(id) {
       desktopCapturer.getSources({ types: ["screen"] }).then((s) => cb({ video: s[0], audio: "loopback" })).catch(() => cb({}))
     })
   }
-  const view = new WebContentsView({ webPreferences: { partition: cfg.partition, backgroundThrottling: false, contextIsolation: true, nodeIntegration: false, autoplayPolicy: "no-user-gesture-required" } })
+  // WhatsApp não precisa ser desenhado quando não está na tela (economiza processador e placa de vídeo)
+  const view = new WebContentsView({ webPreferences: { partition: cfg.partition, backgroundThrottling: id === "whatsapp", contextIsolation: true, nodeIntegration: false, autoplayPolicy: "no-user-gesture-required" } })
   view.setBackgroundColor(cfg.bg)
   view.webContents.setWindowOpenHandler(({ url }) => {
     if (cfg.allowPopup.test(url)) return { action: "allow" }

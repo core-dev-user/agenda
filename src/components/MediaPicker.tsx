@@ -68,7 +68,7 @@ export function usePasteAndDrop(active: boolean, onAdded: (items: MediaItem[]) =
 export function DropOverlay({ show }: { show: boolean }) {
   if (!show) return null
   return (
-    <div className="pointer-events-none fixed inset-0 z-[7000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="pointer-events-none fixed inset-0 z-[7000] flex items-center justify-center bg-black/55">
       <div className="surface flex flex-col items-center gap-2 px-10 py-8 text-lg">
         <ImagePlus size={36} className="text-brand" />
         Solte as imagens aqui

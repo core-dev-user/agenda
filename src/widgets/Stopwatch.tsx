@@ -3,6 +3,7 @@ import { Flag, Pause, Play, RotateCcw, Timer, Watch } from "lucide-react"
 import { useStore } from "@/lib/store"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { perfPaused } from "@/lib/perf"
 
 const fmt = (ms: number, cs = true) => {
   const neg = ms < 0
@@ -38,7 +39,10 @@ export function StopwatchWidget({ w }: { w: Widget }) {
   const [, force] = useState(0)
   useEffect(() => {
     if (!startedAt) return
-    const id = setInterval(() => force((x) => x + 1), 33)
+    // 30 quadros por segundo só quando alguém está vendo; com jogo aberto ou Agenda escondido, 1 por segundo
+    // (o aviso do fim do timer continua chegando na hora)
+    let n = 0
+    const id = setInterval(() => { if (!perfPaused() || ++n % 30 === 0) force((x) => x + 1) }, 33)
     return () => clearInterval(id)
   }, [startedAt])
 

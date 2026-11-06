@@ -1,8 +1,8 @@
-import { useRef, useState, type ReactNode } from "react"
+import { memo, useRef, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import {
   CalendarClock, CalendarDays, ChartColumn, Clapperboard, Clock, CloudSun, Cpu, Crop, Crosshair, Gamepad2, GripHorizontal, Headphones, Image, ImagePlus, Images, Link,
-  ListChecks, MessageCircle, Mic, Move, Music, Newspaper, Settings2, StickyNote, Target, Timer, Trash2, Triangle, UtensilsCrossed, Volleyball, Wallet, Wand2, X,
+  ClipboardPaste, Copy, ListChecks, MessageCircle, Mic, Moon, Move, Music, Sun, Newspaper, Settings2, StickyNote, Target, Timer, Trash2, Triangle, UtensilsCrossed, Volleyball, Wallet, Wand2, X,
   type LucideIcon,
 } from "lucide-react"
 import { useStore } from "@/lib/store"
@@ -11,6 +11,8 @@ import { mediaUrl } from "@/lib/bridge"
 import { fitGeo, useViewport, widgetGeo } from "@/lib/viewport"
 import type { Geo, MediaItem, PhotoGallery, Widget, WidgetType } from "@/lib/types"
 import { cn, uid } from "@/lib/utils"
+import { copyWidget, pasteWidget, widgetClip } from "@/lib/widgetClip"
+import { toast } from "@/lib/toast"
 import { FONTS } from "@/lib/fonts"
 import { ColorPicker, Modal, Segmented, Slider, Switch } from "@/components/ui/controls"
 import { MediaPicker } from "@/components/MediaPicker"
@@ -90,17 +92,35 @@ const DRAG_THRESHOLD = 5
 
 type Mode = "move" | "se" | "e" | "s"
 
-export function WidgetFrame({ w }: { w: Widget }) {
+/** widget com o mouse em cima (para Ctrl+C / Ctrl+V da configuração) */
+export let hoveredWidget: string | null = null
+
+/** liga/desliga o modo descanso: o widget fica no lugar, mas sem conteúdo rodando (não gasta memória nem CPU) */
+export const toggleRest = (id: string) => {
+  const st = useStore.getState()
+  const w = st.widgets.find((x) => x.id === id)
+  if (!w) return
+  st.updateWidgetConfig(id, { rest: !w.config.rest })
+}
+
+export const WidgetFrame = memo(function WidgetFrame({ w }: { w: Widget }) {
   const setGeo = useStore((s) => s.setWidgetGeo)
   const remove = useStore((s) => s.removeWidget)
   const front = useStore((s) => s.bringWidgetFront)
   const locked = useStore((s) => s.settings.widgetsLocked)
   const layoutRef = useStore((s) => s.settings.layoutRef)
-  const media = useStore((s) => s.media)
+  const bgId: string | undefined = w.config.bg?.id
+  // só a imagem de fundo deste widget (não re-desenha todos os widgets quando a galeria muda)
+  const bgMedia = useStore((s) => (bgId ? s.media.find((m) => m.id === bgId) : undefined))
+  const openWindow = useStore((s) => s.openWindow)
   const view = useViewport()
   const [pos, setPos] = useState<Geo | null>(null)
   const [dragging, setDragging] = useState<Mode | null>(null)
-  const [cfgOpen, setCfgOpen] = useState(false)
+  const [cfgOpen, setCfgOpenRaw] = useState(false)
+  // o painel de configurar só é montado depois de aberto uma vez
+  const [cfgMounted, setCfgMounted] = useState(false)
+  const setCfgOpen = (v: boolean) => { if (v) setCfgMounted(true); setCfgOpenRaw(v) }
+  const resting = !!w.config.rest
   const [aspect, setAspect] = useState<number | null>(null)
   const inner = useRef<HTMLDivElement>(null)
   const look = lookOfWidget(w.config)
@@ -167,7 +187,6 @@ export function WidgetFrame({ w }: { w: Widget }) {
   }
 
   const bg = w.config.bg as (Partial<Frame> & { id: string }) | undefined
-  const bgMedia = bg ? media.find((m) => m.id === bg.id) : undefined
   const bare = look.surface === "none"
   const lightText = (bare || !!bgMedia) && !look.text
   const W = { ...w, ...cur }
@@ -196,6 +215,7 @@ export function WidgetFrame({ w }: { w: Widget }) {
     case "valagent": body = <ValAgentWidget w={W} />; break
     case "sysmon": body = <SysMonWidget w={W} />; break
   }
+  if (resting) body = <RestingBody w={w} onWake={() => toggleRest(w.id)} />
   body = <ErrorBoundary label="widget" compact>{body}</ErrorBoundary>
 
   const ease = "cubic-bezier(.2,.8,.2,1)"
@@ -214,6 +234,13 @@ export function WidgetFrame({ w }: { w: Widget }) {
         exit={{ opacity: 0, scale: 0.8 }}
         transition={{ type: "spring", stiffness: 260, damping: 22 }}
         onPointerDown={(e) => startDrag(e, "move")}
+        onPointerEnter={() => { hoveredWidget = w.id }}
+        onPointerLeave={() => { if (hoveredWidget === w.id) hoveredWidget = null }}
+        onDoubleClick={(e) => {
+          // YouTube Music: dois cliques no widget abrem a aba (menos em cima dos botões)
+          if (resting || (w.type !== "music" && w.type !== "musicclip") || (e.target as Element).closest("button,input,a,[data-nodrag]")) return
+          openWindow("music")
+        }}
       >
         <div
           ref={inner}
@@ -228,7 +255,7 @@ export function WidgetFrame({ w }: { w: Widget }) {
             color: lightText ? "#fff" : undefined,
           }}
         >
-          {bgMedia && (
+          {bgMedia && !resting && (
             <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ borderRadius: "inherit", opacity: bg?.opacity ?? 1 }}>
               <img src={mediaUrl(bgMedia.file)} className="h-full w-full" style={frameImgStyle(bg)} draggable={false} />
               {!!bg?.dim && <div className="absolute inset-0" style={{ background: `rgb(0 0 0 / ${bg.dim})` }} />}
@@ -252,6 +279,7 @@ export function WidgetFrame({ w }: { w: Widget }) {
               </div>
             </div>
             <div className={cn(look.chrome === "minimal" && "hidden", "absolute -top-3 right-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100")}>
+              <button className="btn btn-icon surface !p-1.5" onClick={() => toggleRest(w.id)} title={resting ? "Acordar o widget" : "Modo descanso: fica no lugar, mas não gasta nada"}>{resting ? <Sun size={13} /> : <Moon size={13} />}</button>
               <button className="btn btn-icon surface !p-1.5" onClick={() => setCfgOpen(true)} title="Configurar"><Settings2 size={13} /></button>
               <button className="btn btn-icon surface !p-1.5 hover:!text-red-400" onClick={() => remove(w.id)} title="Remover"><Trash2 size={13} /></button>
             </div>
@@ -273,8 +301,25 @@ export function WidgetFrame({ w }: { w: Widget }) {
           </>
         )}
       </motion.div>
-      <WidgetSettings w={w} geo={cur} autoFit={autoFit} open={cfgOpen} onClose={() => setCfgOpen(false)} />
+      {cfgMounted && <WidgetSettings w={w} geo={cur} autoFit={autoFit} open={cfgOpen} onClose={() => setCfgOpen(false)} />}
     </>
+  )
+})
+
+/** widget em descanso: só o nome e o ícone, nada rodando por trás */
+function RestingBody({ w, onWake }: { w: Widget; onWake: () => void }) {
+  const M = WIDGET_META[w.type]
+  const small = w.h < 150 || w.w < 220
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center" style={{ opacity: 0.72 }}>
+      <div className="flex items-center gap-2">
+        <GlyphTile icon={M.icon} color={M.color} size={small ? 22 : 28} />
+        {!small && <span className="text-sm font-medium">{M.label.split(" (")[0]}</span>}
+      </div>
+      <button className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] text-fg-muted transition-colors hover:text-fg" style={{ background: "color-mix(in srgb, var(--fg) 8%, transparent)" }} onClick={onWake} title="Acordar o widget">
+        <Moon size={11} /> em descanso · acordar
+      </button>
+    </div>
   )
 }
 
@@ -301,11 +346,18 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
   const setGalleries = (fn: (g: PhotoGallery[]) => PhotoGallery[]) => useStore.setState((st) => ({ photoGalleries: fn(st.photoGalleries) }))
   const setPhotos = (p: { ids?: string[]; frames?: Record<string, any> }) => (gal ? setGalleries((all) => all.map((g) => (g.id === gal.id ? { ...g, ...p, updatedAt: Date.now() } : g))) : set(p))
   const [galName, setGalName] = useState("")
+  const [clipT, setClipT] = useState(() => widgetClip()?.type)
   const framingMedia = framing ? media.find((m) => m.id === framing) : undefined
 
   return (
     <Modal open={open} onClose={onClose} title={<span className="flex items-center gap-2.5"><GlyphTile icon={WIDGET_META[w.type].icon} color={WIDGET_META[w.type].color} size={24} />{WIDGET_META[w.type].label}</span>} width={520}>
       <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button className="btn !py-1 text-xs" onClick={() => { copyWidget(w); setClipT(widgetClip()?.type); toast("Configuração copiada") }} title="Copiar a configuração deste widget (ou Ctrl+C com o mouse em cima dele)"><Copy size={12} /> Copiar configuração</button>
+          <button className="btn !py-1 text-xs" disabled={!clipT} onClick={() => { const r = pasteWidget(w.id); if (r) toast(r === "tudo" ? "Configuração colada" : "Aparência colada (widget de outro tipo)") }} title={clipT ? (clipT === w.type ? "Colar tudo" : "Widget de outro tipo: cola só a aparência") : "Copie a configuração de um widget primeiro"}><ClipboardPaste size={12} /> Colar{clipT && clipT !== w.type ? " aparência" : ""}</button>
+          <button className="btn !py-1 text-xs" onClick={() => toggleRest(w.id)}>{c.rest ? <><Sun size={12} /> Acordar</> : <><Moon size={12} /> Modo descanso</>}</button>
+        </div>
+        {c.rest && <div className="text-xs text-fg-muted">Em descanso: o widget fica no mesmo lugar, mas nada roda por trás (não gasta memória nem processador).</div>}
         {w.type === "music" && (
           <>
             <div className="text-sm text-fg-muted">Estilo do player</div>

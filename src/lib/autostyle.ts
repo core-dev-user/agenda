@@ -271,25 +271,13 @@ export async function analyze(url: string, view: { w: number; h: number }, opts:
   if (opts.clip) {
     try {
       onProgress(58, "Reconhecendo o estilo da imagem…")
-      const { pipeline, env } = await import("@huggingface/transformers")
-      env.allowLocalModels = false
-      const wasm = (env.backends as any).onnx.wasm
-      wasm.wasmPaths = new URL("ort/", location.href).href
-      wasm.numThreads = 1
-      const files = new Map<string, number>()
-      const clf = await pipeline("zero-shot-image-classification", "Xenova/clip-vit-base-patch32", {
-        dtype: "q8",
-        progress_callback: (p: any) => {
-          if (p.status === "progress" && p.file) {
-            files.set(p.file, p.progress ?? 0)
-            const avg = [...files.values()].reduce((a, b) => a + b, 0) / files.size
-            onProgress(58 + avg * 0.3, "Baixando o modelo de estilo (só na primeira vez)…")
-          }
-        },
-      } as any)
-      onProgress(90, "Reconhecendo o estilo da imagem…")
-      const out = (await clf(url, PROMPTS.map((p) => p[1]), { hypothesis_template: "{}" } as any)) as { label: string; score: number }[]
-      const med = (await clf(url, MEDIUMS.map((m) => m[1]), { hypothesis_template: "{}" } as any)) as { label: string; score: number }[]
+      const { aiClip } = await import("./ai")
+      // as três perguntas ao modelo vão juntas, num worker (a tela não trava)
+      const [out, med, col] = await aiClip(url, [
+        PROMPTS.map((p) => p[1]),
+        MEDIUMS.map((m) => m[1]),
+        COLOR_NAMES.map((c) => `a photo with ${c[0]} as its signature accent color`),
+      ], (pct, msg) => onProgress(58 + Math.min(pct, 100) * 0.36, pct >= 100 ? "Reconhecendo o estilo da imagem…" : msg))
       medium = MEDIUMS.find((m) => m[1] === med[0]?.label)?.[0] ?? null
       moods = out.map((o) => {
         const id = PROMPTS.find((p) => p[1] === o.label)![0]
@@ -301,8 +289,6 @@ export async function analyze(url: string, view: { w: number; h: number }, opts:
         return { id, score }
       })
       // a cor que "marca" a foto, na opinião do modelo: reordena as cores vivas
-      onProgress(94, "Escolhendo a cor de destaque…")
-      const col = (await clf(url, COLOR_NAMES.map((c) => `a photo with ${c[0]} as its signature accent color`), { hypothesis_template: "{}" } as any)) as { label: string; score: number }[]
       const prob = (h: number) => {
         let best = 0, bd = 1e9
         for (const o of col) {

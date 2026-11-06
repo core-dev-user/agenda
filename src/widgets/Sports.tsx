@@ -85,7 +85,7 @@ function LiveDot({ color = "#ff3b47" }: { color?: string }) {
 }
 
 /** Partida em destaque (ao vivo): estilo placar grande. */
-function Hero({ m, color, fav }: { m: SportMatch; color: string; fav: boolean }) {
+function Hero({ m, color, fav, crests }: { m: SportMatch; color: string; fav: boolean; crests: boolean }) {
   return (
     <button
       className="relative mb-2 w-full overflow-hidden rounded-[calc(var(--r)*0.6)] p-3 text-left"
@@ -100,14 +100,14 @@ function Hero({ m, color, fav }: { m: SportMatch; color: string; fav: boolean })
       </div>
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-          <Crest t={m.a} size={42} color={color} />
+          {crests && <Crest t={m.a} size={42} color={color} />}
           <div className="w-full truncate text-center text-xs font-medium">{m.a.name}</div>
         </div>
         <div className="font-num shrink-0 text-3xl font-bold tabular-nums">
           {m.a.score ?? 0}<span className="mx-1.5 text-fg-muted">:</span>{m.b.score ?? 0}
         </div>
         <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-          <Crest t={m.b} size={42} color={color} />
+          {crests && <Crest t={m.b} size={42} color={color} />}
           <div className="w-full truncate text-center text-xs font-medium">{m.b.name}</div>
         </div>
       </div>
@@ -116,14 +116,14 @@ function Hero({ m, color, fav }: { m: SportMatch; color: string; fav: boolean })
   )
 }
 
-function Row({ m, color, fav }: { m: SportMatch; color: string; fav: boolean }) {
+function Row({ m, color, fav, crests }: { m: SportMatch; color: string; fav: boolean; crests: boolean }) {
   const done = m.state === "done"
   const live = m.state === "live"
   const team = (t: SportTeam, other: SportTeam) => {
     const lost = done && (other.win || (!t.win && Number(other.score) > Number(t.score)))
     return (
       <div className={cn("flex items-center gap-2", lost && "opacity-55")}>
-        <Crest t={t} size={18} color={color} />
+        {crests && <Crest t={t} size={18} color={color} />}
         <span className={cn("min-w-0 flex-1 truncate text-[13px]", (t.win || (done && !lost)) && "font-semibold")}>{t.name}</span>
         {t.score != null && t.score !== "" && <span className={cn("font-num w-5 text-right text-[13px] tabular-nums", live && "text-[#ff5a63]", !lost && "font-semibold")}>{t.score}</span>}
       </div>
@@ -159,6 +159,10 @@ export function SportsWidget({ w }: { w: Widget }) {
   const leagues: string[] = w.config.leagues?.length ? w.config.leagues : DEFAULT_LEAGUES
   const fav = favList(w)
   const onlyFav = !!w.config.onlyFav && fav.length > 0
+  // dá para esconder o ícone do widget, os escudos/logos dos times e os logos dos campeonatos
+  const showIcon = w.config.showIcon !== false
+  const crests = w.config.crests !== false
+  const leagueLogos = w.config.leagueLogos !== false
   const [tab, setTab] = useState<"next" | "results">("next")
   const [data, setData] = useState<SportMatch[] | null>(null)
   const [err, setErr] = useState("")
@@ -209,7 +213,7 @@ export function SportsWidget({ w }: { w: Widget }) {
   return (
     <div className="flex h-full flex-col p-3">
       <div className="mb-2 flex items-center gap-2">
-        <SportIcon sport={sport} color={meta.color} />
+        {showIcon && <SportIcon sport={sport} color={meta.color} />}
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm leading-tight font-semibold">{meta.title}</div>
           <button className="text-[10px] text-fg-muted hover:text-fg" onClick={() => bridge.app.openExternal(meta.siteUrl)}>abrir no {meta.site} ↗</button>
@@ -236,7 +240,7 @@ export function SportsWidget({ w }: { w: Widget }) {
         <AnimatePresence initial={false}>
           {hero && (
             <motion.div key={hero.id} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <Hero m={hero} color={meta.color} fav={isFav(hero, fav)} />
+              <Hero m={hero} color={meta.color} fav={isFav(hero, fav)} crests={crests} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -248,10 +252,10 @@ export function SportsWidget({ w }: { w: Widget }) {
         {groups.map((g, i) => (
           <div key={g.event + i} className="mb-1.5">
             <div className="flex items-center gap-1.5 px-2 pt-1 pb-0.5 text-[10px] font-semibold tracking-wide text-fg-muted uppercase">
-              {g.logo && <img src={g.logo} className="h-3.5 w-3.5 object-contain" draggable={false} onError={(e) => (e.currentTarget.style.display = "none")} />}
+              {g.logo && leagueLogos && <img src={g.logo} className="h-3.5 w-3.5 object-contain" draggable={false} onError={(e) => (e.currentTarget.style.display = "none")} />}
               <span className="truncate">{g.event}</span>
             </div>
-            {g.items.map((m) => <Row key={m.id} m={m} color={meta.color} fav={isFav(m, fav)} />)}
+            {g.items.map((m) => <Row key={m.id} m={m} color={meta.color} fav={isFav(m, fav)} crests={crests} />)}
           </div>
         ))}
       </div>
@@ -319,6 +323,10 @@ export function SportsSettings({ w, set }: { w: Widget; set: (p: Record<string, 
         />
       </label>
       <Switch label="Mostrar só os jogos dos meus times" checked={!!c.onlyFav} onChange={(v) => set({ onlyFav: v })} />
+      <div className="text-sm text-fg-muted">Ícones</div>
+      <Switch label="Ícone do widget (no canto de cima)" checked={c.showIcon !== false} onChange={(v) => set({ showIcon: v })} />
+      <Switch label={w.type === "football" ? "Escudos dos times" : "Logos e bandeiras dos times"} checked={c.crests !== false} onChange={(v) => set({ crests: v })} />
+      <Switch label="Logos dos campeonatos" checked={c.leagueLogos !== false} onChange={(v) => set({ leagueLogos: v })} />
       <div className="text-xs text-fg-muted">
         Os jogos dos seus times aparecem com estrela e sobem para o topo quando estão ao vivo. Clique numa partida para abrir no {META[w.type as Sport].site}.
         {w.type === "cs2" && " Dados de jogos via Liquipedia (a HLTV não permite leitura automática)."}

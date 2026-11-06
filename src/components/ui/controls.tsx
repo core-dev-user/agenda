@@ -122,7 +122,7 @@ export function Modal({ open, onClose, title, children, width = 520 }: { open: b
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div data-modal className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/40 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }} onMouseDown={onClose}>
+        <motion.div data-modal data-dim className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/55" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }} onMouseDown={onClose}>
           <motion.div
             className="surface max-h-[85vh] overflow-hidden"
             style={{ width }}

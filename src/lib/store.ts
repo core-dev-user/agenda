@@ -2,6 +2,8 @@ import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import { bridge } from "./bridge"
 import { uid, todayISO } from "./utils"
+import { findSpot } from "./placement"
+import { widgetGeo } from "./viewport"
 import type { ListenStats } from "./listening"
 import type { RunningGame, ValAgentNow } from "./bridge"
 import type { ValTemplate } from "@/widgets/ValAgentWidget"
@@ -36,7 +38,7 @@ const mergeWidgets = (saved: Widget[], current: Widget[]): Widget[] =>
   })
 
 export const THEME_PRESETS: Record<ThemeId, Partial<Settings>> = {
-  glass: { uiFont: "outfit", numFont: "space", displayFont: "playfair", radius: 22, blur: 24, surfaceOpacity: 0.12, cursorStyle: "ring", cursorEffect: "sakura" },
+  glass: { uiFont: "outfit", numFont: "space", displayFont: "playfair", radius: 22, blur: 24, surfaceOpacity: 0.12, cursorStyle: "system", cursorEffect: "sakura" },
   metal: { uiFont: "inter", numFont: "orbitron", displayFont: "space", radius: 10, blur: 10, surfaceOpacity: 0.55, cursorStyle: "dot", cursorEffect: "glow" },
   retro: { dark: false, uiFont: "silkscreen", numFont: "vt323", displayFont: "press", radius: 0, blur: 0, surfaceOpacity: 1, cursorStyle: "pixel", cursorEffect: "pixels" },
   terminal: { uiFont: "vt323", numFont: "vt323", displayFont: "vt323", radius: 4, blur: 2, surfaceOpacity: 0.85, cursorStyle: "crosshair", cursorEffect: "trail" },
@@ -57,7 +59,8 @@ export const DEFAULT_SETTINGS: Settings = {
   tilt: 8,
   depth: 1,
   animations: true,
-  cursorStyle: "ring",
+  // seta do Windows por padrão (a personalizada fica como opção nas configurações)
+  cursorStyle: "system",
   cursorEffect: "sakura",
   cursorColor: "#ffc4dc",
   cursorSize: 1,
@@ -158,7 +161,8 @@ interface State {
   applyTheme: (t: ThemeId) => void
   resetSettings: () => void
 
-  addWidget: (type: WidgetType, config?: Record<string, any>) => void
+  /** cria o widget no primeiro espaço livre encostado nos outros; devolve o id */
+  addWidget: (type: WidgetType, config?: Record<string, any>) => string
   updateWidget: (id: string, patch: Partial<Widget>) => void
   /** salva posição/tamanho na orientação atual (em pé ou deitado) */
   setWidgetGeo: (id: string, g: Geo) => void
@@ -235,14 +239,27 @@ export const useStore = create<State>()(
         set((s) => ({ settings: { ...s.settings, ...THEME_PRESETS[t], theme: t, overlay: { ...s.settings.overlay, scanlines: t === "terminal" || t === "retro" } } })),
       resetSettings: () => set({ settings: DEFAULT_SETTINGS }),
 
-      addWidget: (type, config = {}) =>
+      addWidget: (type, config = {}) => {
+        const id = uid()
         set((s) => {
           const [w, h] = WIDGET_SIZES[type]
-          const n = s.widgets.length
-          const x = Math.max(40, window.innerWidth / 2 - w / 2 + ((n * 28) % 200) - 100)
-          const y = Math.max(40, window.innerHeight / 2 - h / 2 + ((n * 28) % 160) - 80)
-          return { widgets: [...s.widgets, { id: uid(), type, x, y, w, h, config }] }
-        }),
+          const view = { w: innerWidth, h: innerHeight, portrait: innerHeight > innerWidth }
+          const others = s.widgets.map((x) => widgetGeo(x, view, s.settings.layoutRef))
+          // não fica embaixo da barra de tarefas
+          const tb = s.settings.taskbar
+          const band = (tb.size ?? 56) + 24
+          const avoid = tb.autoHide ? [] : [
+            tb.position === "top" ? { x: 0, y: 0, w: view.w, h: band }
+              : tb.position === "left" ? { x: 0, y: 0, w: band, h: view.h }
+              : tb.position === "right" ? { x: view.w - band, y: 0, w: band, h: view.h }
+              : { x: 0, y: view.h - band, w: view.w, h: band },
+          ]
+          const { x, y } = findSpot({ w, h }, others, view, avoid)
+          const g = { x, y, w, h }
+          return { widgets: [...s.widgets, { id, type, ...g, ...(view.portrait ? { portrait: g } : null), config }] }
+        })
+        return id
+      },
       updateWidget: (id, patch) => set((s) => ({ widgets: s.widgets.map((w) => (w.id === id ? { ...w, ...patch } : w)) })),
       setWidgetGeo: (id, g) =>
         set((s) => {

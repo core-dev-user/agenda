@@ -180,10 +180,9 @@ export function AutoStyle({ open, onClose }: { open: boolean; onClose: () => voi
                   style={{
                     left: pct(w.x, view.w), top: pct(w.y, view.h), width: pct(w.w, view.w), height: pct(w.h, view.h),
                     borderRadius: r,
-                    background: l.surface === "none" ? "transparent" : l.bgColor ? l.bgColor + (l.surface === "solid" ? "ee" : "80") : "rgb(255 255 255 / .18)",
+                    background: l.surface === "none" ? "transparent" : l.bgColor ? l.bgColor + (l.surface === "solid" ? "ee" : "c4") : "rgb(24 22 32 / .62)",
                     border: l.surface === "none" ? `1px dashed ${l.text ?? "#fff"}88` : `1px solid ${l.borderColor ?? "#ffffff44"}`,
                     color: l.text ?? "#fff",
-                    backdropFilter: l.surface === "none" ? undefined : "blur(6px)",
                     boxShadow: l.shadow === "glow" ? `0 0 12px ${plan!.accent}` : undefined,
                   }}
                   onPointerDown={(e) => drag(e, w.id, "move")}
@@ -206,7 +205,7 @@ export function AutoStyle({ open, onClose }: { open: boolean; onClose: () => voi
               )
             })}
             {prog && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55 p-6 text-center text-sm text-white backdrop-blur-sm">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/65 p-6 text-center text-sm text-white">
                 <WandSparkles size={22} className="animate-pulse" />
                 <div>{prog.msg}</div>
                 <div className="h-1.5 w-64 overflow-hidden rounded-full bg-white/20"><div className="h-full bg-white transition-all" style={{ width: prog.pct + "%" }} /></div>

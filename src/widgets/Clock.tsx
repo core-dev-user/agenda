@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { fontFamily } from "@/lib/fonts"
 import type { Widget } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
 export function useNow(interval = 1000) {
   const [now, setNow] = useState(() => new Date())
@@ -182,7 +183,8 @@ export function ClockWidget({ w }: { w: Widget }) {
     <div className="flex h-full flex-col items-center justify-center">
       <div className="flex items-baseline" style={{ fontFamily: ff, fontSize: 68 * scale, lineHeight: 1, fontWeight: weight ?? 600, letterSpacing: "-0.02em", color, textShadow: glowCss ?? "0 4px 24px color-mix(in srgb, var(--accent) 40%, transparent)" }}>
         <span className="font-num">{z(h)}</span>
-        <motion.span animate={blink ? { opacity: [1, 0.25, 1] } : { opacity: 1 }} transition={{ duration: 1, repeat: blink ? Infinity : 0 }} className="mx-1 text-brand">:</motion.span>
+        {/* pisca uma vez por segundo (troca de classe): animação contínua obrigava a refazer o vidro desfocado a cada quadro */}
+        <span className={cn("mx-1 text-brand", blink && now.getSeconds() % 2 && "opacity-25")}>:</span>
         <span className="font-num">{z(now.getMinutes())}</span>
         {seconds && <span className="font-num ml-2 text-fg-muted" style={{ fontSize: 26 * scale }}>{z(now.getSeconds())}</span>}
         {suffix && <span className="ml-2 text-fg-muted" style={{ fontSize: 18 * scale }}>{suffix}</span>}

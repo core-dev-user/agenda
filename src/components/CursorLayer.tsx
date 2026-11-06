@@ -412,7 +412,6 @@ function CursorShape({ style, color, size }: { style: string; color: string; siz
             <path d="M0 0h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h-4v1h1v1h1v2h-2v-1h-1v-2h-1v1h-1v1h-1v1h-1z" fill="#000" />
             <path d="M1 2h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h-3v1h1v1h1v2h-1v-1h-1v-2h-2v1h-1v1h-1z" fill={color === "#ffffff" ? "#fff" : "#fff"} />
           </svg>
-          <div className={"absolute hidden group-data-[hover=true]:block " + hideOnText} style={{ left: 16 * size, top: 20 * size, width: 8 * size, height: 8 * size, background: color, imageRendering: "pixelated" }} />
         </>
       )
     case "crosshair":

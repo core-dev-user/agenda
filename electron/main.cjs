@@ -106,10 +106,13 @@ function createWindow() {
             win.setContentSize(w, h)
             win.center()
           }
-          else if (js === "key:ctrl+v") {
+          else if (js.startsWith("key:ctrl+")) {
+            // "key:ctrl+v", "key:ctrl+z"…
+            const k = js.slice(9).toUpperCase()
             const wc = win.webContents
-            wc.sendInputEvent({ type: "keyDown", keyCode: "V", modifiers: ["control"] })
-            wc.sendInputEvent({ type: "keyUp", keyCode: "V", modifiers: ["control"] })
+            wc.sendInputEvent({ type: "keyDown", keyCode: k, modifiers: ["control"] })
+            wc.sendInputEvent({ type: "char", keyCode: k.toLowerCase(), modifiers: ["control"] })
+            wc.sendInputEvent({ type: "keyUp", keyCode: k, modifiers: ["control"] })
           }
           else if (js.startsWith("dblclick:")) {
             const [x, y] = js.slice(9).split(",").map(Number)

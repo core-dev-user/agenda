@@ -346,6 +346,10 @@ html.dark { --viz-1: #3987e5; --viz-2: #d95926; }
 html.perf-paused *, html.perf-paused *::before, html.perf-paused *::after { animation-play-state: paused !important; }
 html.lite .surface, html.lite .surface::before { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 html.lite [class*="backdrop-blur"] { backdrop-filter: none !important; }
+/* dentro dos widgets de vidro, o "radar" que pulsa sem parar fazia a GPU refazer o desfoque a cada quadro: fica só o ponto */
+.wl-inner .animate-ping { display: none; }
+/* com uma janela de opções aberta (fundo escurecido), os widgets atrás não precisam do vidro desfocado */
+html:has([data-dim]) [data-desktop] .surface, html:has([data-dim]) [data-desktop] .surface::before { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
 /* =================== aparência própria dos widgets =================== */
 .wl-h-lift > .wl-inner, .wl-h-glow > .wl-inner, .wl-h-border > .wl-inner, .wl-h-none > .wl-inner { transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s, border-color .35s; }
