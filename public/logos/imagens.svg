@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="im-bg" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#9fd8ff"/>
+      <stop offset="1" stop-color="#2f6fe0"/>
+    </linearGradient>
+    <radialGradient id="im-light" cx="0.3" cy="0.05" r="0.9">
+      <stop offset="0" stop-color="#fff" stop-opacity=".45"/>
+      <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="im-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="im-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".7"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".3"/>
+    </linearGradient>
+    <filter id="im-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+    <filter id="im-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#im-bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#im-light)"/>
+  <g opacity=".35" filter="url(#im-glow)"><g fill="#ffffff" stroke="#ffffff">
+  <rect x="100" y="132" width="312" height="248" rx="44" fill="#fff"/>
+  <rect x="126" y="158" width="260" height="196" rx="26" fill="#2d6ee0" opacity=".9"/>
+  <circle cx="320" cy="214" r="28" fill="#ffd36e"/>
+  <path d="M126 330 l78 -86 q12 -13 24 0 l46 50 l32 -34 q12 -13 24 0 l56 60 v8 a26 26 0 0 1 -26 26 h-208 a26 26 0 0 1 -26 -26z" fill="#fff"/>
+</g></g>
+  <g filter="url(#im-shadow)">
+  <rect x="100" y="132" width="312" height="248" rx="44" fill="#fff"/>
+  <rect x="126" y="158" width="260" height="196" rx="26" fill="#2d6ee0" opacity=".9"/>
+  <circle cx="320" cy="214" r="28" fill="#ffd36e"/>
+  <path d="M126 330 l78 -86 q12 -13 24 0 l46 50 l32 -34 q12 -13 24 0 l56 60 v8 a26 26 0 0 1 -26 26 h-208 a26 26 0 0 1 -26 -26z" fill="#fff"/>
+</g>
+  <path d="M60 140 C 60 80 96 46 160 46 L 352 46 C 416 46 452 80 452 140 C 380 190 132 190 60 140 Z" fill="url(#im-gloss)" opacity=".55"/>
+  <rect x="18" y="18" width="476" height="476" rx="122" fill="none" stroke="url(#im-rim)" stroke-width="4"/>
+</svg>

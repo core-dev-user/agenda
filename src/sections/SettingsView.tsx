@@ -1,0 +1,575 @@
+import { useEffect, useState, type ReactNode } from "react"
+import { motion } from "framer-motion"
+import { Download, Upload, RotateCcw } from "lucide-react"
+import { useStore, THEME_PRESETS } from "@/lib/store"
+import { bridge, isDesktop, mediaUrl } from "@/lib/bridge"
+import { FONTS } from "@/lib/fonts"
+import type { CursorEffect, CursorStyle, LockClock as LockClockT, Settings, ThemeId } from "@/lib/types"
+import { LOCK_DEFAULT } from "@/components/LockClock"
+import { cn } from "@/lib/utils"
+import { Card, ColorPicker, Segmented, Slider, Switch, ThemedButton } from "@/components/ui/controls"
+import { LiquidButton, MetalButton } from "@/components/ui/liquid-glass-button"
+import { GRADIENTS } from "@/components/Wallpaper"
+import { MediaPicker } from "@/components/MediaPicker"
+import { LivingStudio } from "@/components/LivingStudio"
+import { FEEDS } from "@/widgets/News"
+import { AppIcon, ICON_STYLES, sectionColor } from "@/components/AppIcon"
+import { SECTIONS } from "@/components/sections-meta"
+import { TemplatesTab } from "./Templates"
+
+const TABS = [
+  { id: "templates", label: "Templates", e: "🎭" },
+  { id: "look", label: "Aparência", e: "🎨" },
+  { id: "fonts", label: "Fontes", e: "🔤" },
+  { id: "cursor", label: "Cursor", e: "🖱️" },
+  { id: "taskbar", label: "Barra e ícones", e: "▭" },
+  { id: "wallpaper", label: "Papel de parede", e: "🏞️" },
+  { id: "fx", label: "Sakura e efeitos", e: "🌸" },
+  { id: "widgets", label: "Widgets", e: "🧩" },
+  { id: "system", label: "Sistema", e: "💾" },
+] as const
+
+const THEMES: { id: ThemeId; label: string; desc: string }[] = [
+  { id: "glass", label: "Vidro líquido", desc: "Translúcido estilo iPhone" },
+  { id: "metal", label: "Metal", desc: "Alumínio escovado, botões metálicos" },
+  { id: "retro", label: "Retrô 95", desc: "Computador antigo, bordas chanfradas" },
+  { id: "terminal", label: "Terminal CRT", desc: "Fósforo verde, linhas de varredura" },
+  { id: "minimal", label: "Minimal", desc: "Limpo e discreto" },
+]
+
+export default function SettingsView() {
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("look")
+  return (
+    <div className="flex h-full">
+      <aside className="w-52 shrink-0 space-y-0.5 border-r border-line p-3">
+        {TABS.map((t) => (
+          <button key={t.id} onClick={() => setTab(t.id)} className={cn("relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm", tab === t.id ? "text-fg" : "text-fg-muted hover:text-fg")}>
+            {tab === t.id && <motion.span layoutId="settab" className="absolute inset-0 rounded-xl bg-[color-mix(in_srgb,var(--fg)_12%,transparent)]" transition={{ type: "spring", stiffness: 400, damping: 34 }} />}
+            <span className="relative w-5 text-center">{t.e}</span>
+            <span className="relative">{t.label}</span>
+          </button>
+        ))}
+      </aside>
+      <div className="min-w-0 flex-1 overflow-auto p-6">
+        <motion.div key={tab} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="mx-auto max-w-3xl space-y-5">
+          {tab === "templates" && <TemplatesTab />}
+          {tab === "look" && <Look />}
+          {tab === "fonts" && <Fonts />}
+          {tab === "cursor" && <Cursor />}
+          {tab === "taskbar" && <TaskbarTab />}
+          {tab === "wallpaper" && <WallpaperTab />}
+          {tab === "fx" && <Fx />}
+          {tab === "widgets" && <WidgetsTab />}
+          {tab === "system" && <System />}
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+
+function useS() {
+  const s = useStore((x) => x.settings)
+  const set = useStore((x) => x.setSettings)
+  return [s, set] as const
+}
+
+function Section({ title, children, desc }: { title: string; desc?: string; children: ReactNode }) {
+  return (
+    <Card>
+      <div className="font-display mb-1 text-lg font-semibold">{title}</div>
+      {desc && <div className="mb-3 text-sm text-fg-muted">{desc}</div>}
+      <div className="space-y-1">{children}</div>
+    </Card>
+  )
+}
+
+/* ------------------------- Aparência ------------------------- */
+function Look() {
+  const [s, set] = useS()
+  const apply = useStore((x) => x.applyTheme)
+  return (
+    <>
+      <Section title="Tema" desc="Escolher um tema aplica fontes, cursor e formas combinando. Depois você pode mudar tudo individualmente.">
+        <div className="grid grid-cols-5 gap-3">
+          {THEMES.map((t) => (
+            <button key={t.id} onClick={() => apply(t.id)} className={cn("group rounded-2xl p-1.5 text-left transition", s.theme === t.id ? "ring-2 ring-brand" : "hover:ring-1 hover:ring-line")}>
+              <ThemePreview id={t.id} accent={s.accent} />
+              <div className="mt-2 px-1 text-sm font-medium">{t.label}</div>
+              <div className="px-1 text-[11px] leading-tight text-fg-muted">{t.desc}</div>
+            </button>
+          ))}
+        </div>
+      </Section>
+      <Section title="Cores">
+        <Switch label="Modo escuro" checked={s.dark} onChange={(v) => set({ dark: v })} />
+        <div className="pt-2 text-sm">Cor de destaque</div>
+        <ColorPicker value={s.accent} onChange={(v) => set({ accent: v })} />
+      </Section>
+      <Section title="Forma e profundidade 3D">
+        <Slider label="Arredondamento" value={s.radius} min={0} max={36} onChange={(v) => set({ radius: v })} format={(v) => v + "px"} />
+        <Slider label="Desfoque do vidro" value={s.blur} min={0} max={60} onChange={(v) => set({ blur: v })} format={(v) => v + "px"} />
+        <Slider label="Opacidade das superfícies" value={s.surfaceOpacity} min={0} max={1} step={0.01} onChange={(v) => set({ surfaceOpacity: v })} format={(v) => Math.round(v * 100) + "%"} />
+        <Slider label="Inclinação 3D ao passar o mouse" value={s.tilt} min={0} max={25} onChange={(v) => set({ tilt: v })} format={(v) => (v ? v + "°" : "desligado")} />
+        <Switch label="Animações" checked={s.animations} onChange={(v) => set({ animations: v })} />
+      </Section>
+      <Section title="Prévia dos botões">
+        <div className="flex flex-wrap items-center gap-4 py-2">
+          <LiquidButton size="lg" className="rounded-full text-fg">Vidro líquido</LiquidButton>
+          <MetalButton>Metal</MetalButton>
+          <MetalButton variant="gold">Ouro</MetalButton>
+          <MetalButton variant="bronze">Bronze</MetalButton>
+          <ThemedButton>Botão do tema</ThemedButton>
+          <button className="btn">Secundário</button>
+        </div>
+      </Section>
+    </>
+  )
+}
+
+function ThemePreview({ id, accent }: { id: ThemeId; accent: string }) {
+  const bg = { glass: GRADIENTS.dusk.css, metal: GRADIENTS.mono.css, retro: "#008080", terminal: GRADIENTS.crt.css, minimal: "linear-gradient(160deg,#1b1b1f,#2a2a30)" }[id]
+  const panel: Record<ThemeId, React.CSSProperties> = {
+    glass: { background: "rgb(255 255 255 / .18)", border: "1px solid rgb(255 255 255 / .35)", borderRadius: 10, backdropFilter: "blur(6px)", boxShadow: "inset 0 1px 0 rgb(255 255 255 / .5)" },
+    metal: { background: "linear-gradient(#5a5e66,#2a2c31)", border: "1px solid #000", borderRadius: 5, boxShadow: "inset 0 1px 0 rgb(255 255 255 / .3)" },
+    retro: { background: "#c0c0c0", boxShadow: "inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080" },
+    terminal: { background: "rgb(0 10 4 / .9)", border: `1px solid ${accent}`, boxShadow: `0 0 10px ${accent}66` },
+    minimal: { background: "rgb(30 28 34 / .8)", border: "1px solid rgb(255 255 255 / .1)", borderRadius: 8 },
+  }
+  return (
+    <div className="relative aspect-[4/3] overflow-hidden rounded-xl" style={{ background: bg }}>
+      <div className="absolute inset-x-3 top-3 bottom-6" style={panel[id]}>
+        {id === "retro" && <div className="m-[3px] h-2.5" style={{ background: "linear-gradient(90deg,#000080,#1084d0)" }} />}
+        <div className="m-2 h-1.5 w-1/2 rounded-full" style={{ background: id === "terminal" ? accent : id === "retro" ? "#000" : "rgb(255 255 255 / .6)" }} />
+        <div className="mx-2 h-1.5 w-1/3 rounded-full" style={{ background: accent, opacity: 0.9 }} />
+      </div>
+      <div className="absolute bottom-1.5 left-1/2 h-3 w-1/2 -translate-x-1/2" style={{ ...panel[id], borderRadius: id === "glass" ? 99 : panel[id].borderRadius }} />
+    </div>
+  )
+}
+
+/* ------------------------- Fontes ------------------------- */
+function FontRow({ k, label, sample }: { k: "uiFont" | "numFont" | "displayFont"; label: string; sample: string }) {
+  const [s, set] = useS()
+  return (
+    <Section title={label}>
+      <div className="grid grid-cols-2 gap-2">
+        {FONTS.map((f) => (
+          <button key={f.id} onClick={() => set({ [k]: f.id } as Partial<Settings>)} className={cn("flex items-center justify-between rounded-xl border px-3 py-2 text-left transition", s[k] === f.id ? "border-brand bg-brand/15" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]")}>
+            <span style={{ fontFamily: f.family, fontSize: f.id === "press" ? 11 : 18 }} className="truncate">{sample}</span>
+            <span className="ml-2 shrink-0 text-[10px] text-fg-muted">{f.label}</span>
+          </button>
+        ))}
+      </div>
+    </Section>
+  )
+}
+
+function Fonts() {
+  const [s, set] = useS()
+  return (
+    <>
+      <Slider label="Tamanho geral do texto" value={s.fontScale} min={0.8} max={1.3} step={0.05} onChange={(v) => set({ fontScale: v })} format={(v) => Math.round(v * 100) + "%"} />
+      <FontRow k="uiFont" label="Letras (interface)" sample="Agenda do dia" />
+      <FontRow k="numFont" label="Números (relógios, valores)" sample="12:45 R$ 980" />
+      <FontRow k="displayFont" label="Títulos" sample="Hábitos" />
+    </>
+  )
+}
+
+/* ------------------------- Cursor ------------------------- */
+const CURSORS: { id: CursorStyle; label: string; e: string }[] = [
+  { id: "system", label: "Padrão do Windows", e: "⬉" },
+  { id: "dot", label: "Ponto", e: "●" },
+  { id: "ring", label: "Anel elástico", e: "◎" },
+  { id: "sakura", label: "Flor de sakura", e: "🌸" },
+  { id: "pixel", label: "Seta pixelada", e: "▶" },
+  { id: "crosshair", label: "Mira", e: "⌖" },
+  { id: "arrow", label: "Seta de vidro", e: "➤" },
+  { id: "heart", label: "Coração", e: "💗" },
+  { id: "star", label: "Estrela", e: "⭐" },
+  { id: "neon", label: "Anel neon", e: "⭕" },
+  { id: "diamond", label: "Diamante", e: "💎" },
+  { id: "bubble", label: "Bolha líquida", e: "🫧" },
+  { id: "paw", label: "Patinha", e: "🐾" },
+]
+const EFFECTS: { id: CursorEffect; label: string; e: string }[] = [
+  { id: "none", label: "Nenhum", e: "∅" },
+  { id: "sakura", label: "Pétalas caindo", e: "🌸" },
+  { id: "trail", label: "Rastro de luz", e: "〰️" },
+  { id: "sparkle", label: "Brilhos", e: "✨" },
+  { id: "glow", label: "Holofote", e: "🔦" },
+  { id: "ripple", label: "Ondas no clique", e: "💧" },
+  { id: "pixels", label: "Pixels retrô", e: "👾" },
+  { id: "hearts", label: "Corações", e: "💕" },
+  { id: "stars", label: "Estrelas", e: "🌟" },
+  { id: "bubbles", label: "Bolhas", e: "🫧" },
+  { id: "confetti", label: "Confete", e: "🎉" },
+  { id: "fire", label: "Fogo", e: "🔥" },
+  { id: "snow", label: "Neve", e: "❄️" },
+  { id: "rainbow", label: "Rastro arco-íris", e: "🌈" },
+  { id: "comet", label: "Cometa", e: "☄️" },
+  { id: "leaves", label: "Folhas de outono", e: "🍂" },
+  { id: "magic", label: "Pó mágico", e: "🪄" },
+]
+const CLICKS = [
+  { id: "auto", label: "Combina com o efeito" }, { id: "ripple", label: "Onda" }, { id: "burst", label: "Explosão de brilho" },
+  { id: "hearts", label: "Corações" }, { id: "confetti", label: "Confete" }, { id: "shock", label: "Onda de choque" }, { id: "none", label: "Nenhum" },
+] as const
+function Cursor() {
+  const [s, set] = useS()
+  return (
+    <>
+      <Section title="Formato do cursor">
+        <div className="grid grid-cols-3 gap-2">
+          {CURSORS.map((c) => (
+            <button key={c.id} onClick={() => set({ cursorStyle: c.id })} className={cn("flex items-center gap-3 rounded-xl border p-3 text-left text-sm", s.cursorStyle === c.id ? "border-brand bg-brand/15" : "border-line")}>
+              <span className="text-xl">{c.e}</span>{c.label}
+            </button>
+          ))}
+        </div>
+      </Section>
+      <Section title="Efeito ao mover" desc="Mova o mouse aqui para testar.">
+        <div className="grid grid-cols-4 gap-2">
+          {EFFECTS.map((c) => (
+            <button key={c.id} onClick={() => set({ cursorEffect: c.id })} className={cn("flex flex-col items-center gap-1 rounded-xl border p-3 text-sm", s.cursorEffect === c.id ? "border-brand bg-brand/15" : "border-line")}>
+              <span className="text-xl">{c.e}</span>{c.label}
+            </button>
+          ))}
+        </div>
+      </Section>
+      <Section title="Cor e tamanho">
+        <ColorPicker value={s.cursorColor} onChange={(v) => set({ cursorColor: v })} swatches={["#ffc4dc", "#ff8fb8", "#ffffff", "#7cc8ff", "#8cf0b0", "#ffd36e", "#c49bff", "#33ff77"]} />
+        <Slider label="Tamanho" value={s.cursorSize} min={0.6} max={2} step={0.1} onChange={(v) => set({ cursorSize: v })} format={(v) => Math.round(v * 100) + "%"} />
+        <Slider label="Intensidade do efeito" value={s.cursorDensity ?? 1} min={0.3} max={2.5} step={0.1} onChange={(v) => set({ cursorDensity: v })} format={(v) => Math.round(v * 100) + "%"} />
+      </Section>
+      <Section title="Efeito ao clicar">
+        <div className="flex flex-wrap gap-2">
+          {CLICKS.map((c) => (
+            <button key={c.id} onClick={() => set({ clickEffect: c.id })} className={cn("rounded-full border px-3 py-1.5 text-sm", (s.clickEffect ?? "auto") === c.id ? "border-brand bg-brand/15" : "border-line")}>{c.label}</button>
+          ))}
+        </div>
+      </Section>
+    </>
+  )
+}
+
+/* ------------------------- Barra de tarefas ------------------------- */
+function IconsSection() {
+  const [s, set] = useS()
+  return (
+    <Section title="Ícones dos apps" desc="Muda o visual dos ícones na barra de tarefas, no menu Início, nas janelas e nos atalhos.">
+      <div className="grid grid-cols-4 gap-2">
+        {ICON_STYLES.map((st) => (
+          <button key={st.id} onClick={() => set({ iconStyle: st.id })} className={cn("flex flex-col items-center gap-2 rounded-xl border p-3 text-xs", s.iconStyle === st.id ? "border-brand bg-brand/15" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]")}>
+            <div className="flex gap-1.5">
+              {(["habits", "music", "gallery"] as const).map((id) => (
+                <AppIcon key={id} id={id} size={30} styleOverride={st.id === "auto" ? undefined : st.id} />
+              ))}
+            </div>
+            {st.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-4 pt-3">
+        <div><div className="mb-1 text-sm">Formato</div>
+          <Segmented value={s.iconShape} onChange={(v) => set({ iconShape: v })} options={[{ value: "squircle", label: "Arredondado" }, { value: "circle", label: "Círculo" }, { value: "square", label: "Quadrado" }]} />
+        </div>
+      </div>
+      <div className="pt-3 text-sm">Cor de cada app</div>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        {SECTIONS.map((sec) => (
+          <div key={sec.id} className="flex items-center gap-3 rounded-xl border border-line p-2">
+            <AppIcon id={sec.id} size={30} />
+            <span className="flex-1 text-sm">{sec.label}</span>
+            <label className="clickable relative h-7 w-7 cursor-pointer overflow-hidden rounded-full border border-line" style={{ background: sectionColor(s, sec.id) }} title="Escolher cor">
+              <input type="color" className="absolute inset-0 opacity-0" value={sectionColor(s, sec.id)} onChange={(e) => set({ iconColors: { ...s.iconColors, [sec.id]: e.target.value } })} />
+            </label>
+            {s.iconColors?.[sec.id] && (
+              <button className="text-xs text-fg-muted hover:text-fg" onClick={() => { const c = { ...s.iconColors }; delete c[sec.id]; set({ iconColors: c }) }}>padrão</button>
+            )}
+          </div>
+        ))}
+      </div>
+    </Section>
+  )
+}
+
+function TaskbarTab() {
+  const [s, set] = useS()
+  const tb = s.taskbar
+  const p = (patch: Partial<Settings["taskbar"]>) => set({ taskbar: { ...tb, ...patch } })
+  return (
+    <>
+    <IconsSection />
+    <Section title="Barra de tarefas">
+      <div className="flex flex-wrap gap-4 py-2">
+        <div><div className="mb-1 text-sm">Posição</div><Segmented value={tb.position} onChange={(v) => p({ position: v })} options={[{ value: "bottom", label: "Embaixo" }, { value: "top", label: "Em cima" }, { value: "left", label: "Esquerda" }, { value: "right", label: "Direita" }]} /></div>
+        <div><div className="mb-1 text-sm">Estilo</div><Segmented value={tb.style} onChange={(v) => p({ style: v })} options={[{ value: "dock", label: "Dock" }, { value: "floating", label: "Pílula" }, { value: "bar", label: "Barra Windows" }]} /></div>
+      </div>
+      <div className="py-2">
+        <div className="mb-1 text-sm">Visibilidade</div>
+        <Segmented
+          value={tb.autoHide ? "hide" : "show"}
+          onChange={(v) => p({ autoHide: v === "hide" })}
+          options={[{ value: "show", label: "Sempre visível" }, { value: "hide", label: "Escondida — aparece ao passar o mouse na borda" }]}
+        />
+        {tb.autoHide && <div className="mt-1.5 text-xs text-fg-muted">Leve o mouse até a borda da tela (onde está a linha brilhante) para a barra subir. Ela se esconde sozinha quando o mouse sai.</div>}
+      </div>
+      <Slider label="Tamanho dos ícones" value={tb.size} min={36} max={84} onChange={(v) => p({ size: v })} format={(v) => v + "px"} />
+      <Switch label="Ampliar ícones ao passar o mouse (efeito Mac)" checked={tb.magnify} onChange={(v) => p({ magnify: v })} />
+      <Switch label="Mostrar nomes das seções" checked={tb.showLabels} onChange={(v) => p({ showLabels: v })} />
+    </Section>
+    </>
+  )
+}
+
+/* ------------------------- Papel de parede ------------------------- */
+function WallpaperTab() {
+  const [s, set] = useS()
+  const media = useStore((x) => x.media)
+  const wp = s.wallpaper
+  const p = (patch: Partial<Settings["wallpaper"]>) => set({ wallpaper: { ...wp, ...patch } })
+  const [pick, setPick] = useState(false)
+  const [living, setLiving] = useState(false)
+  const current = media.find((x) => x.file === wp.image) ?? null
+  return (
+    <>
+      <Section title="Fundo">
+        <Segmented value={wp.type} onChange={(v) => p({ type: v })} options={[{ value: "gradient", label: "Degradê" }, { value: "image", label: "Imagem" }, { value: "color", label: "Cor sólida" }]} />
+        <div className="pt-3">
+          {wp.type === "gradient" && (
+            <div className="grid grid-cols-3 gap-3">
+              {Object.entries(GRADIENTS).map(([k, g]) => (
+                <button key={k} onClick={() => p({ gradient: k })} className={cn("overflow-hidden rounded-xl text-left", wp.gradient === k ? "ring-2 ring-brand" : "")}>
+                  <div className="h-20" style={{ background: g.css }} />
+                  <div className="px-2 py-1 text-xs">{g.label}</div>
+                </button>
+              ))}
+            </div>
+          )}
+          {wp.type === "image" && (
+            <div className="flex items-center gap-4">
+              {wp.image ? <img src={mediaUrl(wp.image)} className="h-28 w-48 rounded-xl object-cover" /> : <div className="flex h-28 w-48 items-center justify-center rounded-xl border border-dashed border-line text-sm text-fg-muted">Nenhuma</div>}
+              <div className="space-y-2">
+                <ThemedButton size="sm" onClick={() => setPick(true)}>Escolher imagem</ThemedButton>
+                {current && !current.animated && (
+                  <button className="btn" onClick={() => setLiving(true)}>✨ Transformar em imagem viva (GIF)</button>
+                )}
+                <div className="text-xs text-fg-muted">GIFs animados funcionam como papel de parede. Dica: melhore fotos para 8K na aba Imagens.</div>
+              </div>
+              <LivingStudio m={living ? current : null} onClose={() => setLiving(false)} />
+              <MediaPicker open={pick} onClose={() => setPick(false)} onPick={([id]) => { const m = media.find((x) => x.id === id); if (m) p({ image: m.file }) }} />
+            </div>
+          )}
+          {wp.type === "color" && <ColorPicker value={wp.color} onChange={(v) => p({ color: v })} swatches={["#1a1020", "#0b0710", "#008080", "#202830", "#2b1055", "#f6e8ee", "#000000"]} />}
+        </div>
+      </Section>
+      <LockClockSection />
+      <Section title="Ajustes">
+        <Slider label="Escurecer" value={wp.dim} min={0} max={0.8} step={0.01} onChange={(v) => p({ dim: v })} format={(v) => Math.round(v * 100) + "%"} />
+        <Slider label="Desfoque" value={wp.blur} min={0} max={40} onChange={(v) => p({ blur: v })} format={(v) => v + "px"} />
+        <Switch label="Efeito de profundidade (parallax 3D com o mouse)" checked={wp.parallax} onChange={(v) => p({ parallax: v })} />
+      </Section>
+    </>
+  )
+}
+
+/* ------------------- Relógio da tela de bloqueio ------------------- */
+const LOCK_STYLES: { id: LockClockT["style"]; label: string; sample: React.CSSProperties }[] = [
+  { id: "ios", label: "iPhone", sample: { fontWeight: 700, letterSpacing: "-0.04em" } },
+  { id: "thin", label: "Fino", sample: { fontWeight: 200 } },
+  { id: "bold", label: "Bem grosso", sample: { fontWeight: 900 } },
+  { id: "stacked", label: "Empilhado", sample: { fontWeight: 900, lineHeight: 0.8 } },
+  { id: "serif", label: "Elegante", sample: { fontFamily: "'Playfair Display Variable', serif", fontStyle: "italic" } },
+  { id: "outline", label: "Contorno", sample: { color: "transparent", WebkitTextStroke: "1.2px var(--fg)", fontWeight: 800 } },
+  { id: "neon", label: "Neon", sample: { textShadow: "0 0 8px var(--accent), 0 0 18px var(--accent)" } },
+  { id: "retro", label: "Retrô", sample: { fontFamily: "'VT323', monospace" } },
+]
+
+function LockClockSection() {
+  const [s, set] = useS()
+  const media = useStore((x) => x.media)
+  const c = { ...LOCK_DEFAULT, ...(s.lockClock ?? {}) }
+  const p = (patch: Partial<LockClockT>) => set({ lockClock: { ...c, ...patch } })
+  const wp = s.wallpaper
+  const img = wp.type === "image" ? media.find((m) => m.file === wp.image) : undefined
+  const ready = wp.fg && wp.fgFor === wp.image
+  const [prog, setProg] = useState<{ pct: number; msg: string } | null>(null)
+  const [err, setErr] = useState("")
+  const cut = async () => {
+    if (!wp.image) return
+    setErr("")
+    setProg({ pct: 0, msg: "Começando…" })
+    try {
+      const { segmentSubject } = await import("@/lib/depth")
+      const data = await segmentSubject(mediaUrl(wp.image), (pct, msg) => setProg({ pct, msg }))
+      const file = await bridge.media.saveDataUrl(data, "assunto")
+      if (wp.fg && wp.fg !== file) bridge.media.remove(wp.fg)
+      set({ wallpaper: { ...useStore.getState().settings.wallpaper, fg: file, fgFor: wp.image }, lockClock: { ...c, depth: true } })
+    } catch (e: any) {
+      setErr("Não consegui recortar: " + (e?.message ?? e))
+    }
+    setProg(null)
+  }
+  return (
+    <Section title="Relógio da tela (estilo iPhone)" desc="Um relógio grande desenhado no papel de parede. Com a profundidade ligada, a pessoa ou o objeto da foto fica NA FRENTE do relógio, igual à tela de bloqueio do iPhone.">
+      <Switch label="Mostrar o relógio no papel de parede" checked={c.on} onChange={(v) => p({ on: v })} />
+      {c.on && (
+        <div className="space-y-3 pt-1">
+          <div className="grid grid-cols-4 gap-2">
+            {LOCK_STYLES.map((st) => (
+              <button key={st.id} onClick={() => p({ style: st.id })} className={cn("flex flex-col items-center gap-1 rounded-xl border p-2", c.style === st.id ? "border-brand bg-brand/15" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]")}>
+                <span className="text-2xl leading-none" style={st.sample}>{st.id === "stacked" ? <>09<br />41</> : "9:41"}</span>
+                <span className="text-[11px] text-fg-muted">{st.label}</span>
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-x-6">
+            <label className="block text-sm">Fonte
+              <select className="field mt-1 w-full" value={c.font ?? ""} onChange={(e) => p({ font: e.target.value || undefined })}>
+                <option value="">Do estilo escolhido</option>
+                {FONTS.map((f) => <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>{f.label}</option>)}
+              </select>
+            </label>
+            <div>
+              <div className="mb-1 text-sm">Alinhamento</div>
+              <Segmented value={c.align} onChange={(v) => p({ align: v, x: v === "left" ? 6 : v === "right" ? 94 : 50 })} options={[{ value: "left", label: "Esquerda" }, { value: "center", label: "Centro" }, { value: "right", label: "Direita" }]} />
+            </div>
+          </div>
+          <div className="text-sm">Cor</div>
+          <ColorPicker value={c.color} onChange={(v) => p({ color: v })} swatches={["#ffffff", "#fff4e6", "#ffd6e8", "#ff8fb8", "#ffd36e", "#8cf0b0", "#7cc8ff", "#c49bff", "#111111"]} />
+          <div className="grid grid-cols-2 gap-x-6">
+            <Slider label="Tamanho" value={c.size} min={0.4} max={1.8} step={0.05} onChange={(v) => p({ size: v })} format={(v) => Math.round(v * 100) + "%"} />
+            <Slider label="Espessura" value={c.weight} min={100} max={900} step={100} onChange={(v) => p({ weight: v })} />
+            <Slider label="Altura na tela" value={c.y} min={0} max={80} onChange={(v) => p({ y: v })} format={(v) => v + "%"} />
+            <Slider label="Posição horizontal" value={c.x} min={0} max={100} onChange={(v) => p({ x: v })} format={(v) => v + "%"} />
+            <Slider label="Transparência" value={c.opacity} min={0.3} max={1} step={0.02} onChange={(v) => p({ opacity: v })} format={(v) => Math.round(v * 100) + "%"} />
+          </div>
+          <div className="grid grid-cols-2 gap-x-6">
+            <Switch label="Mostrar a data" checked={c.showDate} onChange={(v) => p({ showDate: v })} />
+            <Switch label="Mostrar segundos" checked={c.seconds} onChange={(v) => p({ seconds: v })} />
+            <Switch label="Formato 12h" checked={!!c.h12} onChange={(v) => p({ h12: v })} />
+            <Switch label="Brilho em volta" checked={c.glow} onChange={(v) => p({ glow: v })} />
+          </div>
+          <div className="rounded-xl border border-line p-3">
+            <Switch label="Profundidade: assunto da foto na frente do relógio" checked={c.depth} onChange={(v) => p({ depth: v })} />
+            {wp.type !== "image" || !img ? (
+              <div className="text-xs text-fg-muted">Funciona com papel de parede de imagem (foto de pessoa, animal, objeto, montanha…).</div>
+            ) : img.animated ? (
+              <div className="text-xs text-fg-muted">GIFs animados não podem ser recortados. Use uma foto.</div>
+            ) : (
+              <div className="mt-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <button className="btn !py-1.5 text-sm" disabled={!!prog} onClick={cut}>✂️ {ready ? "Refazer o recorte" : "Separar o assunto da foto"}</button>
+                  {ready && !prog && <span className="text-xs text-[#5ee3a1]">Recorte pronto ✓</span>}
+                </div>
+                {prog && (
+                  <div>
+                    <div className="mb-1 text-xs text-fg-muted">{prog.msg}</div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--fg)_12%,transparent)]"><div className="h-full bg-brand transition-all" style={{ width: prog.pct + "%" }} /></div>
+                  </div>
+                )}
+                <div className="text-[11px] text-fg-muted">O recorte é feito no seu PC por um modelo de IA (na primeira vez baixa ~45 MB). Fotos com um assunto bem destacado ficam melhores.</div>
+                {err && <div className="text-xs text-[#ff8f8f]">{err}</div>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </Section>
+  )
+}
+
+/* ------------------------- Efeitos ------------------------- */
+function Fx() {
+  const [s, set] = useS()
+  const sk = s.sakura
+  const o = s.overlay
+  return (
+    <>
+      <Section title="Flores de sakura">
+        <Switch label="Animação de abertura ao entrar" checked={sk.splash} onChange={(v) => set({ sakura: { ...sk, splash: v } })} />
+        <Slider label="Duração da abertura" value={sk.splashSeconds} min={2} max={10} step={0.5} onChange={(v) => set({ sakura: { ...sk, splashSeconds: v } })} format={(v) => v + "s"} />
+        <Switch label="Pétalas caindo na área de trabalho" checked={sk.ambient} onChange={(v) => set({ sakura: { ...sk, ambient: v } })} />
+        <Slider label="Quantidade de pétalas" value={sk.density} min={0.05} max={1} step={0.05} onChange={(v) => set({ sakura: { ...sk, density: v } })} format={(v) => Math.round(v * 100) + "%"} />
+        <button className="btn mt-2" onClick={() => useStore.setState({ splashDone: false })}>🌸 Ver abertura agora</button>
+      </Section>
+      <Section title="Camadas de efeito">
+        <Switch label="Linhas de varredura (monitor CRT)" checked={o.scanlines} onChange={(v) => set({ overlay: { ...o, scanlines: v } })} />
+        <Switch label="Granulado de filme" checked={o.grain} onChange={(v) => set({ overlay: { ...o, grain: v } })} />
+        <Switch label="Vinheta nas bordas" checked={o.vignette} onChange={(v) => set({ overlay: { ...o, vignette: v } })} />
+      </Section>
+    </>
+  )
+}
+
+/* ------------------------- Widgets ------------------------- */
+function WidgetsTab() {
+  const [s, set] = useS()
+  const [city, setCity] = useState(s.weatherCity)
+  return (
+    <Section title="Padrões dos widgets">
+      <label className="block py-1 text-sm">Cidade do clima
+        <div className="mt-1 flex gap-2"><input className="field flex-1" value={city} onChange={(e) => setCity(e.target.value)} /><button className="btn" onClick={() => set({ weatherCity: city.trim() || "São Paulo" })}>Salvar</button></div>
+      </label>
+      <label className="block py-1 text-sm">Fonte de notícias
+        <select className="field mt-1 w-full" value={s.newsFeed} onChange={(e) => set({ newsFeed: e.target.value })}>
+          {FEEDS.map((f) => <option key={f.url} value={f.url}>{f.label}</option>)}
+        </select>
+      </label>
+      <Switch label="Travar posição dos widgets" checked={s.widgetsLocked} onChange={(v) => set({ widgetsLocked: v })} />
+      <div className="pt-2 text-xs text-fg-muted">Clique com o botão direito na área de trabalho para adicionar widgets. Passe o mouse sobre um widget para configurá-lo, removê-lo ou redimensioná-lo.</div>
+    </Section>
+  )
+}
+
+/* ------------------------- Sistema ------------------------- */
+function System() {
+  const [, set] = useS()
+  const reset = useStore((x) => x.resetSettings)
+  const [auto, setAuto] = useState(false)
+  useEffect(() => { bridge.app.autostart().then(setAuto) }, [])
+
+  const exportData = () => {
+    const st = useStore.getState()
+    const data = { settings: st.settings, widgets: st.widgets, media: st.media, habits: st.habits, habitLog: st.habitLog, subjects: st.subjects, services: st.services, lists: st.lists }
+    const a = document.createElement("a")
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }))
+    a.download = `agenda-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+  }
+  const importData = (f: File) =>
+    f.text().then((t) => {
+      try {
+        const d = JSON.parse(t)
+        if (confirm("Substituir todos os dados atuais pelo backup?")) useStore.setState(d)
+      } catch {
+        alert("Arquivo inválido")
+      }
+    })
+
+  return (
+    <>
+      <Section title="Inicialização">
+        <Switch label="Abrir o Agenda ao ligar o computador" checked={auto} onChange={async (v) => setAuto(await bridge.app.autostart(v))} />
+        {!isDesktop && <div className="text-xs text-fg-muted">Disponível no app desktop.</div>}
+        <button className="btn mt-2" onClick={() => bridge.win.fullscreen(true)}>Entrar em tela cheia</button>
+      </Section>
+      <Section title="Backup" desc="Exporta hábitos, estudos, serviços, listas, widgets e configurações (as imagens ficam na pasta do app).">
+        <div className="flex gap-2">
+          <button className="btn" onClick={exportData}><Download size={14} /> Exportar backup</button>
+          <label className="btn clickable cursor-pointer"><Upload size={14} /> Importar backup<input type="file" accept=".json" className="hidden" onChange={(e) => e.target.files?.[0] && importData(e.target.files[0])} /></label>
+        </div>
+      </Section>
+      <Section title="Restaurar">
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(THEME_PRESETS) as ThemeId[]).length > 0 && (
+            <button className="btn" onClick={() => confirm("Voltar todas as configurações visuais ao padrão?") && reset()}><RotateCcw size={14} /> Configurações padrão</button>
+          )}
+          <button className="btn" onClick={() => set({ widgetsLocked: false })}>Destravar widgets</button>
+        </div>
+      </Section>
+      <div className="text-center text-xs text-fg-muted">Agenda v0.1 · feito com 🌸</div>
+    </>
+  )
+}

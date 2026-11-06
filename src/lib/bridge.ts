@@ -1,0 +1,173 @@
+// Ponte para o Electron. Em navegador comum, cai em fallbacks.
+type Unsub = () => void
+export interface AgendaBridge {
+  store: { get(): string | null; set(data: string): void; flush?(): void }
+  win: {
+    minimize(): void
+    toggleMaximize(): void
+    fullscreen(on: boolean): void
+    close(): void
+    onState(cb: (s: { maximized: boolean }) => void): Unsub
+  }
+  app: { autostart(v?: boolean): Promise<boolean>; openExternal(url: string): Promise<void>; screenInfo(): Promise<{ long: number }> }
+  media: {
+    import(): Promise<{ file: string; name: string; width: number; height: number; animated?: boolean }[]>
+    saveAnimation(p: { width: number; height: number; frames: Uint8Array; delay: number; name: string; loopName?: string }): Promise<{ file: string; name: string; width: number; height: number; animated?: boolean }>
+    remove(file: string): Promise<void>
+    /** abre no programa padrão do Windows */
+    open(file: string): Promise<void>
+    /** escolher arquivos para anexar (imagens, PDF…) */
+    attach(kind?: "images" | "any"): Promise<{ file: string; name: string; image: boolean }[]>
+    saveDataUrl(dataUrl: string, base?: string): Promise<string>
+    exportFile(file: string, name?: string): Promise<boolean>
+    upscale(
+      file: string,
+      target: number,
+      preferAI: boolean,
+      opts?: { model?: "photo" | "art"; enhance?: number }
+    ): Promise<{ file: string; name: string; width: number; height: number; usedAI: boolean; tag: "8k" | "4k" | "hd" }>
+    paste(): Promise<MediaDesc[]>
+    importFiles(files: FileList | File[]): Promise<MediaDesc[]>
+    edit(file: string, ops: EditOps): Promise<MediaDesc>
+    onProgress(cb: (p: { file: string; pct: number; stage: string }) => void): Unsub
+  }
+  ai: { status(): Promise<{ installed: boolean; sharp: boolean }>; install(): Promise<boolean>; onProgress(cb: (n: number) => void): Unsub }
+  net: { text(url: string): Promise<string> }
+  sports: { get(sport: "cs2" | "valorant" | "football", opts?: { leagues?: string[] }): Promise<SportMatch[]> }
+  webapp: {
+    open(id: WebAppId): Promise<void>
+    embed(id: WebAppId, b: { x: number; y: number; w: number; h: number; radius?: number } | null): Promise<void>
+    popout(id: WebAppId): Promise<void>
+    dock(id: WebAppId): Promise<void>
+    nav(id: WebAppId, where: "back" | "reload" | "home" | string): Promise<void>
+    /** widget na tela: mantém o app carregado e lê com frequência */
+    watch(id: WebAppId, on: boolean): Promise<void>
+    discord(cmd: "mute" | "deafen" | "disconnect"): Promise<void>
+    ifoodOrders(): Promise<IfoodRead>
+    /** imagem (data URL) do mapa do acompanhamento */
+    ifoodMap(rect: { x: number; y: number; w: number; h: number }): Promise<string | null>
+    url(id: WebAppId): Promise<string>
+    whatsapp(): Promise<WhatsRead>
+    whatsappOpen(name: string): Promise<void>
+    onState(cb: (s: WebAppState) => void): Unsub
+  }
+  music: {
+    open(): Promise<void>
+    /** encaixa o player na área indicada (px da janela) ou tira de lá (null) */
+    embed(b: { x: number; y: number; w: number; h: number; radius?: number } | null): Promise<void>
+    /** fila ("A seguir") do YouTube Music */
+    queue(): Promise<QueueItem[]>
+    /** leva o player para uma janela separada */
+    popout(): Promise<void>
+    /** fecha a janela separada e devolve o player para o Agenda */
+    dock(): Promise<void>
+    cmd(cmd: "toggle" | "play" | "pause" | "next" | "prev" | "like" | "shuffle" | "seek" | "volume" | "search" | "url" | "home" | "library" | "back" | "playQueue" | "videoOn" | "videoOff", arg?: number | string): Promise<void>
+    logout(): Promise<void>
+    /** liga/desliga a transmissão do clipe para este visualizador */
+    video(id: string, on: boolean, width?: number): Promise<void>
+    onState(cb: (s: MusicState) => void): Unsub
+    onFrame(cb: (f: { url: string; w: number; h: number }) => void): Unsub
+  }
+}
+
+export type WebAppId = "discord" | "ifood" | "whatsapp"
+export interface WhatsChat { name: string; last: string; unread: number; time: string; avatar: string }
+export interface WhatsRead { loggedIn: boolean; qr?: boolean; loading?: boolean; totalUnread: number; chats: WhatsChat[] }
+export interface DiscordPerson { name: string; avatar: string; speaking: boolean; muted: boolean; deaf: boolean }
+export interface DiscordCall { loggedIn: boolean; inCall: boolean; channel: string; server: string; status: string; muted: boolean; deafened: boolean; people: DiscordPerson[]; myAvatar: string; myName?: string; meSpeaking?: boolean }
+export interface WebAppState { id: WebAppId; open: boolean; popped: boolean; embedded: boolean; discord?: DiscordCall }
+export interface IfoodRead { loggedOut: boolean; orders: IfoodOrder[]; mapRect?: { x: number; y: number; w: number; h: number } | null; onOrders?: boolean; check?: boolean; loading?: boolean; error?: string }
+export interface IfoodOrder { name: string; status: string; price: string; when: string; img: string; link: string; lines: string[] }
+
+export interface SportTeam { name: string; short: string; logo?: string; flag?: string; score?: string; win?: boolean }
+export interface SportMatch {
+  id: string
+  start: number
+  state: "live" | "upcoming" | "done"
+  a: SportTeam
+  b: SportTeam
+  detail: string
+  event: string
+  eventLogo?: string
+  league?: string
+  link: string
+}
+
+export interface QueueItem { i: number; title: string; artist: string; duration: string; img: string; current: boolean }
+
+export interface MusicState {
+  open: boolean
+  visible?: boolean
+  popped?: boolean
+  embedded?: boolean
+  ready?: boolean
+  title?: string
+  artist?: string
+  album?: string
+  art?: string
+  playing?: boolean
+  time?: number
+  duration?: number
+  volume?: number
+  liked?: boolean
+  hasVideo?: boolean
+  videoMode?: boolean
+  ad?: boolean
+  signedIn?: boolean
+}
+
+export type MediaDesc = { file: string; name: string; width: number; height: number; animated?: boolean }
+export interface EditOps {
+  rotate?: 0 | 90 | 180 | 270
+  flipH?: boolean
+  flipV?: boolean
+  crop?: { x: number; y: number; w: number; h: number } | null
+  brightness?: number
+  contrast?: number
+  saturation?: number
+  warmth?: number
+  sharpen?: number
+}
+
+declare global {
+  interface Window {
+    agenda?: AgendaBridge
+  }
+}
+
+const noop = () => () => {}
+const browserFallback: AgendaBridge = {
+  store: { get: () => localStorage.getItem("agenda-data"), set: (d) => localStorage.setItem("agenda-data", d) },
+  win: { minimize() {}, toggleMaximize() {}, fullscreen(on) { on ? document.documentElement.requestFullscreen() : document.exitFullscreen() }, close() {}, onState: noop },
+  app: { autostart: async () => false, openExternal: async (u) => void window.open(u, "_blank"), screenInfo: async () => ({ long: Math.max(screen.width, screen.height) * devicePixelRatio }) },
+  media: {
+    import: async () => [],
+    paste: async () => [],
+    importFiles: async () => [],
+    edit: async () => { throw new Error("Disponível apenas no app desktop") },
+    saveAnimation: async () => { throw new Error("Disponível apenas no app desktop") },
+    remove: async () => {},
+    open: async () => {},
+    attach: async () => [],
+    saveDataUrl: async () => { throw new Error("Disponível apenas no app desktop") },
+    exportFile: async () => false,
+    upscale: async () => { throw new Error("Disponível apenas no app desktop") },
+    onProgress: noop,
+  },
+  ai: { status: async () => ({ installed: false, sharp: false }), install: async () => false, onProgress: noop },
+  net: { text: async (u) => (await fetch(u)).text() },
+  sports: { get: async () => [] },
+  webapp: { open: async () => {}, embed: async () => {}, popout: async () => {}, dock: async () => {}, nav: async () => {}, watch: async () => {}, discord: async () => {}, ifoodOrders: async () => ({ loggedOut: false, orders: [] as IfoodOrder[] }), whatsapp: async () => ({ loggedIn: false, totalUnread: 0, chats: [] }), ifoodMap: async () => null, url: async () => "", whatsappOpen: async () => {}, onState: noop },
+  music: { open: async () => {}, embed: async () => {}, queue: async () => [], popout: async () => {}, dock: async () => {}, cmd: async () => {}, logout: async () => {}, video: async () => {}, onState: noop, onFrame: noop },
+}
+
+export const bridge: AgendaBridge = window.agenda ?? browserFallback
+
+/** Limpa mensagens de erro do IPC para exibir ao usuário. */
+export const friendlyError = (e: unknown) => {
+  const m = String((e as any)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "")
+  if (/ERR_(CONNECTION|INTERNET|NAME_NOT_RESOLVED|NETWORK|TIMED_OUT)/.test(m)) return "Sem conexão com a internet"
+  return m
+}
+export const isDesktop = !!window.agenda
+export const mediaUrl = (file: string | null | undefined) => (file ? `agenda://media/${encodeURIComponent(file)}` : "")

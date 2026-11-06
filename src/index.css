@@ -1,0 +1,339 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------- tokens shadcn (usados pelos botões liquid/metal) ---------- */
+:root {
+  --background: oklch(0.16 0.02 330);
+  --foreground: oklch(0.97 0.01 330);
+  --primary: var(--accent, #ff8fb8);
+  --primary-foreground: #fff;
+  --secondary: oklch(0.3 0.03 330);
+  --secondary-foreground: #fff;
+  --muted: oklch(0.35 0.02 330);
+  --muted-foreground: oklch(0.75 0.02 330);
+  --accent-c: oklch(0.3 0.04 330);
+  --accent-foreground: #fff;
+  --destructive: oklch(0.62 0.22 25);
+  --border: rgb(255 255 255 / 0.14);
+  --input: rgb(255 255 255 / 0.18);
+  --ring: var(--accent, #ff8fb8);
+
+  /* tokens do Agenda (sobrescritos via JS) */
+  --accent: #ff8fb8;
+  --r: 22px;
+  --blur: 24px;
+  --sa: 0.12;
+  --font-ui: "Outfit Variable", sans-serif;
+  --font-num: "Space Grotesk Variable", sans-serif;
+  --font-display: "Playfair Display Variable", serif;
+  --fg: #fdf6fa;
+  --fg-muted: rgb(253 246 250 / 0.62);
+  --line: rgb(255 255 255 / 0.14);
+  --field: rgb(255 255 255 / 0.07);
+  --tb-size: 56px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent-c);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--accent);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-line: var(--line);
+  --font-ui: var(--font-ui);
+  --font-num: var(--font-num);
+  --font-display: var(--font-display);
+}
+
+html:not(.dark) {
+  --fg: #2a1520;
+  --fg-muted: rgb(42 21 32 / 0.6);
+  --line: rgb(0 0 0 / 0.1);
+  --field: rgb(255 255 255 / 0.45);
+  --foreground: #2a1520;
+  --border: rgb(0 0 0 / 0.12);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+body {
+  font-family: var(--font-ui);
+  color: var(--fg);
+  background: #0b0710;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+/* em camada base: classes utilitárias (ex.: text-black) vencem */
+@layer base {
+  input, textarea, select, button { font: inherit; color: inherit; }
+}
+input, textarea, [contenteditable] { user-select: text; }
+::selection { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+html.hide-cursor, html.hide-cursor * { cursor: none !important; }
+
+/* scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--fg) 22%, transparent); border-radius: 99px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+.font-num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.font-display { font-family: var(--font-display); }
+.drag-region { -webkit-app-region: drag; }
+.no-drag { -webkit-app-region: no-drag; }
+
+/* =================== SUPERFÍCIES =================== */
+/* posição em camada: utilitários (absolute/fixed) sempre vencem */
+@layer components {
+  .surface { position: relative; }
+}
+.surface {
+  border-radius: var(--r);
+  color: var(--fg);
+  isolation: isolate;
+}
+
+/* ---- Vidro líquido (iOS) ---- */
+[data-theme="glass"] .surface {
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / calc(var(--sa) + 0.06)), rgb(255 255 255 / calc(var(--sa) * 0.4)));
+  backdrop-filter: blur(var(--blur)) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.2);
+  box-shadow:
+    0 18px 50px -12px rgb(0 0 0 / 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    inset 0 -1px 0 rgb(255 255 255 / 0.08),
+    inset 1px 0 0 rgb(255 255 255 / 0.12),
+    inset 0 0 22px rgb(255 255 255 / 0.06);
+}
+[data-theme="glass"] .surface::before {
+  content: "";
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background: radial-gradient(120% 60% at 20% 0%, rgb(255 255 255 / 0.22), transparent 55%);
+  mix-blend-mode: overlay;
+}
+html:not(.dark)[data-theme="glass"] .surface { background: linear-gradient(135deg, rgb(255 255 255 / calc(var(--sa) + 0.4)), rgb(255 255 255 / calc(var(--sa) + 0.2))); }
+
+/* ---- Metal escovado ---- */
+[data-theme="metal"] .surface {
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, rgb(70 74 82 / var(--sa)), rgb(24 26 30 / calc(var(--sa) + 0.35)));
+  backdrop-filter: blur(var(--blur));
+  border: 1px solid rgb(0 0 0 / 0.6);
+  box-shadow:
+    0 20px 40px -14px rgb(0 0 0 / 0.7),
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    inset 0 -2px 0 rgb(0 0 0 / 0.35),
+    0 0 0 1px rgb(255 255 255 / 0.06);
+}
+html:not(.dark)[data-theme="metal"] .surface {
+  background: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.02) 0 1px, transparent 1px 3px), linear-gradient(180deg, #f2f3f5, #c9ccd1);
+  border-color: #8d9097;
+}
+
+/* ---- Retrô (Windows 95/98) ---- */
+[data-theme="retro"] {
+  --fg: #111;
+  --fg-muted: #4a4a4a;
+  --line: #808080;
+  --field: #fff;
+}
+[data-theme="retro"] .surface {
+  background: #c0c0c0;
+  border-radius: 0;
+  color: #111;
+  box-shadow:
+    inset -1px -1px #0a0a0a, inset 1px 1px #ffffff,
+    inset -2px -2px #808080, inset 2px 2px #dfdfdf,
+    6px 6px 0 rgb(0 0 0 / 0.35);
+}
+html.dark[data-theme="retro"] { --fg: #e8e8e8; --fg-muted: #a0a0a0; --line: #5a5a5a; --field: #1c1c1c; }
+html.dark[data-theme="retro"] .surface {
+  background: #2e2e33; color: #e8e8e8;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #77777e, inset -2px -2px #18181b, inset 2px 2px #4a4a52, 6px 6px 0 rgb(0 0 0 / 0.45);
+}
+
+/* ---- Terminal CRT ---- */
+[data-theme="terminal"] {
+  --fg: color-mix(in srgb, var(--accent) 70%, #b6ffc8);
+  --fg-muted: color-mix(in srgb, var(--fg) 60%, transparent);
+  --line: color-mix(in srgb, var(--accent) 35%, transparent);
+  --field: rgb(0 0 0 / 0.5);
+}
+[data-theme="terminal"] .surface {
+  background: rgb(2 10 5 / var(--sa));
+  backdrop-filter: blur(var(--blur));
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 25%, transparent), inset 0 0 30px color-mix(in srgb, var(--accent) 10%, transparent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* ---- Minimal ---- */
+[data-theme="minimal"] .surface {
+  background: rgb(18 16 22 / var(--sa));
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.5);
+}
+html:not(.dark)[data-theme="minimal"] .surface { background: rgb(255 255 255 / var(--sa)); }
+
+/* =================== CAMPOS =================== */
+.field {
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--r) * 0.45);
+  padding: 0.45rem 0.7rem;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  min-width: 0;
+}
+.field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+[data-theme="retro"] .field { border-radius: 0; border: none; box-shadow: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #0a0a0a; }
+html.dark[data-theme="retro"] .field { box-shadow: inset -1px -1px #4a4a52, inset 1px 1px #000, inset -2px -2px #2e2e33, inset 2px 2px #111; }
+select.field option { background: #1a1420; color: #fff; }
+[data-theme="retro"] select.field option { background: #fff; color: #000; }
+
+/* =================== BOTÕES GENÉRICOS =================== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+  padding: .45rem .9rem; border-radius: calc(var(--r) * 0.5);
+  font-weight: 500; font-size: .875rem; white-space: nowrap;
+  transition: transform .15s, background .15s, box-shadow .15s, filter .15s;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  border: 1px solid var(--line);
+}
+.btn:hover { background: color-mix(in srgb, var(--fg) 14%, transparent); }
+.btn:active { transform: scale(.97); }
+.btn-accent { background: var(--accent); border-color: transparent; color: #fff; text-shadow: 0 1px 1px rgb(0 0 0 / .25); }
+.btn-accent:hover { background: var(--accent); filter: brightness(1.1); }
+.btn-icon { padding: .45rem; aspect-ratio: 1; }
+.btn-ghost { background: transparent; border-color: transparent; }
+
+[data-theme="glass"] .btn {
+  background: linear-gradient(180deg, rgb(255 255 255 / .16), rgb(255 255 255 / .05));
+  border: 1px solid rgb(255 255 255 / .22);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), inset 0 -1px 1px rgb(255 255 255 / .08), 0 4px 14px -4px rgb(0 0 0 / .35);
+  backdrop-filter: blur(10px);
+  border-radius: 999px;
+}
+[data-theme="glass"] .btn-accent { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 95%, #fff), color-mix(in srgb, var(--accent) 80%, #000)); }
+[data-theme="glass"] .btn-ghost { background: transparent; border-color: transparent; box-shadow: none; }
+[data-theme="glass"] .btn-ghost:hover { background: rgb(255 255 255 / .12); }
+
+[data-theme="metal"] .btn {
+  background: linear-gradient(180deg, #b9b9b9, #8a8a8a); color: #fff;
+  border: 1px solid #000; text-shadow: 0 -1px 0 rgb(60 60 60);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .6), 0 2px 5px rgb(0 0 0 / .35);
+}
+[data-theme="metal"] .btn-accent { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 60%, #fff), color-mix(in srgb, var(--accent) 70%, #000)); }
+[data-theme="metal"] .btn-ghost { background: transparent; border-color: transparent; box-shadow: none; }
+
+[data-theme="retro"] .btn, [data-theme="retro"] .btn-accent {
+  border-radius: 0; background: #c0c0c0; color: #111; border: none; text-shadow: none; filter: none;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+}
+html.dark[data-theme="retro"] .btn, html.dark[data-theme="retro"] .btn-accent { background: #3a3a40; color: #eee; box-shadow: inset -1px -1px #000, inset 1px 1px #77777e, inset -2px -2px #18181b, inset 2px 2px #4a4a52; }
+[data-theme="retro"] .btn:active { transform: none; box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #fff, inset 2px 2px #808080; }
+[data-theme="retro"] .btn-accent { font-weight: 700; }
+
+[data-theme="terminal"] .btn { border-radius: 2px; background: transparent; border: 1px solid var(--line); }
+[data-theme="terminal"] .btn:hover, [data-theme="terminal"] .btn-accent { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--fg); }
+
+/* =================== TÍTULO DE JANELA =================== */
+.titlebar { border-bottom: 1px solid var(--line); }
+[data-theme="retro"] .titlebar {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 30%, #000080), color-mix(in srgb, var(--accent) 50%, #1084d0));
+  color: #fff; border: none; margin: 3px 3px 0;
+}
+[data-theme="terminal"] .titlebar { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* =================== OVERLAYS =================== */
+.overlay-scanlines {
+  background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.18) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+  animation: flicker 6s infinite steps(60);
+}
+@keyframes flicker { 0%,100% { opacity: .85 } 50% { opacity: 1 } 51% { opacity: .8 } }
+.overlay-grain {
+  opacity: .06;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.overlay-vignette { background: radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.45)); }
+
+/* tilt glare */
+.glare {
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 0%), rgb(255 255 255 / 0.22), transparent 45%);
+  opacity: var(--go, 0); transition: opacity .3s; mix-blend-mode: soft-light; z-index: 5;
+}
+[data-theme="retro"] .glare, [data-theme="terminal"] .glare { display: none; }
+
+.no-anim *, .no-anim *::before, .no-anim *::after { transition: none !important; animation: none !important; }
+
+/* =================== RANGE =================== */
+.agenda-range { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 99px; outline: none;
+  background: linear-gradient(90deg, var(--accent) var(--pct), color-mix(in srgb, var(--fg) 15%, transparent) var(--pct)); }
+.agenda-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #e8e8e8 60%, #bbb); box-shadow: 0 2px 6px rgb(0 0 0 / .4), 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+[data-theme="retro"] .agenda-range { border-radius: 0; height: 4px; background: #808080; box-shadow: inset 1px 1px #000, inset -1px -1px #fff; }
+[data-theme="retro"] .agenda-range::-webkit-slider-thumb { border-radius: 0; width: 11px; height: 20px; background: #c0c0c0; box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080; }
+
+/* logo: pétalas desabrochando */
+.petal-bloom { transform-box: fill-box; transform-origin: 50% 100%; animation: bloom 0.9s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes bloom { from { transform: scale(0) rotate(-35deg); opacity: 0 } to { transform: scale(1) rotate(0); opacity: 1 } }
+
+/* abertura: flor desabrochando */
+.bloom-petal { transform-box: fill-box; transform-origin: 50% 100%; animation: bloom-open 1.5s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes bloom-open {
+  0% { transform: scale(.1, .25) rotate(-30deg); opacity: 0 }
+  25% { opacity: 1 }
+  62% { transform: scale(.94, 1.07) rotate(5deg) }
+  100% { transform: scale(1) rotate(0); opacity: 1 }
+}
+.bloom-stamen { transform-box: fill-box; transform-origin: 50% 100%; animation: bloom-stamen .8s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes bloom-stamen { from { transform: scaleY(0); opacity: 0 } to { transform: scaleY(1); opacity: 1 } }
+.bloom-core { transform-box: fill-box; transform-origin: 50% 50%; animation: bloom-core 1s cubic-bezier(.34, 1.56, .64, 1) .9s both; }
+@keyframes bloom-core { from { transform: scale(0) } to { transform: scale(1) } }
+
+/* =================== BOTÕES DA JANELA (– □ ×) =================== */
+.win-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 28px; border-radius: 9px;
+  color: var(--fg); background: color-mix(in srgb, var(--fg) 8%, transparent);
+  border: 1px solid var(--line);
+  transition: background .15s, color .15s, transform .1s, box-shadow .15s;
+}
+.win-btn:hover { background: color-mix(in srgb, var(--fg) 18%, transparent); }
+.win-btn:active { transform: scale(.92); }
+.win-btn-close:hover { background: #e5484d; border-color: #e5484d; color: #fff; box-shadow: 0 0 14px rgb(229 72 77 / .55); }
+[data-theme="glass"] .win-btn { border-radius: 999px; background: linear-gradient(180deg, rgb(255 255 255 / .18), rgb(255 255 255 / .05)); border-color: rgb(255 255 255 / .25); box-shadow: inset 0 1px 0 rgb(255 255 255 / .45); }
+[data-theme="glass"] .win-btn-close:hover { background: linear-gradient(180deg, #ff6b6f, #d7373c); }
+[data-theme="metal"] .win-btn { background: linear-gradient(180deg, #b9b9b9, #8a8a8a); color: #fff; border-color: #000; box-shadow: inset 0 1px 0 rgb(255 255 255 / .6); }
+[data-theme="retro"] .win-btn { width: 22px; height: 20px; border-radius: 0; border: none; background: #c0c0c0; color: #000;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf; }
+[data-theme="retro"] .win-btn:active { transform: none; box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #fff, inset 2px 2px #808080; }
+[data-theme="retro"] .win-btn-close:hover { background: #c0c0c0; color: #000; box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf; }
+[data-theme="terminal"] .win-btn { border-radius: 2px; background: transparent; }
+
+@keyframes vinyl-spin { to { transform: rotate(360deg) } }
+@keyframes clock-gradient { to { background-position: 300% 0 } }
+.clock-gradient { animation: clock-gradient 8s linear infinite }
+@keyframes clock-flicker { 0%, 100% { opacity: 1 } 92% { opacity: 1 } 93% { opacity: .55 } 94% { opacity: 1 } 96% { opacity: .7 } 97% { opacity: 1 } }
+.clock-neon { animation: clock-flicker 6s infinite }
+@keyframes cursor-beat { 0%, 100% { transform: scale(1) } 15% { transform: scale(1.18) } 30% { transform: scale(1) } 45% { transform: scale(1.1) } }
+@keyframes cursor-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .55 } }
+@keyframes eq-bar { from { transform: scaleY(.25) } to { transform: scaleY(1) } }

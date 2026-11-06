@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="sv-bg" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#ffe08a"/>
+      <stop offset="1" stop-color="#e07a12"/>
+    </linearGradient>
+    <radialGradient id="sv-light" cx="0.3" cy="0.05" r="0.9">
+      <stop offset="0" stop-color="#fff" stop-opacity=".45"/>
+      <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sv-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="sv-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".7"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".3"/>
+    </linearGradient>
+    <filter id="sv-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+    <filter id="sv-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#sv-bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#sv-light)"/>
+  <g opacity=".35" filter="url(#sv-glow)"><g fill="#ffffff" stroke="#ffffff">
+  <path d="M206 168 v-18 a26 26 0 0 1 26 -26 h48 a26 26 0 0 1 26 26 v18" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#fff" stroke-width="26"/>
+  <rect x="104" y="166" width="304" height="212" rx="46" fill="#fff"/>
+  <path d="M104 250 q152 52 304 0" fill="none" stroke="#b86a10" stroke-opacity=".35" stroke-width="12"/>
+  <rect x="228" y="236" width="56" height="52" rx="14" fill="#c97a12" opacity=".75"/>
+  <rect x="240" y="248" width="32" height="28" rx="8" fill="#fff"/>
+</g></g>
+  <g filter="url(#sv-shadow)">
+  <path d="M206 168 v-18 a26 26 0 0 1 26 -26 h48 a26 26 0 0 1 26 26 v18" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#fff" stroke-width="26"/>
+  <rect x="104" y="166" width="304" height="212" rx="46" fill="#fff"/>
+  <path d="M104 250 q152 52 304 0" fill="none" stroke="#b86a10" stroke-opacity=".35" stroke-width="12"/>
+  <rect x="228" y="236" width="56" height="52" rx="14" fill="#c97a12" opacity=".75"/>
+  <rect x="240" y="248" width="32" height="28" rx="8" fill="#fff"/>
+</g>
+  <path d="M60 140 C 60 80 96 46 160 46 L 352 46 C 416 46 452 80 452 140 C 380 190 132 190 60 140 Z" fill="url(#sv-gloss)" opacity=".55"/>
+  <rect x="18" y="18" width="476" height="476" rx="122" fill="none" stroke="url(#sv-rim)" stroke-width="4"/>
+</svg>

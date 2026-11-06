@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="es-bg" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#a6b0ff"/>
+      <stop offset="1" stop-color="#3d3fc4"/>
+    </linearGradient>
+    <radialGradient id="es-light" cx="0.3" cy="0.05" r="0.9">
+      <stop offset="0" stop-color="#fff" stop-opacity=".45"/>
+      <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="es-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="es-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".7"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".3"/>
+    </linearGradient>
+    <filter id="es-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+    <filter id="es-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#es-bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#es-light)"/>
+  <g opacity=".35" filter="url(#es-glow)"><g fill="#ffffff" stroke="#ffffff">
+  <path d="M146 300 q0 -40 0 -40 l110 46 l110 -46 v52 q0 46 -110 46 q-110 0 -110 -46z" fill="#fff" opacity=".92"/>
+  <path d="M256 136 L428 214 L256 292 L84 214 Z" fill="#fff"/>
+  <path d="M256 214 L392 236 v86" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#fff" stroke-width="10"/>
+  <circle cx="392" cy="336" r="18" fill="#fff"/>
+  <path d="M380 350 l-8 40 h40 l-8 -40z" fill="#fff"/>
+</g></g>
+  <g filter="url(#es-shadow)">
+  <path d="M146 300 q0 -40 0 -40 l110 46 l110 -46 v52 q0 46 -110 46 q-110 0 -110 -46z" fill="#fff" opacity=".92"/>
+  <path d="M256 136 L428 214 L256 292 L84 214 Z" fill="#fff"/>
+  <path d="M256 214 L392 236 v86" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#fff" stroke-width="10"/>
+  <circle cx="392" cy="336" r="18" fill="#fff"/>
+  <path d="M380 350 l-8 40 h40 l-8 -40z" fill="#fff"/>
+</g>
+  <path d="M60 140 C 60 80 96 46 160 46 L 352 46 C 416 46 452 80 452 140 C 380 190 132 190 60 140 Z" fill="url(#es-gloss)" opacity=".55"/>
+  <rect x="18" y="18" width="476" height="476" rx="122" fill="none" stroke="url(#es-rim)" stroke-width="4"/>
+</svg>

@@ -1,0 +1,75 @@
+const { contextBridge, ipcRenderer, webUtils } = require("electron")
+
+const on = (channel) => (cb) => {
+  const h = (_e, data) => cb(data)
+  ipcRenderer.on(channel, h)
+  return () => ipcRenderer.removeListener(channel, h)
+}
+
+contextBridge.exposeInMainWorld("agenda", {
+  store: {
+    get: () => ipcRenderer.sendSync("store:get"),
+    set: (data) => ipcRenderer.send("store:set", data),
+    flush: () => ipcRenderer.sendSync("store:flushSync"),
+  },
+  win: {
+    minimize: () => ipcRenderer.send("win:minimize"),
+    toggleMaximize: () => ipcRenderer.send("win:toggleMaximize"),
+    fullscreen: (on) => ipcRenderer.send("win:fullscreen", on),
+    close: () => ipcRenderer.send("win:close"),
+    onState: on("win:state"),
+  },
+  app: {
+    autostart: (v) => ipcRenderer.invoke("app:autostart", v),
+    openExternal: (url) => ipcRenderer.invoke("app:openExternal", url),
+    screenInfo: () => ipcRenderer.invoke("app:screenInfo"),
+  },
+  media: {
+    import: () => ipcRenderer.invoke("media:import"),
+    remove: (file) => ipcRenderer.invoke("media:delete", file),
+    open: (file) => ipcRenderer.invoke("media:open", file),
+    attach: (kind) => ipcRenderer.invoke("media:attach", kind),
+    saveDataUrl: (dataUrl, base) => ipcRenderer.invoke("media:saveDataUrl", dataUrl, base),
+    exportFile: (file, name) => ipcRenderer.invoke("media:export", file, name),
+    upscale: (file, target, preferAI, opts) => ipcRenderer.invoke("media:upscale", file, target, preferAI, opts),
+    paste: () => ipcRenderer.invoke("media:paste"),
+    importFiles: (files) => ipcRenderer.invoke("media:importPaths", Array.from(files || []).map((f) => webUtils.getPathForFile(f))),
+    edit: (file, ops) => ipcRenderer.invoke("media:edit", file, ops),
+    saveAnimation: (payload) => ipcRenderer.invoke("media:saveAnimation", payload),
+    onProgress: on("upscale:progress"),
+  },
+  ai: {
+    status: () => ipcRenderer.invoke("ai:status"),
+    install: () => ipcRenderer.invoke("ai:install"),
+    onProgress: on("ai:progress"),
+  },
+  net: { text: (url) => ipcRenderer.invoke("net:text", url) },
+  sports: { get: (sport, opts) => ipcRenderer.invoke("sports:get", sport, opts) },
+  webapp: {
+    open: (id) => ipcRenderer.invoke("webapp:open", id),
+    embed: (id, b) => ipcRenderer.invoke("webapp:embed", id, b),
+    popout: (id) => ipcRenderer.invoke("webapp:popout", id),
+    dock: (id) => ipcRenderer.invoke("webapp:dock", id),
+    nav: (id, where) => ipcRenderer.invoke("webapp:nav", id, where),
+    watch: (id, on) => ipcRenderer.invoke("webapp:watch", id, on),
+    discord: (cmd) => ipcRenderer.invoke("webapp:discord", cmd),
+    ifoodOrders: () => ipcRenderer.invoke("webapp:ifoodOrders"),
+    ifoodMap: (rect) => ipcRenderer.invoke("webapp:ifoodMap", rect),
+    url: (id) => ipcRenderer.invoke("webapp:url", id),
+    whatsapp: () => ipcRenderer.invoke("webapp:whatsapp"),
+    whatsappOpen: (name) => ipcRenderer.invoke("webapp:whatsappOpen", name),
+    onState: on("webapp:state"),
+  },
+  music: {
+    open: () => ipcRenderer.invoke("music:open"),
+    embed: (b) => ipcRenderer.invoke("music:embed", b),
+    queue: () => ipcRenderer.invoke("music:queue"),
+    popout: () => ipcRenderer.invoke("music:popout"),
+    dock: () => ipcRenderer.invoke("music:dock"),
+    cmd: (cmd, arg) => ipcRenderer.invoke("music:cmd", cmd, arg),
+    logout: () => ipcRenderer.invoke("music:logout"),
+    video: (id, on, width) => ipcRenderer.invoke("music:video", id, on, width),
+    onState: on("music:state"),
+    onFrame: on("music:frame"),
+  },
+})
