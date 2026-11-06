@@ -28,7 +28,7 @@ export function sectionColor(s: Settings, id: SectionId) {
 const LOGO_FILES: Record<SectionId, string> = {
   today: "hoje", finance: "financas", games: "jogos",
   habits: "habitos", studies: "estudos", services: "servicos", lists: "listas",
-  music: "youtube-music", discord: "discord", whatsapp: "whatsapp", ifood: "ifood", gallery: "imagens", settings: "configuracoes",
+  music: "youtube-music", discord: "discord", whatsapp: "whatsapp", ifood: "ifood", rooms: "salas", gallery: "imagens", settings: "configuracoes",
 }
 
 /** Ícone de um app/aba no estilo escolhido nas configurações. */

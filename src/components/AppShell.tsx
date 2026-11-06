@@ -8,7 +8,7 @@ import type { SectionId } from "@/lib/types"
 import { useBackground } from "@/lib/watchers"
 import { usePerf } from "@/lib/perf"
 import { useHistory } from "@/lib/history"
-import { useAutosave, useThemeVars } from "@/App"
+import { Toast, useAutosave, useThemeVars } from "@/App"
 import { Wallpaper } from "./Wallpaper"
 import { SECTIONS } from "./sections-meta"
 import { AppIcon } from "./AppIcon"
@@ -109,6 +109,7 @@ export default function AppShell() {
         </div>
       </main>
       <CommandPalette />
+      <Toast />
     </div>
   )
 }

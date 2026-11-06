@@ -69,6 +69,14 @@ contextBridge.exposeInMainWorld("agenda", {
     onSync: on("bar:sync"),
     onMain: on("bar:main"),
   },
+  share: {
+    sources: () => ipcRenderer.invoke("share:sources"),
+    pick: (id) => ipcRenderer.invoke("share:pick", id),
+    audioStart: (without) => ipcRenderer.invoke("sysaudio:start", without),
+    audioStop: () => ipcRenderer.invoke("sysaudio:stop"),
+    onAudio: on("sysaudio:data"),
+    onAudioEnd: on("sysaudio:end"),
+  },
   pcmedia: {
     sub: (id, app) => ipcRenderer.invoke("media:sub", id, app),
     unsub: (id) => ipcRenderer.invoke("media:unsub", id),

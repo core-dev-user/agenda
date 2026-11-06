@@ -69,6 +69,15 @@ export interface AgendaBridge {
     onSync(cb: (d: BarSync) => void): Unsub
     onMain(cb: (m: BarToMain) => void): Unsub
   }
+  share: {
+    sources(): Promise<ShareSource[]>
+    pick(id: string): Promise<void>
+    /** som do PC sem o Discord (ou sem o próprio Agenda) */
+    audioStart(without: "discord" | "agenda"): Promise<{ ok: boolean; excluded: "discord" | "agenda" }>
+    audioStop(): Promise<void>
+    onAudio(cb: (pcm: Uint8Array) => void): Unsub
+    onAudioEnd(cb: (msg: string) => void): Unsub
+  }
   pcmedia: { sub(id: string, app?: string): Promise<PcMedia | null>; unsub(id: string): Promise<void>; cmd(c: "toggle" | "next" | "prev"): Promise<void>; onState(cb: (m: PcMedia) => void): Unsub }
   finance: {
     status(): Promise<{ exists: boolean; hasPin: boolean; unlocked: boolean; secure: boolean; waitMs: number }>
@@ -171,7 +180,8 @@ export type BarToMain =
   | { type: "bell" }
   | { type: "pin"; app: PinnedApp }
   | { type: "unpin"; path: string }
-export type BarMenu = "start" | "power" | "clock"
+export interface ShareSource { id: string; name: string; screen: boolean; thumb: string; icon: string }
+export type BarMenu ="start" | "power" | "clock"
 export type UiMode = "app" | "desktop" | "screen"
 export type PcApp = "spotify" | "deezer" | "applemusic" | "amazonmusic" | "tidal" | "discord" | "whatsapp" | "steam" | "cs2" | "valorant" | "lol" | "epic"
 export interface PcMedia {
@@ -265,6 +275,7 @@ const browserFallback: AgendaBridge = {
   sysmon: { sub: async () => false, unsub: async () => false, onData: noop },
   mode: { get: async () => ({ mode: "screen", monitors: 1 }), set: async () => false, raise: async () => {}, detectApps: async () => ({ apps: [], monitors: 1 }), onSummon: noop },
   pcmedia: { sub: async () => null, unsub: async () => {}, cmd: async () => {}, onState: noop },
+  share: { sources: async () => [], pick: async () => {}, audioStart: async () => ({ ok: false, excluded: "agenda" }), audioStop: async () => {}, onAudio: noop, onAudioEnd: noop },
   bar: (() => {
     const c: BarConfig = { on: false, height: 64, position: "bottom", available: false, active: false }
     return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, onWins: noop, onSync: noop, onMain: noop }

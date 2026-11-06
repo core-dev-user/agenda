@@ -176,7 +176,7 @@ export default function App() {
 }
 
 /** aviso curtinho no rodapé ("Desfeito", "Configuração copiada") */
-function Toast() {
+export function Toast() {
   const [t, setT] = useState<{ text: string; k: number } | null>(null)
   useEffect(() => {
     let k = 0

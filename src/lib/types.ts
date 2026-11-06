@@ -3,7 +3,7 @@ export type CursorStyle = "system" | "dot" | "ring" | "sakura" | "pixel" | "cros
 export type CursorEffect = "none" | "trail" | "sakura" | "sparkle" | "glow" | "ripple" | "pixels" | "hearts" | "stars" | "bubbles" | "confetti" | "fire" | "snow" | "rainbow" | "comet" | "leaves" | "magic"
 export type TaskbarPosition = "bottom" | "top" | "left" | "right"
 export type TaskbarStyle = "dock" | "bar" | "floating"
-export type SectionId = "today" | "habits" | "studies" | "services" | "finance" | "lists" | "music" | "games" | "discord" | "whatsapp" | "ifood" | "gallery" | "settings"
+export type SectionId = "today" | "habits" | "studies" | "services" | "finance" | "lists" | "music" | "games" | "discord" | "whatsapp" | "ifood" | "rooms" | "gallery" | "settings"
 export type IconStyle = "auto" | "logos" | "color" | "glass" | "metal" | "neon" | "outline" | "flat" | "pixel"
 export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp" | "finance" | "agenda" | "musicstats" | "gaming" | "musicclip" | "valagent" | "sysmon" | "pcmusic"
 
@@ -81,6 +81,10 @@ export interface Settings {
   hibernateMin?: number
   /** programas do PC fixados na barra principal do Windows */
   pcPins?: { path: string; name: string }[]
+  /** nome mostrado nas salas */
+  nick?: string
+  /** salas salvas ("servidores" com os amigos) */
+  savedRooms?: { code: string; name: string }[]
 }
 
 export type NotifySource = "tasks" | "whatsapp" | "ifood" | "sports" | "budgets" | "services" | "calendar" | "focus" | "system"

@@ -23,6 +23,7 @@ const LOADERS = {
   discord: () => import("@/sections/WebApp").then((m) => ({ default: m.DiscordView })),
   ifood: () => import("@/sections/WebApp").then((m) => ({ default: m.IfoodView })),
   whatsapp: () => import("@/sections/WebApp").then((m) => ({ default: m.WhatsappView })),
+  rooms: () => import("@/sections/Rooms"),
   settings: () => import("@/sections/SettingsView"),
 }
 export const VIEWS = Object.fromEntries(Object.entries(LOADERS).map(([k, f]) => [k, lazy(f)])) as unknown as Record<keyof typeof LOADERS, React.LazyExoticComponent<() => React.JSX.Element>>
