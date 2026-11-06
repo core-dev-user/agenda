@@ -5,6 +5,8 @@ import { uid, todayISO } from "./utils"
 import type { ListenStats } from "./listening"
 import type { RunningGame, ValAgentNow } from "./bridge"
 import type { ValTemplate } from "@/widgets/ValAgentWidget"
+import type { GamingData } from "./gaming"
+import type { PhotoGallery } from "./types"
 import type {
   Settings, Widget, WidgetType, MediaItem, Geo, Habit, Subject, Service, ShopList, WinState, SectionId, ThemeId, LookTemplate, Task, StudyTimer,
   AppNotification, CalEvent, NotifyPrefs, FocusPrefs,
@@ -101,7 +103,7 @@ const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
   finance: [340, 300],
   agenda: [340, 360],
   musicstats: [360, 380],
-  gaming: [340, 200],
+  gaming: [360, 210],
   musicclip: [480, 296],
   valagent: [320, 440],
 }
@@ -131,6 +133,10 @@ interface State {
   listening?: ListenStats
   /** templates do widget de agente do Valorant */
   valTemplates: ValTemplate[]
+  /** registro de jogos (tempo de cada sessão) */
+  gaming?: GamingData
+  /** galerias salvas do quadro de fotos */
+  photoGalleries: PhotoGallery[]
   // não persistido
   windows: WinState[]
   splashDone: boolean
@@ -212,6 +218,7 @@ export const useStore = create<State>()(
       templateUndo: null,
       notifications: [],
       valTemplates: [],
+      photoGalleries: [],
       windows: [],
       splashDone: false,
       calEvents: [],
@@ -387,6 +394,8 @@ export const useStore = create<State>()(
         notifications: s.notifications,
         listening: s.listening,
         valTemplates: s.valTemplates,
+        gaming: s.gaming,
+        photoGalleries: s.photoGalleries,
       }),
       merge: (persisted: any, current) => ({
         ...current,

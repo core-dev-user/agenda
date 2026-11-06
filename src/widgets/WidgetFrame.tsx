@@ -5,8 +5,8 @@ import { useStore } from "@/lib/store"
 import { useTilt } from "@/lib/useTilt"
 import { mediaUrl } from "@/lib/bridge"
 import { fitGeo, useViewport, widgetGeo } from "@/lib/viewport"
-import type { Geo, MediaItem, Widget, WidgetType } from "@/lib/types"
-import { cn } from "@/lib/utils"
+import type { Geo, MediaItem, PhotoGallery, Widget, WidgetType } from "@/lib/types"
+import { cn, uid } from "@/lib/utils"
 import { FONTS } from "@/lib/fonts"
 import { ColorPicker, Modal, Segmented, Slider, Switch } from "@/components/ui/controls"
 import { MediaPicker } from "@/components/MediaPicker"
@@ -276,8 +276,15 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
   const [living, setLiving] = useState<MediaItem | null>(null)
   const bg = c.bg as (Partial<Frame> & { id: string }) | undefined
   const bgMedia = bg ? media.find((m) => m.id === bg.id) : undefined
-  const photos = ((c.ids ?? []) as string[]).map((id) => media.find((m) => m.id === id)).filter(Boolean) as MediaItem[]
-  const frames = (c.frames ?? {}) as Record<string, Partial<Frame>>
+  // fotos: da galeria ligada ao quadro (vale para todos os quadros que usam ela) ou só deste quadro
+  const galleries = useStore((s) => s.photoGalleries)
+  const gal = c.gallery ? galleries.find((g) => g.id === c.gallery) : undefined
+  const curIds = (gal ? gal.ids : c.ids ?? []) as string[]
+  const photos = curIds.map((id) => media.find((m) => m.id === id)).filter(Boolean) as MediaItem[]
+  const frames = (gal ? gal.frames : c.frames ?? {}) as Record<string, Partial<Frame>>
+  const setGalleries = (fn: (g: PhotoGallery[]) => PhotoGallery[]) => useStore.setState((st) => ({ photoGalleries: fn(st.photoGalleries) }))
+  const setPhotos = (p: { ids?: string[]; frames?: Record<string, any> }) => (gal ? setGalleries((all) => all.map((g) => (g.id === gal.id ? { ...g, ...p, updatedAt: Date.now() } : g))) : set(p))
+  const [galName, setGalName] = useState("")
   const framingMedia = framing ? media.find((m) => m.id === framing) : undefined
 
   return (
@@ -374,6 +381,40 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
         )}
         {w.type === "photo" && (
           <>
+            <div className="space-y-2 rounded-xl border border-line p-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">Galeria</span>
+                <select className="field flex-1 !py-1 text-sm" value={c.gallery ?? ""} onChange={(e) => {
+                  const v = e.target.value
+                  // desligar: o quadro fica com uma cópia das fotos da galeria
+                  if (!v) set({ gallery: undefined, ids: gal ? [...gal.ids] : c.ids, frames: gal ? { ...gal.frames } : c.frames })
+                  else set({ gallery: v })
+                }}>
+                  <option value="">Fotos só deste quadro</option>
+                  {galleries.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.ids.length})</option>)}
+                </select>
+              </div>
+              {gal ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input className="field flex-1 !py-1 text-sm" defaultValue={gal.name} key={gal.id} onBlur={(e) => { const n = e.target.value.trim(); if (n && n !== gal.name) setGalleries((all) => all.map((g) => (g.id === gal.id ? { ...g, name: n } : g))) }} title="Nome da galeria" />
+                  <button className="btn !py-1 text-xs hover:!text-red-400" onClick={() => {
+                    if (!confirm(`Excluir a galeria "${gal.name}"? Os quadros que usam ela ficam com uma cópia das fotos.`)) return
+                    const st = useStore.getState()
+                    for (const x of st.widgets) if (x.type === "photo" && x.config.gallery === gal.id) st.updateWidgetConfig(x.id, { gallery: undefined, ids: [...gal.ids], frames: { ...gal.frames } })
+                    setGalleries((all) => all.filter((g) => g.id !== gal.id))
+                  }}><Trash2 size={12} /> Excluir galeria</button>
+                  <div className="w-full text-[11px] text-fg-muted">Mudar as fotos aqui muda em todos os quadros que usam esta galeria.</div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input className="field flex-1 !py-1 text-sm" placeholder="Nome da galeria (ex.: Viagem, Amigos)" value={galName} onChange={(e) => setGalName(e.target.value)} />
+                  <button className="btn !py-1 text-xs" disabled={!curIds.length} title={curIds.length ? "" : "Escolha fotos primeiro"} onClick={() => {
+                    const g: PhotoGallery = { id: uid(), name: galName.trim() || `Galeria ${galleries.length + 1}`, ids: [...curIds], frames: { ...frames }, createdAt: Date.now(), updatedAt: Date.now() }
+                    setGalleries((all) => [...all, g]); set({ gallery: g.id }); setGalName("")
+                  }}>Salvar como galeria</button>
+                </div>
+              )}
+            </div>
             <button className="btn w-full" onClick={() => setPicker(true)}>🖼️ Escolher fotos ({photos.length})</button>
             {photos.length > 0 && (
               <div className="grid grid-cols-2 gap-2">
@@ -387,7 +428,7 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
                       <button className="btn px-2 py-0.5 text-xs" onClick={() => setFraming(p.id)}><Move size={12} /> Enquadrar</button>
                       {!p.animated && <button className="btn px-2 py-0.5 text-xs" onClick={() => setEditing(p)}><Crop size={12} /> Editar</button>}
                       {!p.animated && <button className="btn px-2 py-0.5 text-xs" onClick={() => setLiving(p)}><Wand2 size={12} /> Viva</button>}
-                      <button className="btn px-2 py-0.5 text-xs hover:!text-red-400" title="Tirar do quadro" onClick={() => set({ ids: (c.ids as string[]).filter((x) => x !== p.id) })}><X size={12} /></button>
+                      <button className="btn px-2 py-0.5 text-xs hover:!text-red-400" title="Tirar do quadro" onClick={() => setPhotos({ ids: curIds.filter((x) => x !== p.id) })}><X size={12} /></button>
                     </div>
                   </div>
                 ))}
@@ -401,7 +442,7 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
             {c.autoFit === false && <Segmented value={c.fit ?? "cover"} onChange={(v) => set({ fit: v })} options={[{ value: "cover", label: "Preencher" }, { value: "contain", label: "Inteira" }]} />}
             <Slider label="Trocar a cada" value={c.interval ?? 8} min={3} max={120} onChange={(v) => set({ interval: v })} format={(v) => v + "s"} />
             {c.frame === "polaroid" && <input className="field w-full" placeholder="Legenda da polaroid" defaultValue={c.caption ?? ""} onBlur={(e) => set({ caption: e.target.value })} />}
-            <MediaPicker open={picker} onClose={() => setPicker(false)} multi selected={c.ids ?? []} onPick={(ids) => set({ ids })} />
+            <MediaPicker open={picker} onClose={() => setPicker(false)} multi selected={curIds} onPick={(ids) => setPhotos({ ids })} />
             <Modal open={!!framingMedia} onClose={() => setFraming(null)} title="Enquadrar foto" width={520}>
               {framingMedia && (
                 <ImageFramer
@@ -409,12 +450,12 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
                   aspect={autoFit ? framingMedia.width / Math.max(1, framingMedia.height) : geo.w / geo.h}
                   value={frames[framingMedia.id] ?? {}}
                   effects={false}
-                  onChange={(f) => set({ frames: { ...frames, [framingMedia.id]: f } })}
+                  onChange={(f) => setPhotos({ frames: { ...frames, [framingMedia.id]: f } })}
                 />
               )}
             </Modal>
-            <PhotoEditor m={editing} onClose={() => setEditing(null)} onSaved={(n) => { if (editing && n.id !== editing.id) set({ ids: (c.ids as string[]).map((x) => (x === editing.id ? n.id : x)) }) }} />
-            <LivingStudio m={living} onClose={() => setLiving(null)} onCreated={(n) => { if (living) set({ ids: (c.ids as string[]).map((x) => (x === living.id ? n.id : x)) }) }} />
+            <PhotoEditor m={editing} onClose={() => setEditing(null)} onSaved={(n) => { if (editing && n.id !== editing.id) setPhotos({ ids: curIds.map((x) => (x === editing.id ? n.id : x)) }) }} />
+            <LivingStudio m={living} onClose={() => setLiving(null)} onCreated={(n) => { if (living) setPhotos({ ids: curIds.map((x) => (x === living.id ? n.id : x)) }) }} />
           </>
         )}
         {w.type === "note" && (

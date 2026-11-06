@@ -11,9 +11,16 @@ import { frameImgStyle, type Frame } from "@/components/ImageFramer"
 /** espaço extra que cada moldura ocupa (para calcular o tamanho ideal do quadro) */
 export const PHOTO_FRAME_PAD: Record<string, { w: number; h: number }> = { none: { w: 0, h: 0 }, polaroid: { w: 24, h: 52 }, film: { w: 48, h: 24 } }
 
+/** fotos do quadro: da galeria ligada a ele, ou só dele */
+export function usePhotoSource(c: Record<string, any>) {
+  const gal = useStore((s) => (c.gallery ? s.photoGalleries.find((g) => g.id === c.gallery) : undefined))
+  return { gal, ids: (gal ? gal.ids : c.ids ?? []) as string[], frames: (gal ? gal.frames : c.frames ?? {}) as Record<string, Partial<Frame>> }
+}
+
 export function PhotoWidget({ w, onConfigure, onAspect }: { w: Widget; onConfigure: () => void; onAspect?: (a: number | null) => void }) {
   const media = useStore((s) => s.media)
-  const { ids = [] as string[], interval = 8, fit = "cover", frame = "none", effect = "fade", frames = {} as Record<string, Partial<Frame>> } = w.config
+  const { interval = 8, fit = "cover", frame = "none", effect = "fade" } = w.config
+  const { ids, frames } = usePhotoSource(w.config)
   const pics = ids.map((id: string) => media.find((m) => m.id === id)).filter(Boolean) as typeof media
   const [i, setI] = useState(0)
   useEffect(() => {
@@ -27,13 +34,7 @@ export function PhotoWidget({ w, onConfigure, onAspect }: { w: Widget; onConfigu
   const aspect = cur && cur.width && cur.height ? cur.width / cur.height : null
   useEffect(() => { onAspect?.(aspect) }, [aspect])
 
-  if (!cur)
-    return (
-      <button onClick={onConfigure} className="flex h-full w-full flex-col items-center justify-center gap-2 text-fg-muted hover:text-fg">
-        <ImagePlus size={32} />
-        <span className="text-sm">Escolher fotos</span>
-      </button>
-    )
+  if (!cur) return <GalleryChooser w={w} onNew={onConfigure} />
 
   const variants = {
     fade: { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } },
@@ -61,6 +62,41 @@ export function PhotoWidget({ w, onConfigure, onAspect }: { w: Widget; onConfigu
           ))}
         </>
       )}
+    </div>
+  )
+}
+
+/** quadro vazio: escolher uma galeria pronta ou montar uma nova */
+function GalleryChooser({ w, onNew }: { w: Widget; onNew: () => void }) {
+  const galleries = useStore((s) => s.photoGalleries)
+  const media = useStore((s) => s.media)
+  const upd = useStore((s) => s.updateWidgetConfig)
+  if (!galleries.length)
+    return (
+      <button onClick={onNew} className="flex h-full w-full flex-col items-center justify-center gap-2 text-fg-muted hover:text-fg">
+        <ImagePlus size={32} />
+        <span className="text-sm">Escolher fotos</span>
+      </button>
+    )
+  return (
+    <div className="flex h-full flex-col gap-2 p-3" data-nodrag>
+      <div className="text-sm font-semibold">Escolha uma galeria</div>
+      <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto pr-0.5">
+        {galleries.map((g) => {
+          const covers = g.ids.map((id) => media.find((m) => m.id === id)).filter(Boolean).slice(0, 3) as typeof media
+          return (
+            <button key={g.id} onClick={() => upd(w.id, { gallery: g.id })} className="group overflow-hidden rounded-xl border border-line text-left transition-transform hover:-translate-y-0.5">
+              <div className="relative h-20 bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]">
+                {covers.map((m, i) => (
+                  <img key={m.id} src={mediaUrl(m.file)} className="absolute h-full w-[60%] rounded-md object-cover shadow-md" style={{ left: `${i * 20}%`, zIndex: 3 - i, transform: `rotate(${(i - 1) * 4}deg) scale(${1 - i * 0.06})` }} draggable={false} />
+                ))}
+              </div>
+              <div className="px-2 py-1.5"><div className="truncate text-xs font-semibold">{g.name}</div><div className="text-[10px] text-fg-muted">{g.ids.length} foto{g.ids.length === 1 ? "" : "s"}</div></div>
+            </button>
+          )
+        })}
+        <button onClick={onNew} className="flex min-h-[7.5rem] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line text-xs text-fg-muted hover:text-fg"><ImagePlus size={20} /> Nova galeria</button>
+      </div>
     </div>
   )
 }

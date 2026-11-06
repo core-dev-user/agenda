@@ -12,6 +12,7 @@ import { ErrorBoundary } from "./ErrorBoundary"
 const LOADERS = {
   today: () => import("@/sections/Today"),
   finance: () => import("@/sections/Finance"),
+  games: () => import("@/sections/Games"),
   habits: () => import("@/sections/Habits"),
   studies: () => import("@/sections/Studies"),
   services: () => import("@/sections/Services"),

@@ -3,7 +3,7 @@ export type CursorStyle = "system" | "dot" | "ring" | "sakura" | "pixel" | "cros
 export type CursorEffect = "none" | "trail" | "sakura" | "sparkle" | "glow" | "ripple" | "pixels" | "hearts" | "stars" | "bubbles" | "confetti" | "fire" | "snow" | "rainbow" | "comet" | "leaves" | "magic"
 export type TaskbarPosition = "bottom" | "top" | "left" | "right"
 export type TaskbarStyle = "dock" | "bar" | "floating"
-export type SectionId = "today" | "habits" | "studies" | "services" | "finance" | "lists" | "music" | "discord" | "whatsapp" | "ifood" | "gallery" | "settings"
+export type SectionId = "today" | "habits" | "studies" | "services" | "finance" | "lists" | "music" | "games" | "discord" | "whatsapp" | "ifood" | "gallery" | "settings"
 export type IconStyle = "auto" | "logos" | "color" | "glass" | "metal" | "neon" | "outline" | "flat" | "pixel"
 export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp" | "finance" | "agenda" | "musicstats" | "gaming" | "musicclip" | "valagent"
 
@@ -134,6 +134,9 @@ export interface LockClock {
 }
 
 export interface Geo { x: number; y: number; w: number; h: number }
+
+/** galeria salva do quadro de fotos: as fotos e o enquadramento de cada uma */
+export interface PhotoGallery { id: string; name: string; ids: string[]; frames: Record<string, any>; createdAt: number; updatedAt: number }
 
 /** Template de personalização: só a aparência (e, se quiser, a disposição dos widgets). Nunca os seus dados. */
 export interface LookTemplate {
