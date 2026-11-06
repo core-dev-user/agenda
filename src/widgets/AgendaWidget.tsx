@@ -1,4 +1,5 @@
 import { useStore } from "@/lib/store"
+import { CalendarDays } from "lucide-react"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -21,11 +22,11 @@ export function AgendaWidget({ w }: { w: Widget }) {
   let last = ""
   return (
     <div className="flex h-full flex-col gap-2 p-3.5">
-      <div className="flex items-center gap-2 text-sm font-semibold">🗓️ <span className="flex-1">Próximos eventos</span></div>
+      <div className="flex items-center gap-2 text-sm font-semibold"><CalendarDays size={15} className="text-fg-muted" /> <span className="flex-1">Próximos eventos</span></div>
       {!feeds.length ? (
         <button className="flex flex-1 items-center justify-center text-center text-sm text-fg-muted" onClick={() => open("settings")}>Conecte sua agenda do Google em Configurações → Rotina e avisos.</button>
       ) : list.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-fg-muted">Nada nos próximos dias. 🌸</div>
+        <div className="flex flex-1 items-center justify-center text-sm text-fg-muted">Nada nos próximos dias.</div>
       ) : (
         <div className="min-h-0 flex-1 overflow-hidden">
           {list.map((e) => {

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { IconPicker } from "@/components/IconPicker"
+import { Glyph } from "@/components/Glyph"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, ClipboardPaste, CreditCard, Download, Eye, EyeOff,
-  FileUp, KeyRound, Landmark, Lock, Plus, Repeat, Search, ShieldCheck, Trash2, Undo2, Wallet, XCircle,
-} from "lucide-react"
+  FileUp, KeyRound, Landmark, Lock, Plus, Repeat, Search, ShieldCheck, Trash2, Undo2, Wallet, XCircle, Briefcase, UtensilsCrossed } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { useFinance, reapply } from "@/lib/financeStore"
 import {
@@ -186,7 +187,7 @@ function Overview({ month, openCat, goReview }: { month: string; openCat: (id: s
                 const over = budget > 0 && v > budget
                 return (
                   <button key={id} className="group grid w-full grid-cols-[160px_1fr_130px] items-center gap-3 rounded-lg px-1.5 py-1 text-left hover:bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]" onClick={() => openCat(id)} title={budget ? `Orçamento: ${brl(budget)}` : undefined}>
-                    <span className="truncate text-sm">{c?.emoji} {c?.name ?? id}</span>
+                    <span className="flex min-w-0 items-center gap-1.5 truncate text-sm"><Glyph v={c?.emoji} size={14} style={{ color: c?.color }} /> {c?.name ?? id}</span>
                     <span className="relative h-3.5">
                       <span className="absolute inset-y-0 left-0 rounded-r-[4px] transition-all" style={{ width: `${(v / maxCat) * 100}%`, background: over ? "#ff6b8b" : "var(--viz-1)", minWidth: 3 }} />
                       {budget > 0 && <span className="absolute -inset-y-1 w-0.5 rounded bg-fg" style={{ left: `${(budget / maxCat) * 100}%`, opacity: 0.55 }} />}
@@ -222,8 +223,8 @@ function Overview({ month, openCat, goReview }: { month: string; openCat: (id: s
           </div>
           {(ifood > 0 || servicesIn > 0) && (
             <div className="mt-3 space-y-1 border-t border-line pt-2 text-xs text-fg-muted">
-              {ifood > 0 && <div className="flex justify-between"><span>🍔 iFood no mês</span><span className="font-num text-fg">{money(ifood)}</span></div>}
-              {servicesIn > 0 && <div className="flex justify-between" title="Recebimentos marcados na aba Serviços (podem já estar no extrato)"><span>💼 Recebido em Serviços</span><span className="font-num text-fg">{money(servicesIn)}</span></div>}
+              {ifood > 0 && <div className="flex justify-between"><span className="flex items-center gap-1.5"><UtensilsCrossed size={13} /> iFood no mês</span><span className="font-num text-fg">{money(ifood)}</span></div>}
+              {servicesIn > 0 && <div className="flex justify-between" title="Recebimentos marcados na aba Serviços (podem já estar no extrato)"><span className="flex items-center gap-1.5"><Briefcase size={13} /> Recebido em Serviços</span><span className="font-num text-fg">{money(servicesIn)}</span></div>}
             </div>
           )}
         </Card>
@@ -231,7 +232,7 @@ function Overview({ month, openCat, goReview }: { month: string; openCat: (id: s
           <div className="mb-2 font-semibold">Maiores gastos</div>
           {top.length === 0 ? <div className="text-sm text-fg-muted">—</div> : top.map((t) => (
             <div key={t.id} className="flex items-center gap-2 py-1 text-sm">
-              <span>{cats.get(t.categoryId)?.emoji}</span>
+              <Glyph v={cats.get(t.categoryId)?.emoji} size={14} style={{ color: cats.get(t.categoryId)?.color }} />
               <span className="min-w-0 flex-1 truncate">{t.desc}</span>
               <span className="font-num">{money(-t.amount)}</span>
             </div>
@@ -241,7 +242,7 @@ function Overview({ month, openCat, goReview }: { month: string; openCat: (id: s
           <div className="mb-2 flex items-center gap-1.5 font-semibold"><Repeat size={14} /> Assinaturas e fixos</div>
           {rec.length === 0 ? <div className="text-sm text-fg-muted">Aparecem aqui quando um gasto se repete em 2 meses ou mais.</div> : rec.slice(0, 7).map((r) => (
             <div key={r.key} className="flex items-center gap-2 py-1 text-sm">
-              <span>{cats.get(r.categoryId)?.emoji}</span>
+              <Glyph v={cats.get(r.categoryId)?.emoji} size={14} style={{ color: cats.get(r.categoryId)?.color }} />
               <span className="min-w-0 flex-1 truncate">{r.name}</span>
               <span className="font-num">{money(r.amount)}</span>
             </div>
@@ -329,7 +330,7 @@ function Txns({ month, catFilter, setCatFilter }: { month: string; catFilter: st
   const change = (t: Txn, cat: string) => {
     const n = recategorize(t.id, cat, true)
     const c = cats.get(cat)
-    setToast(`Aprendido: "${t.desc.slice(0, 32)}" agora é ${c?.emoji} ${c?.name}${n ? ` (+${n} igua${n > 1 ? "is" : "l"} atualizado${n > 1 ? "s" : ""})` : ""}`)
+    setToast(`Aprendido: "${t.desc.slice(0, 32)}" agora é ${c?.name}${n ? ` (+${n} igua${n > 1 ? "is" : "l"} atualizado${n > 1 ? "s" : ""})` : ""}`)
     setTimeout(() => setToast(""), 3500)
   }
 
@@ -343,8 +344,8 @@ function Txns({ month, catFilter, setCatFilter }: { month: string; catFilter: st
         </select>
         <select className="field !w-auto" value={catFilter} onChange={(e) => setCatFilter(e.target.value)}>
           <option value="">Todas as categorias</option>
-          <option value="review">⚠️ A revisar</option>
-          {data.categories.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+          <option value="review">A revisar</option>
+          {data.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Todos os meses</label>
         <div className="flex-1" />
@@ -372,7 +373,7 @@ function Txns({ month, catFilter, setCatFilter }: { month: string; catFilter: st
                     <td><span className="rounded-md px-1.5 py-0.5 text-[11px] text-white" style={{ background: a?.color ?? "#777" }}>{a?.name ?? "?"}</span></td>
                     <td>
                       <select className={cn("field !w-auto !py-0.5 text-xs", t.review && "!border-[#ffd36e]")} value={t.categoryId} onChange={(e) => change(t, e.target.value)}>
-                        {data.categories.map((x) => <option key={x.id} value={x.id}>{x.emoji} {x.name}</option>)}
+                        {data.categories.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                       </select>
                       {t.review && <AlertTriangle size={12} className="ml-1 inline" color="#ffd36e" />}
                     </td>
@@ -423,7 +424,7 @@ function ManualTxn({ open, onClose, month }: { open: boolean; onClose: () => voi
           <select className="field" value={f.accountId} onChange={(e) => setF({ ...f, accountId: e.target.value })}>{data.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
           <select className="field" value={f.categoryId} onChange={(e) => setF({ ...f, categoryId: e.target.value })}>
             <option value="">Categoria automática</option>
-            {data.categories.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+            {data.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div className="flex justify-end"><ThemedButton size="sm" onClick={save}>Adicionar</ThemedButton></div>
@@ -466,7 +467,7 @@ function Budgets({ month }: { month: string }) {
           return (
             <Card key={c.id} className="!p-3">
               <div className="flex items-center gap-2">
-                <span className="text-lg">{c.emoji}</span>
+                <Glyph v={c.emoji} size={18} style={{ color: c.color }} />
                 <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
                 <span className="text-xs text-fg-muted">R$</span>
                 <input
@@ -574,7 +575,7 @@ function Import({ done }: { done: (month?: string) => void }) {
                   <td className="max-w-[300px] truncate" title={b.t.desc}>{b.t.desc}{b.dup && <span className="ml-1.5 text-[10px]">(já importado)</span>}</td>
                   <td>
                     <select disabled={b.dup} className={cn("field !w-auto !py-0.5 text-xs", b.t.review && !cats[i] && "!border-[#ffd36e]")} value={cats[i] ?? b.t.categoryId} onChange={(e) => setCats({ ...cats, [i]: e.target.value })}>
-                      {data.categories.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+                      {data.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </td>
                   <td className="font-num pr-3 text-right" style={{ color: b.t.amount > 0 ? "#5ee3a1" : undefined }}>{money(b.t.amount, true)}</td>
@@ -655,7 +656,7 @@ function FinSettings() {
   const [msg, setMsg] = useState("")
   const setAcc = (id: string, p: Partial<FinAccount>) => update((d) => ({ ...d, accounts: d.accounts.map((a) => (a.id === id ? { ...a, ...p } : a)) }))
   const setCat = (id: string, p: Partial<FinCategory>) => update((d) => ({ ...d, categories: d.categories.map((c) => (c.id === id ? { ...c, ...p } : c)) }))
-  const catName = new Map(data.categories.map((c) => [c.id, `${c.emoji} ${c.name}`]))
+  const catName = new Map(data.categories.map((c) => [c.id, c.name]))
 
   const savePin = async () => {
     if (pinNew && pinNew.length < 4) { setMsg("Use pelo menos 4 dígitos."); return }
@@ -707,7 +708,7 @@ function FinSettings() {
         <div className="grid gap-1.5 md:grid-cols-2">
           {data.categories.map((c) => (
             <div key={c.id} className="flex items-center gap-1.5">
-              <input className="field !w-11 !px-1 text-center" value={c.emoji} onChange={(e) => setCat(c.id, { emoji: e.target.value })} />
+              <CatIcon value={c.emoji} color={c.color} onPick={(v) => setCat(c.id, { emoji: v })} />
               <input className="field flex-1" value={c.name} onChange={(e) => setCat(c.id, { name: e.target.value })} />
               <select className="field !w-auto text-xs" value={c.kind} onChange={(e) => setCat(c.id, { kind: e.target.value as FinCategory["kind"] })} title="Gasto, entrada ou não contar (ex.: pagar a fatura, investir)">
                 <option value="expense">gasto</option><option value="income">entrada</option><option value="ignore">não conta</option>
@@ -716,7 +717,7 @@ function FinSettings() {
             </div>
           ))}
         </div>
-        <button className="btn mt-2 !py-1 text-xs" onClick={() => update((d) => ({ ...d, categories: [...d.categories, { id: uid(), name: "Nova categoria", emoji: "🏷️", color: "#8a8a8a", kind: "expense" }] }))}><Plus size={12} /> Categoria</button>
+        <button className="btn mt-2 !py-1 text-xs" onClick={() => update((d) => ({ ...d, categories: [...d.categories, { id: uid(), name: "Nova categoria", emoji: "i:Tag", color: "#8a8a8a", kind: "expense" }] }))}><Plus size={12} /> Categoria</button>
       </Card>
 
       <Card>
@@ -739,6 +740,24 @@ function FinSettings() {
         <button className="btn" onClick={exportCSV}><Download size={14} /> Exportar planilha (CSV)</button>
         <button className="btn" style={{ color: "#ff6b8b" }} onClick={() => confirm("Apagar TODOS os lançamentos, regras e importações? (contas e categorias ficam)") && update((d: FinData) => ({ ...d, txns: [], rules: [], imports: [] }))}><Trash2 size={14} /> Apagar lançamentos</button>
       </Card>
+    </div>
+  )
+}
+
+/** botão com o ícone da categoria que abre o seletor de ícones */
+function CatIcon({ value, color, onPick }: { value: string; color: string; onPick: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <button className="field flex !w-11 items-center justify-center !px-1" style={{ color }} onClick={() => setOpen(true)} title="Trocar o ícone"><Glyph v={value} size={16} /></button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onPointerDown={() => setOpen(false)} />
+          <div className="surface absolute top-full left-0 z-50 mt-2 p-3" style={{ background: "color-mix(in srgb, #1b1220 94%, transparent)" }}>
+            <IconPicker value={value} color={color} onPick={(v) => { onPick(v); setOpen(false) }} />
+          </div>
+        </>
+      )}
     </div>
   )
 }

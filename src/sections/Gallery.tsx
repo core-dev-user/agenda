@@ -119,7 +119,7 @@ export default function Gallery() {
                     <img src={mediaUrl(m.file)} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" draggable={false} />
                     <div className="absolute top-2 left-2 flex gap-1">
                       {m.upscaled && <span className="rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white">{m.upscaled === "hd" ? "HD+" : m.upscaled.toUpperCase()}{m.ai ? " · IA" : ""}</span>}
-                      {m.animated && <span className="rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white">{m.living ? "✨ VIVA" : "GIF"}</span>}
+                      {m.animated && <span className="rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white">{m.living ? "VIVA" : "GIF"}</span>}
                       {isWp && <span className="rounded-md bg-brand px-1.5 py-0.5 text-[10px] font-bold text-white">Papel de parede</span>}
                     </div>
                     {p && (
@@ -170,7 +170,7 @@ function UpscaleDialog({ m, onClose, onGo, aiInstalled }: { m: MediaItem | null;
   const factor = target / long
   const ai = aiInstalled && useAI
   return (
-    <Modal open onClose={onClose} title="✨ Melhorar imagem" width={520}>
+    <Modal open onClose={onClose} title="Melhorar imagem" width={520}>
       <div className="space-y-4 text-sm">
         <div className="flex gap-3">
           <img src={mediaUrl(m.file)} className="h-24 w-32 rounded-lg object-cover" />
@@ -195,7 +195,7 @@ function UpscaleDialog({ m, onClose, onGo, aiInstalled }: { m: MediaItem | null;
             {useAI && (
               <>
                 <div className="text-fg-muted">Tipo de imagem</div>
-                <Segmented value={model} onChange={setModel} options={[{ value: "photo", label: "📷 Foto" }, { value: "art", label: "🎨 Desenho / anime / ilustração" }]} />
+                <Segmented value={model} onChange={setModel} options={[{ value: "photo", label: "Foto" }, { value: "art", label: "Desenho / anime / ilustração" }]} />
               </>
             )}
           </div>

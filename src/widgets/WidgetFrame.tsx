@@ -1,6 +1,10 @@
 import { useRef, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
-import { Crop, GripHorizontal, ImagePlus, Move, Settings2, Trash2, Wand2, X } from "lucide-react"
+import {
+  CalendarClock, CalendarDays, ChartColumn, Clapperboard, Clock, CloudSun, Cpu, Crop, Crosshair, Gamepad2, GripHorizontal, Headphones, Image, ImagePlus, Images, Link,
+  ListChecks, MessageCircle, Mic, Move, Music, Newspaper, Settings2, StickyNote, Target, Timer, Trash2, Triangle, UtensilsCrossed, Volleyball, Wallet, Wand2, X,
+  type LucideIcon,
+} from "lucide-react"
 import { useStore } from "@/lib/store"
 import { useTilt } from "@/lib/useTilt"
 import { mediaUrl } from "@/lib/bridge"
@@ -32,45 +36,50 @@ import { MusicStatsWidget } from "./MusicStatsWidget"
 import { GamingWidget } from "./GamingWidget"
 import { MusicClipWidget } from "./MusicClipWidget"
 import { ValAgentWidget, ValAgentSettings } from "./ValAgentWidget"
+import { SysMonWidget, SysMonSettings } from "./SysMonWidget"
+import { hoverClass, lookOfWidget, lookStyle, LookSettings } from "./widgetLook"
+import { GlyphTile } from "@/components/Glyph"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { SECTIONS } from "@/components/sections-meta"
 
-export const WIDGET_META: Record<WidgetType, { label: string; emoji: string }> = {
-  clock: { label: "Relógio", emoji: "🕐" },
-  stopwatch: { label: "Cronômetro / Timer", emoji: "⏱️" },
-  weather: { label: "Clima", emoji: "⛅" },
-  news: { label: "Notícias", emoji: "📰" },
-  photo: { label: "Quadro de fotos", emoji: "🖼️" },
-  calendar: { label: "Calendário", emoji: "📅" },
-  note: { label: "Nota", emoji: "📝" },
-  shortcut: { label: "Atalho de aba", emoji: "🔗" },
-  music: { label: "Música (YouTube Music)", emoji: "🎵" },
-  cs2: { label: "CS2 (jogos e resultados)", emoji: "🎯" },
-  valorant: { label: "Valorant (vlr.gg)", emoji: "🔺" },
-  football: { label: "Futebol (placares ao vivo)", emoji: "⚽" },
-  lyrics: { label: "Letra da música (sincronizada)", emoji: "🎤" },
-  tasks: { label: "Tarefas", emoji: "✅" },
-  discord: { label: "Discord (call atual)", emoji: "🎧" },
-  ifood: { label: "iFood (pedidos)", emoji: "🍔" },
-  whatsapp: { label: "WhatsApp (conversas)", emoji: "💬" },
-  finance: { label: "Finanças (gastos do mês)", emoji: "💸" },
-  agenda: { label: "Agenda do Google (próximos eventos)", emoji: "🗓️" },
-  musicstats: { label: "Música: o que mais ouço", emoji: "📊" },
-  gaming: { label: "Jogando agora", emoji: "🎮" },
-  musicclip: { label: "Clipe da música (YouTube Music)", emoji: "🎬" },
-  valagent: { label: "Valorant: agente (templates)", emoji: "🎯" },
+export const WIDGET_META: Record<WidgetType, { label: string; icon: LucideIcon; color: string }> = {
+  clock: { label: "Relógio", icon: Clock, color: "#8f9bff" },
+  stopwatch: { label: "Cronômetro / Timer", icon: Timer, color: "#ff9a3c" },
+  weather: { label: "Clima", icon: CloudSun, color: "#5aa9ff" },
+  news: { label: "Notícias", icon: Newspaper, color: "#9aa3b5" },
+  photo: { label: "Quadro de fotos", icon: Image, color: "#ff8fb8" },
+  calendar: { label: "Calendário", icon: CalendarDays, color: "#ff6b6b" },
+  note: { label: "Nota", icon: StickyNote, color: "#ffc15e" },
+  shortcut: { label: "Atalho de aba", icon: Link, color: "#a0a0b0" },
+  music: { label: "Música (YouTube Music)", icon: Music, color: "#ff3b5c" },
+  cs2: { label: "CS2 (jogos e resultados)", icon: Crosshair, color: "#de9b35" },
+  valorant: { label: "Valorant (vlr.gg)", icon: Triangle, color: "#ff4655" },
+  football: { label: "Futebol (placares ao vivo)", icon: Volleyball, color: "#2fbf71" },
+  lyrics: { label: "Letra da música (sincronizada)", icon: Mic, color: "#c49bff" },
+  tasks: { label: "Tarefas", icon: ListChecks, color: "#5ee3a1" },
+  discord: { label: "Discord (call atual)", icon: Headphones, color: "#5865F2" },
+  ifood: { label: "iFood (pedidos)", icon: UtensilsCrossed, color: "#EA1D2C" },
+  whatsapp: { label: "WhatsApp (conversas)", icon: MessageCircle, color: "#25D366" },
+  finance: { label: "Finanças (gastos do mês)", icon: Wallet, color: "#1baf7a" },
+  agenda: { label: "Agenda do Google (próximos eventos)", icon: CalendarClock, color: "#4285f4" },
+  musicstats: { label: "Música: o que mais ouço", icon: ChartColumn, color: "#ff5c7a" },
+  gaming: { label: "Jogando agora", icon: Gamepad2, color: "#a78bfa" },
+  musicclip: { label: "Clipe da música (YouTube Music)", icon: Clapperboard, color: "#ff3b5c" },
+  valagent: { label: "Valorant: agente (templates)", icon: Target, color: "#ff4655" },
+  sysmon: { label: "Desempenho do PC (CPU, GPU, RAM)", icon: Cpu, color: "#3ccfcf" },
 }
 
 /** Opções do menu "Adicionar widget": widgets comuns + um atalho para cada aba. */
-export const WIDGET_CHOICES: { type: WidgetType; config: Record<string, any>; label: string; emoji: string; group: "widget" | "atalho" }[] = [
+export const WIDGET_CHOICES: { type: WidgetType; config: Record<string, any>; label: string; icon: LucideIcon; color: string; group: "widget" | "atalho" }[] = [
   ...(Object.keys(WIDGET_META) as WidgetType[])
     .filter((t) => t !== "shortcut")
-    .map((t) => ({ type: t, config: {}, label: WIDGET_META[t].label, emoji: WIDGET_META[t].emoji, group: "widget" as const })),
+    .map((t) => ({ type: t, config: {}, label: WIDGET_META[t].label, icon: WIDGET_META[t].icon, color: WIDGET_META[t].color, group: "widget" as const })),
   ...SECTIONS.filter((s) => !["settings", "music", "discord", "ifood", "whatsapp"].includes(s.id)).map((s) => ({
     type: "shortcut" as WidgetType,
     config: { section: s.id },
     label: s.label,
-    emoji: ({ today: "☀️", finance: "💸", games: "🎮", habits: "✅", studies: "🎓", services: "💼", lists: "🛒", gallery: "🖼️" } as Record<string, string>)[s.id] ?? "🔗",
+    icon: s.icon,
+    color: s.color,
     group: "atalho" as const,
   })),
 ]
@@ -94,7 +103,9 @@ export function WidgetFrame({ w }: { w: Widget }) {
   const [cfgOpen, setCfgOpen] = useState(false)
   const [aspect, setAspect] = useState<number | null>(null)
   const inner = useRef<HTMLDivElement>(null)
-  useTilt(inner, 1, !dragging)
+  const look = lookOfWidget(w.config)
+  const hov = look.hover ?? "theme"
+  useTilt(inner, 1, !dragging && hov === "theme")
 
   // posição para a orientação atual (em pé/deitado), sempre dentro da tela
   const geo = widgetGeo(w, view, layoutRef)
@@ -157,8 +168,8 @@ export function WidgetFrame({ w }: { w: Widget }) {
 
   const bg = w.config.bg as (Partial<Frame> & { id: string }) | undefined
   const bgMedia = bg ? media.find((m) => m.id === bg.id) : undefined
-  const bare = !!w.config.bare
-  const lightText = bare || !!bgMedia
+  const bare = look.surface === "none"
+  const lightText = (bare || !!bgMedia) && !look.text
   const W = { ...w, ...cur }
   let body: ReactNode
   switch (w.type) {
@@ -183,6 +194,7 @@ export function WidgetFrame({ w }: { w: Widget }) {
     case "gaming": body = <GamingWidget w={W} />; break
     case "musicclip": body = <MusicClipWidget w={W} />; break
     case "valagent": body = <ValAgentWidget w={W} />; break
+    case "sysmon": body = <SysMonWidget w={W} />; break
   }
   body = <ErrorBoundary label="widget" compact>{body}</ErrorBoundary>
 
@@ -190,7 +202,7 @@ export function WidgetFrame({ w }: { w: Widget }) {
   return (
     <>
       <motion.div
-        className={cn("group absolute", !locked && "cursor-grab", dragging === "move" && "cursor-grabbing")}
+        className={cn("group absolute", hoverClass(look), !locked && "cursor-grab", dragging === "move" && "cursor-grabbing")}
         style={{
           left: cur.x, top: cur.y, width: cur.w, height: cur.h,
           zIndex: dragging ? 50 : undefined,
@@ -206,10 +218,11 @@ export function WidgetFrame({ w }: { w: Widget }) {
         <div
           ref={inner}
           onDragStart={(e) => e.preventDefault()}
-          className={cn("h-full w-full overflow-hidden will-change-transform", bare ? "rounded-[var(--r)]" : "surface")}
+          className={cn("wl-inner h-full w-full overflow-hidden will-change-transform", bare ? "rounded-[var(--r)]" : "surface")}
           style={{
             transformStyle: "preserve-3d",
-            boxShadow: dragging ? "0 40px 80px -20px rgb(0 0 0 / .6)" : undefined,
+            ...lookStyle(look),
+            ...(dragging ? { boxShadow: "0 40px 80px -20px rgb(0 0 0 / .6)" } : null),
             opacity: w.config.opacity ?? 1,
             textShadow: lightText ? "0 2px 12px rgb(0 0 0 / .55)" : undefined,
             color: lightText ? "#fff" : undefined,
@@ -221,21 +234,24 @@ export function WidgetFrame({ w }: { w: Widget }) {
               {!!bg?.dim && <div className="absolute inset-0" style={{ background: `rgb(0 0 0 / ${bg.dim})` }} />}
             </div>
           )}
-          <div className="glare" />
+          {hov === "theme" && <div className="glare" />}
           <div className="relative h-full w-full">{body}</div>
         </div>
 
+        {!locked && look.chrome === "minimal" && (
+          <button className="btn btn-icon surface absolute top-1.5 right-1.5 z-10 !p-1 opacity-0 transition-opacity group-hover:opacity-70 hover:!opacity-100" onClick={() => setCfgOpen(true)} title="Configurar (segure e arraste o widget para mover)"><Settings2 size={12} /></button>
+        )}
         {!locked && (
           <>
             <div
-              className={cn("absolute -top-3 left-1/2 z-10 -translate-x-1/2 transition-opacity", dragging ? "opacity-100" : "opacity-0 group-hover:opacity-100")}
+              className={cn(look.chrome === "minimal" && "hidden", "absolute -top-3 left-1/2 z-10 -translate-x-1/2 transition-opacity", dragging ? "opacity-100" : "opacity-0 group-hover:opacity-100")}
               title="Segure e arraste para mover"
             >
               <div className="surface flex h-6 items-center gap-1 !rounded-full px-3 text-[11px] text-fg-muted">
                 <GripHorizontal size={14} /> {dragging && dragging !== "move" ? `${Math.round(cur.w)} × ${Math.round(cur.h)}` : "mover"}
               </div>
             </div>
-            <div className="absolute -top-3 right-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className={cn(look.chrome === "minimal" && "hidden", "absolute -top-3 right-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100")}>
               <button className="btn btn-icon surface !p-1.5" onClick={() => setCfgOpen(true)} title="Configurar"><Settings2 size={13} /></button>
               <button className="btn btn-icon surface !p-1.5 hover:!text-red-400" onClick={() => remove(w.id)} title="Remover"><Trash2 size={13} /></button>
             </div>
@@ -288,7 +304,7 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
   const framingMedia = framing ? media.find((m) => m.id === framing) : undefined
 
   return (
-    <Modal open={open} onClose={onClose} title={`${WIDGET_META[w.type].emoji} ${WIDGET_META[w.type].label}`} width={520}>
+    <Modal open={open} onClose={onClose} title={<span className="flex items-center gap-2.5"><GlyphTile icon={WIDGET_META[w.type].icon} color={WIDGET_META[w.type].color} size={24} />{WIDGET_META[w.type].label}</span>} width={520}>
       <div className="space-y-3">
         {w.type === "music" && (
           <>
@@ -298,10 +314,11 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
             <Switch label="Mostrar a fila (A seguir)" checked={!!c.queue} onChange={(v) => set({ queue: v })} />
             <div className="text-xs text-fg-muted">Com o card alto (aumente a altura), a letra aparece rolando com várias linhas e a fila fica embaixo de tudo. Em cards baixos, a letra vira karaokê e a fila abre por cima.</div>
             {c.lyrics !== false && <LyricsLookSettings c={c} set={set} />}
-            <div className="text-xs text-fg-muted">Dica: no widget, o botão 🎬 abre o clipe num widget próprio, e a roda do mouse sobre o ícone de som ajusta o volume.</div>
+            <div className="text-xs text-fg-muted">Dica: no widget, o botão de clipe abre o vídeo num widget próprio, e a roda do mouse sobre o ícone de som ajusta o volume.</div>
           </>
         )}
         {w.type === "valagent" && <ValAgentSettings w={w} set={set} />}
+        {w.type === "sysmon" && <SysMonSettings w={w} set={set} />}
         {w.type === "whatsapp" && (
           <Switch label="Mostrar só conversas com mensagens novas" checked={!!c.onlyUnread} onChange={(v) => set({ onlyUnread: v })} />
         )}
@@ -310,7 +327,7 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
         )}
         {w.type === "tasks" && (
           <div className="text-sm text-fg-muted">
-            Escreva a data junto com a tarefa e ela vai para o dia certo: <b>hoje</b>, <b>amanhã</b>, <b>sexta</b>, <b>dia 12</b>, <b>12/11</b>, com horário como <b>15h</b> ou <b>às 9</b>. Ou toque no 📅 para escolher no calendário.
+            Escreva a data junto com a tarefa e ela vai para o dia certo: <b>hoje</b>, <b>amanhã</b>, <b>sexta</b>, <b>dia 12</b>, <b>12/11</b>, com horário como <b>15h</b> ou <b>às 9</b>. Ou toque no ícone de calendário para escolher o dia.
             Tarefas com horário mostram um aviso do Windows na hora. Clique duas vezes numa tarefa para editar.
           </div>
         )}
@@ -339,9 +356,9 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
             <div className="text-sm text-fg-muted">Estilo</div>
             <div className="grid grid-cols-4 gap-1.5">
               {([
-                ["digital", "Digital", "12:34"], ["analog", "Analógico", "🕐"], ["flip", "Flip", "▤ 12"], ["lcd", "LCD retrô", "▭ 88"],
+                ["digital", "Digital", "12:34"], ["analog", "Analógico", "◷"], ["flip", "Flip", "▤ 12"], ["lcd", "LCD retrô", "▭ 88"],
                 ["minimal", "Minimal", "12.34"], ["stacked", "Empilhado", "12\n34"], ["neon", "Neon", "✦ 12:34"], ["nixie", "Nixie", "▯▯▯▯"],
-                ["words", "Por extenso", "Aa"], ["rings", "Anéis", "◎"], ["gradient", "Degradê", "🌈"],
+                ["words", "Por extenso", "Aa"], ["rings", "Anéis", "◎"], ["gradient", "Degradê", "12:34"],
               ] as const).map(([v, label, ico]) => (
                 <button key={v} onClick={() => set({ style: v })} className={cn("flex flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5 text-[11px]", (c.style ?? "digital") === v ? "border-brand bg-brand/15" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]")}>
                   <span className="font-num text-sm leading-none whitespace-pre">{ico}</span>{label}
@@ -415,14 +432,14 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
                 </div>
               )}
             </div>
-            <button className="btn w-full" onClick={() => setPicker(true)}>🖼️ Escolher fotos ({photos.length})</button>
+            <button className="btn w-full" onClick={() => setPicker(true)}><Images size={14} /> Escolher fotos ({photos.length})</button>
             {photos.length > 0 && (
               <div className="grid grid-cols-2 gap-2">
                 {photos.map((p) => (
                   <div key={p.id} className="overflow-hidden rounded-xl border border-line">
                     <div className="relative h-24">
                       <img src={mediaUrl(p.file)} className="h-full w-full" style={frameImgStyle(frames[p.id])} draggable={false} />
-                      {p.animated && <span className="absolute top-1 left-1 rounded bg-black/60 px-1.5 text-[10px] font-bold text-white">{p.living ? "✨ VIVA" : "GIF"}</span>}
+                      {p.animated && <span className="absolute top-1 left-1 rounded bg-black/60 px-1.5 text-[10px] font-bold text-white">{p.living ? "VIVA" : "GIF"}</span>}
                     </div>
                     <div className="flex flex-wrap gap-1 p-1.5">
                       <button className="btn px-2 py-0.5 text-xs" onClick={() => setFraming(p.id)}><Move size={12} /> Enquadrar</button>
@@ -491,9 +508,9 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
           </div>
         )}
 
+        <LookSettings id={w.id} config={c} />
         <div className="border-t border-line pt-3">
-          <Switch label="Sem fundo (flutuando sobre o papel de parede)" checked={!!c.bare} onChange={(v) => set({ bare: v })} />
-          <Slider label="Opacidade do widget" value={c.opacity ?? 1} min={0.2} max={1} step={0.05} onChange={(v) => set({ opacity: v })} format={(v) => Math.round(v * 100) + "%"} />
+          <Slider label="Opacidade do widget inteiro" value={c.opacity ?? 1} min={0.2} max={1} step={0.05} onChange={(v) => set({ opacity: v })} format={(v) => Math.round(v * 100) + "%"} />
         </div>
       </div>
     </Modal>
@@ -506,7 +523,7 @@ function ListSelect({ value, onChange }: { value: string; onChange: (v: string) 
     <label className="block text-sm">Lista mostrada
       <select className="field mt-1 w-full" value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">Primeira lista</option>
-        {lists.map((l) => <option key={l.id} value={l.id}>{l.emoji} {l.name}</option>)}
+        {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
       </select>
     </label>
   )

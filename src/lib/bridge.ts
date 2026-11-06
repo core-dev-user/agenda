@@ -1,5 +1,16 @@
 // Ponte para o Electron. Em navegador comum, cai em fallbacks.
 type Unsub = () => void
+export interface SysStats {
+  at: number
+  cpu: { usage: number; cores: number[]; speed: number; name?: string; threads?: number }
+  mem: { total: number; used: number }
+  gpu: { name: string; usage: number | null; memUsed: number | null; memTotal: number | null; temp: number | null; power: number | null; powerLimit: number | null; fan: number | null; clock: number | null; vendor: string } | null
+  net: { rx: number; tx: number } | null
+  disk: { busy: number; read: number; write: number } | null
+  drives: { id: string; size: number; free: number }[]
+  top: { name: string; mem: number }[]
+  uptime: number
+}
 export interface AgendaBridge {
   store: { get(): string | null; set(data: string): void; flush?(): void }
   win: {
@@ -26,6 +37,7 @@ export interface AgendaBridge {
     valorantAgent(): Promise<ValAgentNow | null>
     onValorantAgent(cb: (a: ValAgentNow | null) => void): Unsub
   }
+  sysmon: { sub(id: string): Promise<boolean>; unsub(id: string): Promise<boolean>; onData(cb: (d: SysStats) => void): Unsub }
   finance: {
     status(): Promise<{ exists: boolean; hasPin: boolean; unlocked: boolean; secure: boolean; waitMs: number }>
     open(pin?: string): Promise<{ ok: boolean; data?: string | null; error?: "pin" | "wait"; waitMs?: number }>
@@ -179,6 +191,7 @@ const browserFallback: AgendaBridge = {
   app: { autostart: async () => false, openExternal: async (u) => void window.open(u, "_blank"), screenInfo: async () => ({ long: Math.max(screen.width, screen.height) * devicePixelRatio }), show: async () => {}, quit: async () => {} },
   sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
   games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop, valorantAgent: async () => null, onValorantAgent: noop },
+  sysmon: { sub: async () => false, unsub: async () => false, onData: noop },
   finance: {
     status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),
     open: async () => ({ ok: true, data: localStorage.getItem("agenda-finance") }),

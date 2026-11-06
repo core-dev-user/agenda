@@ -2,8 +2,7 @@ import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import {
   ArrowDown, ArrowUp, Banknote, Briefcase, CheckCircle2, ChevronLeft, ChevronRight, CircleDollarSign, ClipboardPaste, FileText, MapPin,
-  Paperclip, Pencil, Plus, Receipt, Search, Trash2, X, Camera,
-} from "lucide-react"
+  Paperclip, Pencil, Plus, Receipt, Search, Trash2, X, Camera, CreditCard, Tag } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge, mediaUrl } from "@/lib/bridge"
 import type { Service } from "@/lib/types"
@@ -218,7 +217,7 @@ export default function Services() {
           </Card>
           <Card>
             <div className="mb-2 text-xs tracking-wide text-fg-muted uppercase">Quem ainda deve</div>
-            {byClient.length === 0 ? <div className="text-sm text-fg-muted">Tudo recebido 🎉</div> : byClient.map(([c, v]) => (
+            {byClient.length === 0 ? <div className="text-sm text-fg-muted">Tudo recebido.</div> : byClient.map(([c, v]) => (
               <button key={c} className="flex w-full justify-between border-b border-line py-1.5 text-left text-sm last:border-0 hover:text-brand" onClick={() => { setQ(c); setScope("all") }}>
                 <span className="truncate">{c}</span><span className="font-num text-[#ffd36e]">{brl(v.open)}</span>
               </button>
@@ -262,7 +261,7 @@ function ServiceDetail({ s, onClose, onSave, onEdit, onDelete }: { s: Service; o
   const st = STATUS_STYLE[statusOf(s)]
   const open = Math.max(0, s.value - s.paid)
   return (
-    <Modal open onClose={() => { if (notes !== s.notes) onSave({ ...s, notes }); onClose() }} title={<span className="flex items-center gap-2">💼 {s.description || s.category || "Serviço"}</span>} width={760}>
+    <Modal open onClose={() => { if (notes !== s.notes) onSave({ ...s, notes }); onClose() }} title={<span className="flex items-center gap-2"><Briefcase size={16} className="text-fg-muted" /> {s.description || s.category || "Serviço"}</span>} width={760}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ background: st.c + "26", color: st.c }}>{open > 0 ? (statusOf(s) === "atrasado" ? "Pagamento atrasado" : "Pagamento pendente") : "Pago"}</span>
@@ -281,8 +280,8 @@ function ServiceDetail({ s, onClose, onSave, onEdit, onDelete }: { s: Service; o
         {(s.address || s.payMethod || s.category) && (
           <div className="flex flex-wrap gap-4 text-sm text-fg-muted">
             {s.address && <span className="flex items-center gap-1"><MapPin size={13} /> {s.address}</span>}
-            {s.category && <span>🏷️ {s.category}</span>}
-            {s.payMethod && <span>💳 {s.payMethod}</span>}
+            {s.category && <span className="flex items-center gap-1"><Tag size={12} /> {s.category}</span>}
+            {s.payMethod && <span className="flex items-center gap-1"><CreditCard size={12} /> {s.payMethod}</span>}
           </div>
         )}
         <div>

@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { Disc3, Mic } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { aggregate, emptyListen, fmtMin } from "@/lib/listening"
 import type { Widget } from "@/lib/types"
@@ -35,8 +36,8 @@ export function MusicStatsWidget({ w }: { w: Widget }) {
             </div>
           )}
           <div className="flex gap-2 text-xs">
-            {week.artists[0] && <span className="min-w-0 flex-1 truncate rounded-lg px-2 py-1" style={{ background: "color-mix(in srgb, var(--fg) 6%, transparent)" }}>🎤 {week.artists[0].name}</span>}
-            {week.genres[0] && <span className="min-w-0 flex-1 truncate rounded-lg px-2 py-1" style={{ background: "color-mix(in srgb, var(--fg) 6%, transparent)" }}>✨ {week.genres[0][0]}</span>}
+            {week.artists[0] && <span className="min-w-0 flex-1 truncate rounded-lg px-2 py-1" style={{ background: "color-mix(in srgb, var(--fg) 6%, transparent)" }}><Mic size={11} className="mr-1 inline text-fg-muted" />{week.artists[0].name}</span>}
+            {week.genres[0] && <span className="min-w-0 flex-1 truncate rounded-lg px-2 py-1" style={{ background: "color-mix(in srgb, var(--fg) 6%, transparent)" }}><Disc3 size={11} className="mr-1 inline text-fg-muted" />{week.genres[0][0]}</span>}
           </div>
           {n > 0 && (
             <div className="min-h-0 flex-1 space-y-1 overflow-hidden">

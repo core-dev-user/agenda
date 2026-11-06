@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react"
+import { TriangleAlert } from "lucide-react"
 import { RotateCcw } from "lucide-react"
 
 /**
@@ -16,7 +17,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; label?: stri
     const retry = () => this.setState((s) => ({ err: null, n: s.n + 1 }))
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center" data-nodrag>
-        <div className={this.props.compact ? "text-xl" : "text-3xl"}>🥀</div>
+        <TriangleAlert size={this.props.compact ? 20 : 30} strokeWidth={1.5} className="text-fg-muted" />
         <div className="text-sm font-semibold">{this.props.compact ? "Este widget teve um problema" : `${this.props.label ?? "Esta aba"} teve um problema`}</div>
         {!this.props.compact && <div className="max-w-md truncate text-xs text-fg-muted" title={String(this.state.err.message)}>{String(this.state.err.message)}</div>}
         <button className="btn !py-1 text-xs" onClick={retry}><RotateCcw size={12} /> Recarregar</button>

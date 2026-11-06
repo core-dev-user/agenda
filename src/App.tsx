@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
+import { Image, Lock, LockOpen, Settings } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge } from "@/lib/bridge"
 import type { MediaItem } from "@/lib/types"
@@ -8,6 +9,7 @@ import { fontFamily } from "@/lib/fonts"
 import { cn, todayISO } from "@/lib/utils"
 import type { WidgetType } from "@/lib/types"
 import { Splash } from "@/components/Splash"
+import { AutoStylePrompt } from "@/components/AutoStylePrompt"
 import { Wallpaper, Overlays } from "@/components/Wallpaper"
 import { CursorLayer } from "@/components/CursorLayer"
 import { Taskbar } from "@/components/Taskbar"
@@ -98,6 +100,7 @@ export default function App() {
       </motion.div>
       <FocusBar />
       <CommandPalette />
+      <AutoStylePrompt />
       <Overlays />
       <AnimatePresence>{showSplash && <Splash />}</AnimatePresence>
       <CursorLayer />
@@ -161,16 +164,16 @@ function DesktopMenu({ at, close }: { at: { x: number; y: number }; close: () =>
       >
         <div className="px-3 py-1 text-xs text-fg-muted uppercase">Adicionar widget</div>
         {WIDGET_CHOICES.filter((c) => c.group === "widget").map((c) => (
-          <button key={c.label} className={item} onClick={() => { add(c.type, c.config); close() }}>{c.emoji} {c.label}</button>
+          <button key={c.label} className={item} onClick={() => { add(c.type, c.config); close() }}><c.icon size={15} className="shrink-0 text-fg-muted" /> <span className="truncate">{c.label}</span></button>
         ))}
         <div className="px-3 pt-2 pb-1 text-xs text-fg-muted uppercase">Atalho de aba</div>
         {WIDGET_CHOICES.filter((c) => c.group === "atalho").map((c) => (
-          <button key={c.label} className={item} onClick={() => { add(c.type, c.config); close() }}>{c.emoji} {c.label}</button>
+          <button key={c.label} className={item} onClick={() => { add(c.type, c.config); close() }}><c.icon size={15} className="shrink-0 text-fg-muted" /> <span className="truncate">{c.label}</span></button>
         ))}
         <div className="my-1 h-px bg-line" />
-        <button className={item} onClick={() => { setSettings({ widgetsLocked: !s.widgetsLocked }); close() }}>{s.widgetsLocked ? "🔓 Destravar widgets" : "🔒 Travar widgets"}</button>
-        <button className={item} onClick={() => { open("gallery"); close() }}>🖼️ Trocar papel de parede</button>
-        <button className={cn(item)} onClick={() => { open("settings"); close() }}>⚙️ Configurações</button>
+        <button className={item} onClick={() => { setSettings({ widgetsLocked: !s.widgetsLocked }); close() }}>{s.widgetsLocked ? <><LockOpen size={15} className="text-fg-muted" /> Destravar widgets</> : <><Lock size={15} className="text-fg-muted" /> Travar widgets</>}</button>
+        <button className={item} onClick={() => { open("gallery"); close() }}><Image size={15} className="text-fg-muted" /> Trocar papel de parede</button>
+        <button className={cn(item)} onClick={() => { open("settings"); close() }}><Settings size={15} className="text-fg-muted" /> Configurações</button>
       </motion.div>
     </>
   )

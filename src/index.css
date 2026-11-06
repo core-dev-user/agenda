@@ -346,3 +346,9 @@ html.dark { --viz-1: #3987e5; --viz-2: #d95926; }
 html.perf-paused *, html.perf-paused *::before, html.perf-paused *::after { animation-play-state: paused !important; }
 html.lite .surface, html.lite .surface::before { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 html.lite [class*="backdrop-blur"] { backdrop-filter: none !important; }
+
+/* =================== aparência própria dos widgets =================== */
+.wl-h-lift > .wl-inner, .wl-h-glow > .wl-inner, .wl-h-border > .wl-inner, .wl-h-none > .wl-inner { transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s, border-color .35s; }
+.wl-h-lift:hover > .wl-inner { transform: translateY(-5px) scale(1.012); box-shadow: 0 28px 60px -20px rgb(0 0 0 / .65) !important; }
+.wl-h-glow:hover > .wl-inner { box-shadow: 0 0 0 1px color-mix(in srgb, var(--wacc, var(--accent)) 70%, transparent), 0 0 38px -4px color-mix(in srgb, var(--wacc, var(--accent)) 60%, transparent) !important; }
+.wl-h-border:hover > .wl-inner { border-color: var(--wacc, var(--accent)) !important; }

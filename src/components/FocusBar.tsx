@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion"
+import { Glyph } from "@/components/Glyph"
 import { Pause, X } from "lucide-react"
 import { useStore, DEFAULT_FOCUS } from "@/lib/store"
 import { useNow } from "@/widgets/Clock"
@@ -38,7 +39,7 @@ export function FocusBar() {
         >
           <span className="relative flex h-2.5 w-2.5"><span className="absolute inset-0 animate-ping rounded-full bg-brand opacity-60" /><span className="relative h-2.5 w-2.5 rounded-full bg-brand" /></span>
           <span className="font-semibold">Modo foco</span>
-          {subject && <span className="text-fg-muted">{subject.emoji} {subject.name}</span>}
+          {subject && <span className="flex items-center gap-1.5 text-fg-muted"><Glyph v={subject.emoji} size={14} /> {subject.name}</span>}
           {timer?.startedAt && <span className="font-num">{fmt(elapsed)}</span>}
           <button className="btn !rounded-full !py-1 text-xs" onClick={stop} title={timer?.startedAt ? "Pausa o cronômetro de estudo e sai do foco" : "Sair do foco"}>
             {timer?.startedAt ? <><Pause size={12} /> Pausar</> : <><X size={12} /> Sair</>}

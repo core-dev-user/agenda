@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
-import { Download, Upload, RotateCcw } from "lucide-react"
+import { Download, Upload, RotateCcw, Ban, Bell, Circle, CircleDashed, CircleDot, Crosshair, Droplets, Flame, Flashlight, Flower2, Gem, Grid3x3, HardDrive, Heart, Image, LayoutGrid, LayoutTemplate, Leaf, MousePointer, MousePointer2, Navigation, Orbit, Palette, PanelBottom, PartyPopper, PawPrint, Plug, Rainbow, Scissors, Snowflake, Sparkles, Spline, Star, Type, Wand2, WandSparkles, Waves, type LucideIcon } from "lucide-react"
+import { GlyphTile } from "@/components/Glyph"
 import { useStore, THEME_PRESETS } from "@/lib/store"
 import { bridge, isDesktop, mediaUrl } from "@/lib/bridge"
 import { FONTS } from "@/lib/fonts"
@@ -19,17 +20,17 @@ import { TemplatesTab } from "./Templates"
 import { IntegrationsTab, RoutineTab, SystemExtra } from "./SettingsExtra"
 
 const TABS = [
-  { id: "templates", label: "Templates", e: "🎭" },
-  { id: "look", label: "Aparência", e: "🎨" },
-  { id: "fonts", label: "Fontes", e: "🔤" },
-  { id: "cursor", label: "Cursor", e: "🖱️" },
-  { id: "taskbar", label: "Barra e ícones", e: "▭" },
-  { id: "wallpaper", label: "Papel de parede", e: "🏞️" },
-  { id: "fx", label: "Sakura e efeitos", e: "🌸" },
-  { id: "widgets", label: "Widgets", e: "🧩" },
-  { id: "routine", label: "Rotina e avisos", e: "🔔" },
-  { id: "integrations", label: "Integrações", e: "🔌" },
-  { id: "system", label: "Sistema", e: "💾" },
+  { id: "templates", label: "Templates", e: LayoutTemplate, c: "#a78bfa" },
+  { id: "look", label: "Aparência", e: Palette, c: "#ff8fb8" },
+  { id: "fonts", label: "Fontes", e: Type, c: "#8f9bff" },
+  { id: "cursor", label: "Cursor", e: MousePointer2, c: "#7cc8ff" },
+  { id: "taskbar", label: "Barra e ícones", e: PanelBottom, c: "#9aa3b5" },
+  { id: "wallpaper", label: "Papel de parede", e: Image, c: "#3ccfcf" },
+  { id: "fx", label: "Sakura e efeitos", e: Flower2, c: "#ff6fa8" },
+  { id: "widgets", label: "Widgets", e: LayoutGrid, c: "#ffb36e" },
+  { id: "routine", label: "Rotina e avisos", e: Bell, c: "#ff6b6b" },
+  { id: "integrations", label: "Integrações", e: Plug, c: "#5ee3a1" },
+  { id: "system", label: "Sistema", e: HardDrive, c: "#8a8a9a" },
 ] as const
 
 const THEMES: { id: ThemeId; label: string; desc: string }[] = [
@@ -48,7 +49,7 @@ export default function SettingsView() {
         {TABS.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} className={cn("relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm", tab === t.id ? "text-fg" : "text-fg-muted hover:text-fg")}>
             {tab === t.id && <motion.span layoutId="settab" className="absolute inset-0 rounded-xl bg-[color-mix(in_srgb,var(--fg)_12%,transparent)]" transition={{ type: "spring", stiffness: 400, damping: 34 }} />}
-            <span className="relative w-5 text-center">{t.e}</span>
+            <GlyphTile icon={t.e} color={t.c} size={22} className="relative" />
             <span className="relative">{t.label}</span>
           </button>
         ))}
@@ -182,39 +183,39 @@ function Fonts() {
 }
 
 /* ------------------------- Cursor ------------------------- */
-const CURSORS: { id: CursorStyle; label: string; e: string }[] = [
-  { id: "system", label: "Padrão do Windows", e: "⬉" },
-  { id: "dot", label: "Ponto", e: "●" },
-  { id: "ring", label: "Anel elástico", e: "◎" },
-  { id: "sakura", label: "Flor de sakura", e: "🌸" },
-  { id: "pixel", label: "Seta pixelada", e: "▶" },
-  { id: "crosshair", label: "Mira", e: "⌖" },
-  { id: "arrow", label: "Seta de vidro", e: "➤" },
-  { id: "heart", label: "Coração", e: "💗" },
-  { id: "star", label: "Estrela", e: "⭐" },
-  { id: "neon", label: "Anel neon", e: "⭕" },
-  { id: "diamond", label: "Diamante", e: "💎" },
-  { id: "bubble", label: "Bolha líquida", e: "🫧" },
-  { id: "paw", label: "Patinha", e: "🐾" },
+const CURSORS: { id: CursorStyle; label: string; e: LucideIcon }[] = [
+  { id: "system", label: "Padrão do Windows", e: MousePointer },
+  { id: "dot", label: "Ponto", e: CircleDot },
+  { id: "ring", label: "Anel elástico", e: Circle },
+  { id: "sakura", label: "Flor de sakura", e: Flower2 },
+  { id: "pixel", label: "Seta pixelada", e: MousePointer2 },
+  { id: "crosshair", label: "Mira", e: Crosshair },
+  { id: "arrow", label: "Seta de vidro", e: Navigation },
+  { id: "heart", label: "Coração", e: Heart },
+  { id: "star", label: "Estrela", e: Star },
+  { id: "neon", label: "Anel neon", e: CircleDashed },
+  { id: "diamond", label: "Diamante", e: Gem },
+  { id: "bubble", label: "Bolha líquida", e: Droplets },
+  { id: "paw", label: "Patinha", e: PawPrint },
 ]
-const EFFECTS: { id: CursorEffect; label: string; e: string }[] = [
-  { id: "none", label: "Nenhum", e: "∅" },
-  { id: "sakura", label: "Pétalas caindo", e: "🌸" },
-  { id: "trail", label: "Rastro de luz", e: "〰️" },
-  { id: "sparkle", label: "Brilhos", e: "✨" },
-  { id: "glow", label: "Holofote", e: "🔦" },
-  { id: "ripple", label: "Ondas no clique", e: "💧" },
-  { id: "pixels", label: "Pixels retrô", e: "👾" },
-  { id: "hearts", label: "Corações", e: "💕" },
-  { id: "stars", label: "Estrelas", e: "🌟" },
-  { id: "bubbles", label: "Bolhas", e: "🫧" },
-  { id: "confetti", label: "Confete", e: "🎉" },
-  { id: "fire", label: "Fogo", e: "🔥" },
-  { id: "snow", label: "Neve", e: "❄️" },
-  { id: "rainbow", label: "Rastro arco-íris", e: "🌈" },
-  { id: "comet", label: "Cometa", e: "☄️" },
-  { id: "leaves", label: "Folhas de outono", e: "🍂" },
-  { id: "magic", label: "Pó mágico", e: "🪄" },
+const EFFECTS: { id: CursorEffect; label: string; e: LucideIcon }[] = [
+  { id: "none", label: "Nenhum", e: Ban },
+  { id: "sakura", label: "Pétalas caindo", e: Flower2 },
+  { id: "trail", label: "Rastro de luz", e: Spline },
+  { id: "sparkle", label: "Brilhos", e: Sparkles },
+  { id: "glow", label: "Holofote", e: Flashlight },
+  { id: "ripple", label: "Ondas no clique", e: Waves },
+  { id: "pixels", label: "Pixels retrô", e: Grid3x3 },
+  { id: "hearts", label: "Corações", e: Heart },
+  { id: "stars", label: "Estrelas", e: Star },
+  { id: "bubbles", label: "Bolhas", e: Droplets },
+  { id: "confetti", label: "Confete", e: PartyPopper },
+  { id: "fire", label: "Fogo", e: Flame },
+  { id: "snow", label: "Neve", e: Snowflake },
+  { id: "rainbow", label: "Rastro arco-íris", e: Rainbow },
+  { id: "comet", label: "Cometa", e: Orbit },
+  { id: "leaves", label: "Folhas de outono", e: Leaf },
+  { id: "magic", label: "Pó mágico", e: WandSparkles },
 ]
 const CLICKS = [
   { id: "auto", label: "Combina com o efeito" }, { id: "ripple", label: "Onda" }, { id: "burst", label: "Explosão de brilho" },
@@ -228,7 +229,7 @@ function Cursor() {
         <div className="grid grid-cols-3 gap-2">
           {CURSORS.map((c) => (
             <button key={c.id} onClick={() => set({ cursorStyle: c.id })} className={cn("flex items-center gap-3 rounded-xl border p-3 text-left text-sm", s.cursorStyle === c.id ? "border-brand bg-brand/15" : "border-line")}>
-              <span className="text-xl">{c.e}</span>{c.label}
+              <c.e size={20} strokeWidth={1.7} className="shrink-0 text-fg-muted" />{c.label}
             </button>
           ))}
         </div>
@@ -237,7 +238,7 @@ function Cursor() {
         <div className="grid grid-cols-4 gap-2">
           {EFFECTS.map((c) => (
             <button key={c.id} onClick={() => set({ cursorEffect: c.id })} className={cn("flex flex-col items-center gap-1 rounded-xl border p-3 text-sm", s.cursorEffect === c.id ? "border-brand bg-brand/15" : "border-line")}>
-              <span className="text-xl">{c.e}</span>{c.label}
+              <c.e size={20} strokeWidth={1.7} className="shrink-0 text-fg-muted" />{c.label}
             </button>
           ))}
         </div>
@@ -358,7 +359,7 @@ function WallpaperTab() {
               <div className="space-y-2">
                 <ThemedButton size="sm" onClick={() => setPick(true)}>Escolher imagem</ThemedButton>
                 {current && !current.animated && (
-                  <button className="btn" onClick={() => setLiving(true)}>✨ Transformar em imagem viva (GIF)</button>
+                  <button className="btn" onClick={() => setLiving(true)}><Wand2 size={14} /> Transformar em imagem viva (GIF)</button>
                 )}
                 <div className="text-xs text-fg-muted">GIFs animados funcionam como papel de parede. Dica: melhore fotos para 8K na aba Imagens.</div>
               </div>
@@ -367,6 +368,12 @@ function WallpaperTab() {
             </div>
           )}
           {wp.type === "color" && <ColorPicker value={wp.color} onChange={(v) => p({ color: v })} swatches={["#1a1020", "#0b0710", "#008080", "#202830", "#2b1055", "#f6e8ee", "#000000"]} />}
+        </div>
+      </Section>
+      <Section title="Personalizar pela foto" desc="Uma IA olha o papel de parede e ajusta tudo para combinar: cores, fontes, cursor, efeitos, o relógio da tela e os widgets (onde ficam e como ficam). Roda no seu PC.">
+        <div className="flex items-center gap-3">
+          <ThemedButton size="sm" disabled={wp.type !== "image" || !wp.image} onClick={() => window.dispatchEvent(new Event("agenda:autostyle"))}><WandSparkles size={15} /> Personalizar automaticamente</ThemedButton>
+          {wp.type !== "image" && <span className="text-xs text-fg-muted">Escolha uma imagem como fundo primeiro.</span>}
         </div>
       </Section>
       <LockClockSection />
@@ -465,7 +472,7 @@ function LockClockSection() {
             ) : (
               <div className="mt-1 space-y-2">
                 <div className="flex items-center gap-2">
-                  <button className="btn !py-1.5 text-sm" disabled={!!prog} onClick={cut}>✂️ {ready ? "Refazer o recorte" : "Separar o assunto da foto"}</button>
+                  <button className="btn !py-1.5 text-sm" disabled={!!prog} onClick={cut}><Scissors size={14} /> {ready ? "Refazer o recorte" : "Separar o assunto da foto"}</button>
                   {ready && !prog && <span className="text-xs text-[#5ee3a1]">Recorte pronto ✓</span>}
                 </div>
                 {prog && (
@@ -497,7 +504,7 @@ function Fx() {
         <Slider label="Duração da abertura" value={sk.splashSeconds} min={2} max={10} step={0.5} onChange={(v) => set({ sakura: { ...sk, splashSeconds: v } })} format={(v) => v + "s"} />
         <Switch label="Pétalas caindo na área de trabalho" checked={sk.ambient} onChange={(v) => set({ sakura: { ...sk, ambient: v } })} />
         <Slider label="Quantidade de pétalas" value={sk.density} min={0.05} max={1} step={0.05} onChange={(v) => set({ sakura: { ...sk, density: v } })} format={(v) => Math.round(v * 100) + "%"} />
-        <button className="btn mt-2" onClick={() => useStore.setState({ splashDone: false })}>🌸 Ver abertura agora</button>
+        <button className="btn mt-2" onClick={() => useStore.setState({ splashDone: false })}><Flower2 size={14} /> Ver abertura agora</button>
       </Section>
       <Section title="Camadas de efeito">
         <Switch label="Linhas de varredura (monitor CRT)" checked={o.scanlines} onChange={(v) => set({ overlay: { ...o, scanlines: v } })} />
@@ -575,7 +582,7 @@ function System() {
           <button className="btn" onClick={() => set({ widgetsLocked: false })}>Destravar widgets</button>
         </div>
       </Section>
-      <div className="text-center text-xs text-fg-muted">Agenda v0.1 · feito com 🌸</div>
+      <div className="text-center text-xs text-fg-muted">Agenda v0.1</div>
     </>
   )
 }

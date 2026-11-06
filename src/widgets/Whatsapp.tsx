@@ -46,7 +46,7 @@ export function WhatsappWidget({ w }: { w: Widget }) {
     <div className="flex h-full flex-col gap-2 p-3">
       {header}
       <div className="min-h-0 flex-1 overflow-auto" data-nodrag>
-        {chats.length === 0 && <div className="p-4 text-center text-sm text-fg-muted">{onlyUnread ? "Nenhuma mensagem nova 🎉" : "Nenhuma conversa na lista."}</div>}
+        {chats.length === 0 && <div className="p-4 text-center text-sm text-fg-muted">{onlyUnread ? "Nenhuma mensagem nova." : "Nenhuma conversa na lista."}</div>}
         {chats.map((c) => (
           <button
             key={c.name}

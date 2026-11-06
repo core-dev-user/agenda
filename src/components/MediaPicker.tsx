@@ -116,7 +116,7 @@ export function MediaPicker({
               <img src={mediaUrl(m.file)} className="h-full w-full object-cover" loading="lazy" draggable={false} />
               <div className="absolute top-1 left-1 flex gap-1">
                 {m.upscaled && <span className="rounded bg-black/60 px-1.5 text-[10px] font-bold text-white">{m.upscaled.toUpperCase()}</span>}
-                {m.animated && <span className="rounded bg-black/60 px-1.5 text-[10px] font-bold text-white">{m.living ? "✨ VIVA" : "GIF"}</span>}
+                {m.animated && <span className="rounded bg-black/60 px-1.5 text-[10px] font-bold text-white">{m.living ? "VIVA" : "GIF"}</span>}
               </div>
               {sel.includes(m.id) && <span className="absolute top-1 right-1 rounded-full bg-brand p-1 text-white"><Check size={12} /></span>}
             </button>

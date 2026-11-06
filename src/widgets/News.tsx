@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, Newspaper } from "lucide-react"
 import { bridge, friendlyError } from "@/lib/bridge"
 import { useStore } from "@/lib/store"
 import type { Widget } from "@/lib/types"
@@ -65,7 +65,7 @@ export function NewsWidget({ w }: { w: Widget }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
-        <div className="font-display font-semibold">📰 {FEEDS.find((f) => f.url === url)?.label ?? items[0]?.source ?? "Notícias"}</div>
+        <div className="font-display flex items-center gap-1.5 font-semibold"><Newspaper size={15} className="text-fg-muted" /> {FEEDS.find((f) => f.url === url)?.label ?? items[0]?.source ?? "Notícias"}</div>
         <button className="btn btn-ghost btn-icon" onClick={run} title="Atualizar"><RefreshCw size={14} className={loading ? "animate-spin" : ""} /></button>
       </div>
       <div className="flex-1 space-y-1 overflow-auto px-2 pb-2">

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, Star, Volleyball } from "lucide-react"
 import { bridge, friendlyError, type SportMatch, type SportTeam } from "@/lib/bridge"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -96,7 +96,7 @@ function Hero({ m, color, fav }: { m: SportMatch; color: string; fav: boolean })
       <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase">
         <LiveDot /> <span className="text-[#ff5a63]">Ao vivo</span>
         {m.detail && <span className="truncate text-fg-muted normal-case">· {m.detail}</span>}
-        {fav && <span className="ml-auto">⭐</span>}
+        {fav && <Star size={12} className="ml-auto fill-current text-amber-300" />}
       </div>
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
@@ -147,7 +147,7 @@ function Row({ m, color, fav }: { m: SportMatch; color: string; fav: boolean }) 
         ) : (
           <span className="font-num text-fg">{when(m.start)}</span>
         )}
-        <div className="truncate text-[10px] text-fg-muted">{fav ? "⭐ " : ""}{m.detail && !live && m.detail !== "Encerrado" ? m.detail : ""}</div>
+        <div className="truncate text-[10px] text-fg-muted">{fav ? "★ " : ""}{m.detail && !live && m.detail !== "Encerrado" ? m.detail : ""}</div>
       </div>
     </button>
   )
@@ -262,7 +262,7 @@ export function SportsWidget({ w }: { w: Widget }) {
 function SportIcon({ sport, color }: { sport: Sport; color: string }) {
   const box = "flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]"
   const bg = { background: `linear-gradient(140deg, ${color}, color-mix(in srgb, ${color} 45%, #000))`, boxShadow: `0 4px 12px -3px color-mix(in srgb, ${color} 60%, transparent), inset 0 1px 0 rgb(255 255 255 / .35)` }
-  if (sport === "football") return <div className={box} style={bg}><span className="text-[17px] leading-none">⚽</span></div>
+  if (sport === "football") return <div className={box} style={bg}><Volleyball size={17} /></div>
   if (sport === "valorant")
     return (
       <div className={box} style={bg}>
@@ -320,7 +320,7 @@ export function SportsSettings({ w, set }: { w: Widget; set: (p: Record<string, 
       </label>
       <Switch label="Mostrar só os jogos dos meus times" checked={!!c.onlyFav} onChange={(v) => set({ onlyFav: v })} />
       <div className="text-xs text-fg-muted">
-        Os jogos dos seus times aparecem com ⭐ e sobem para o topo quando estão ao vivo. Clique numa partida para abrir no {META[w.type as Sport].site}.
+        Os jogos dos seus times aparecem com estrela e sobem para o topo quando estão ao vivo. Clique numa partida para abrir no {META[w.type as Sport].site}.
         {w.type === "cs2" && " Dados de jogos via Liquipedia (a HLTV não permite leitura automática)."}
       </div>
     </>

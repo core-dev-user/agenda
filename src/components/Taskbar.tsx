@@ -8,6 +8,7 @@ import type { SectionId, WidgetType } from "@/lib/types"
 import { SECTIONS } from "./sections-meta"
 import { Logo } from "./Logo"
 import { AppIcon } from "./AppIcon"
+import { GlyphTile } from "./Glyph"
 import { WIDGET_CHOICES } from "@/widgets/WidgetFrame"
 import { useNow } from "@/widgets/Clock"
 import { BellIcon, NotificationPanel } from "./NotificationCenter"
@@ -288,7 +289,7 @@ function WidgetMenu({ close }: { close: () => void }) {
           <div className="grid grid-cols-2 gap-1.5">
             {WIDGET_CHOICES.filter((c) => c.group === g).map((c) => (
               <button key={c.type + c.label} onClick={() => { add(c.type, c.config); close() }} className="flex items-center gap-2 rounded-xl p-2.5 text-left text-sm transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]">
-                <span className="text-xl">{c.emoji}</span>
+                <GlyphTile icon={c.icon} color={c.color} size={28} />
                 {c.label}
               </button>
             ))}

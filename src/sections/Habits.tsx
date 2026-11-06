@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
+import { Glyph, iconKey } from "@/components/Glyph"
 import { AnimatePresence, motion } from "framer-motion"
-import { Archive, Check, ChevronLeft, ChevronRight, Flame, Pencil, Plus, Trash2 } from "lucide-react"
+import { Archive, Check, ChevronLeft, ChevronRight, Flame, Pencil, Plus, Trash2, Flower2 } from "lucide-react"
 import { useStore } from "@/lib/store"
 import type { Habit } from "@/lib/types"
 import { cn, MONTHS, todayISO, uid, WEEKDAYS } from "@/lib/utils"
@@ -56,7 +57,7 @@ export default function Habits() {
         <button className="btn btn-ghost text-sm" onClick={() => setRef(new Date())}>Hoje</button>
         <div className="flex-1" />
         <Segmented value={view} onChange={setView} options={[{ value: "grid", label: "Grade" }, { value: "calendar", label: "Calendário" }]} />
-        <ThemedButton size="sm" onClick={() => setEdit({ id: "", name: "", color: "#8cf0b0", emoji: "✨" })}><Plus size={15} /> Hábito</ThemedButton>
+        <ThemedButton size="sm" onClick={() => setEdit({ id: "", name: "", color: "#8cf0b0", emoji: "i:Sparkles" })}><Plus size={15} /> Hábito</ThemedButton>
       </div>
 
       <div className="flex gap-3">
@@ -86,7 +87,7 @@ export default function Habits() {
                       {on ? (
                         <motion.span key="c" initial={{ scale: 0, rotate: -40 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 600, damping: 22 }}><Check size={15} strokeWidth={3} color="#fff" /></motion.span>
                       ) : (
-                        <motion.span key="e" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>{h.emoji}</motion.span>
+                        <motion.span key="e" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} style={{ color: h.color }}><Glyph v={h.emoji} size={15} /></motion.span>
                       )}
                     </AnimatePresence>
                   </span>
@@ -110,14 +111,14 @@ export default function Habits() {
                   </div>
                 )
               })}
-              <div className="flex items-end justify-center pb-1.5 text-sm" title="Sequência atual">🔥</div>
+              <div className="flex items-end justify-center pb-1.5 text-orange-400" title="Sequência atual"><Flame size={14} /></div>
 
               {active.map((h) => {
                 const monthDone = Array.from({ length: days }, (_, i) => (log[iso(y, m, i + 1)] ?? []).includes(h.id)).filter(Boolean).length
                 return (
                   <div key={h.id} className="group contents">
                     <div className="sticky left-0 z-10 flex min-w-0 items-center gap-2 border-t border-line px-3 py-1.5" style={{ background: "var(--field)" }}>
-                      <span className="text-base">{h.emoji}</span>
+                      <span style={{ color: h.color }}><Glyph v={h.emoji} size={16} /></span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm">{h.name}</span>
                         <span className="block text-[10px] text-fg-muted">{monthDone} no mês</span>
@@ -177,7 +178,7 @@ export default function Habits() {
                   <div className="mt-auto flex flex-wrap gap-0.5">
                     {active.map((h) => <span key={h.id} className="h-2 w-2 rounded-full" style={{ background: done.includes(h.id) ? h.color : "color-mix(in srgb, var(--fg) 12%, transparent)" }} />)}
                   </div>
-                  {pct === 1 && <span className="absolute top-1.5 right-2 text-sm">🌸</span>}
+                  {pct === 1 && <Flower2 size={13} className="absolute top-1.5 right-2 text-brand" />}
                 </motion.button>
               )
             })}
@@ -189,7 +190,7 @@ export default function Habits() {
         <details className="text-sm text-fg-muted">
           <summary className="cursor-pointer">Arquivados</summary>
           {habits.filter((h) => h.archived).map((h) => (
-            <div key={h.id} className="flex items-center gap-2 py-1">{h.emoji} {h.name}
+            <div key={h.id} className="flex items-center gap-2 py-1"><Glyph v={h.emoji} size={14} /> {h.name}
               <button className="btn btn-ghost text-xs" onClick={() => setKey("habits", (hs) => hs.map((x) => (x.id === h.id ? { ...x, archived: false } : x)))}>Restaurar</button>
             </div>
           ))}
@@ -202,7 +203,7 @@ export default function Habits() {
             const on = (log[day!] ?? []).includes(h.id)
             return (
               <button key={h.id} onClick={() => toggle(h.id, day!)} className="flex w-full items-center gap-3 rounded-xl border border-line p-3 text-left transition-colors" style={on ? { background: h.color + "33", borderColor: h.color } : {}}>
-                <span className="text-xl">{h.emoji}</span>
+                <span style={{ color: h.color }}><Glyph v={h.emoji} size={20} /></span>
                 <span className="flex-1">{h.name}</span>
                 <span className={cn("flex h-6 w-6 items-center justify-center rounded-full border-2", on ? "border-transparent" : "border-line")} style={on ? { background: h.color } : {}}>{on && "✓"}</span>
               </button>
@@ -216,7 +217,7 @@ export default function Habits() {
   )
 }
 
-const EMOJIS = ["✨", "💧", "🏃", "📚", "🧘", "🥗", "😴", "💪", "🎸", "✍️", "🧠", "🚭", "💊", "🌞", "🧹", "💰", "🙏", "🎨", "🐶", "📵"]
+const HABIT_ICONS = ["Sparkles", "Droplet", "Footprints", "BookOpen", "Sunrise", "Salad", "Moon", "Dumbbell", "Guitar", "PenLine", "Brain", "CigaretteOff", "Pill", "Sun", "Brush", "PiggyBank", "HandHeart", "Palette", "Dog", "PhoneOff", "Bike", "Languages", "Code", "Coffee"]
 
 function HabitEditor({ habit, onClose }: { habit: Habit | null; onClose: () => void }) {
   const setKey = useStore((s) => s.set)
@@ -233,7 +234,7 @@ function HabitEditor({ habit, onClose }: { habit: Habit | null; onClose: () => v
         <div className="space-y-4">
           <input autoFocus className="field w-full text-lg" placeholder="Nome do hábito" value={cur.name} onChange={(e) => setH({ ...cur, name: e.target.value })} onKeyDown={(e) => e.key === "Enter" && save()} />
           <div className="flex flex-wrap gap-1">
-            {EMOJIS.map((e) => <button key={e} onClick={() => setH({ ...cur, emoji: e })} className={cn("rounded-lg p-1.5 text-xl", cur.emoji === e && "bg-brand/40")}>{e}</button>)}
+            {HABIT_ICONS.map((e) => <button key={e} onClick={() => setH({ ...cur, emoji: "i:" + e })} className={cn("rounded-lg p-2 transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]", iconKey(cur.emoji) === e && "bg-brand/30 ring-1 ring-brand")} style={iconKey(cur.emoji) === e ? { color: cur.color } : undefined}><Glyph v={"i:" + e} size={18} /></button>)}
           </div>
           <ColorPicker value={cur.color} onChange={(c) => setH({ ...cur, color: c })} />
           <div className="flex justify-between">

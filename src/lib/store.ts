@@ -106,6 +106,7 @@ const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
   gaming: [360, 210],
   musicclip: [480, 296],
   valagent: [320, 440],
+  sysmon: [360, 260],
 }
 
 const defaultWidgets = (): Widget[] => [

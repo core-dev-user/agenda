@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Glyph } from "@/components/Glyph"
 import { AnimatePresence, motion } from "framer-motion"
 import { Check, ExternalLink, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react"
 import { useStore } from "@/lib/store"
@@ -36,7 +37,7 @@ export default function Lists() {
           const tot = l.items.reduce((a, i) => a + i.price * i.qty, 0)
           return (
             <button key={l.id} onClick={() => setSel(l.id)} className={cn("w-full rounded-xl p-2.5 text-left transition-colors", l.id === selId ? "bg-[color-mix(in_srgb,var(--fg)_12%,transparent)]" : "hover:bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]")}>
-              <div className="flex items-center gap-2"><span>{l.emoji}</span><span className="flex-1 truncate font-medium">{l.name}</span></div>
+              <div className="flex items-center gap-2"><Glyph v={l.emoji} size={16} className="text-fg-muted" /><span className="flex-1 truncate font-medium">{l.name}</span></div>
               <div className="font-num mt-0.5 text-xs text-fg-muted">{l.items.filter((i) => i.checked).length}/{l.items.length} · {brl(tot)}</div>
             </button>
           )
@@ -54,7 +55,7 @@ export default function Lists() {
 /** Criar lista: nome + ícone escolhido numa grade de emojis. */
 function ListDialog({ onClose, onSave }: { onClose: () => void; onSave: (name: string, emoji: string) => void }) {
   const [name, setName] = useState("")
-  const [emoji, setEmoji] = useState("🛍️")
+  const [emoji, setEmoji] = useState("i:ShoppingBag")
   return (
     <Modal open onClose={onClose} title="Nova lista" width={420}>
       <div className="space-y-3">
@@ -85,8 +86,8 @@ function IconButton({ value, onPick }: { value: string; onPick: (e: string) => v
   const [open, setOpen] = useState(false)
   return (
     <div className="relative">
-      <button className="group relative flex h-12 w-12 items-center justify-center rounded-2xl text-3xl transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]" title="Trocar o ícone" onClick={() => setOpen(true)}>
-        {value}
+      <button className="group relative flex h-12 w-12 items-center justify-center rounded-2xl transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]" title="Trocar o ícone" onClick={() => setOpen(true)}>
+        <Glyph v={value} size={26} />
         <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-white opacity-0 transition-opacity group-hover:opacity-100"><Pencil size={10} /></span>
       </button>
       <AnimatePresence>

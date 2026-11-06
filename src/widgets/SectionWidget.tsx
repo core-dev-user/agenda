@@ -1,4 +1,5 @@
 import { ArrowUpRight, Check } from "lucide-react"
+import { Glyph } from "@/components/Glyph"
 import { useStore } from "@/lib/store"
 import { mediaUrl } from "@/lib/bridge"
 import type { SectionId, Widget } from "@/lib/types"
@@ -60,7 +61,7 @@ function HabitsPreview() {
               <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors", on ? "border-transparent" : "border-line")} style={on ? { background: h.color } : {}}>
                 {on && <Check size={12} strokeWidth={3} className="text-black/70" />}
               </span>
-              <span>{h.emoji}</span>
+              <Glyph v={h.emoji} size={14} style={{ color: h.color }} />
               <span className={cn("truncate", on && "text-fg-muted line-through")}>{h.name}</span>
             </button>
           )
@@ -85,7 +86,7 @@ function StudiesPreview() {
       <div className="text-xs text-fg-muted">Últimos 7 dias: <span className="font-num text-fg">{(weekTotal / 60).toFixed(1)}h</span></div>
       {rows.slice(0, 5).map(({ s, total }) => (
         <div key={s.id} className="text-sm">
-          <div className="flex justify-between"><span className="truncate">{s.emoji} {s.name}</span><span className="font-num text-xs text-fg-muted">{(total / 60).toFixed(1)}/{s.goalHours}h</span></div>
+          <div className="flex justify-between"><span className="flex min-w-0 items-center gap-1.5 truncate"><Glyph v={s.emoji} size={13} style={{ color: s.color }} /> {s.name}</span><span className="font-num text-xs text-fg-muted">{(total / 60).toFixed(1)}/{s.goalHours}h</span></div>
           <div className="mt-0.5 h-1.5 overflow-hidden rounded-full" style={{ background: muted }}>
             <div className="h-full rounded-full" style={{ width: Math.min(100, (total / 60 / Math.max(1, s.goalHours)) * 100) + "%", background: s.color }} />
           </div>
@@ -129,7 +130,7 @@ function ServicesPreview() {
           <span className="font-num text-[#ffd36e]">{brl(s.value - s.paid)}</span>
         </div>
       ))}
-      {late > 0 && <div className="text-xs text-[#ff6b8b]">⚠ {late} pagamento(s) em atraso</div>}
+      {late > 0 && <div className="text-xs text-[#ff6b8b]">{late} pagamento(s) em atraso</div>}
     </div>
   )
 }
@@ -145,11 +146,11 @@ function ListsPreview({ listId }: { listId?: string }) {
   return (
     <div className="flex h-full flex-col gap-1.5">
       <div className="flex justify-between text-xs text-fg-muted">
-        <span>{l.emoji} {l.name} · {pending.length} pendente(s)</span>
+        <span className="flex items-center gap-1.5"><Glyph v={l.emoji} size={13} /> {l.name} · {pending.length} pendente(s)</span>
         <span className="font-num text-[#ffd36e]">{brl(remaining)}</span>
       </div>
       <div className="space-y-0.5 overflow-auto">
-        {pending.length === 0 && <div className="text-sm text-fg-muted">Tudo comprado 🎉</div>}
+        {pending.length === 0 && <div className="text-sm text-fg-muted">Tudo comprado.</div>}
         {pending.map((i) => (
           <button key={i.id} onClick={() => check(i.id)} className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left text-sm hover:bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]">
             <span className="h-4.5 w-4.5 shrink-0 rounded-md border border-line" />

@@ -1,4 +1,5 @@
 import { useEffect } from "react"
+import { Glyph } from "@/components/Glyph"
 import { Lock } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { useFinance } from "@/lib/financeStore"
@@ -43,7 +44,7 @@ export function FinanceWidget({ w }: { w: Widget }) {
           const over = !!c?.budget && v > c.budget
           return (
             <div key={id}>
-              <div className="flex justify-between text-xs"><span className="truncate">{c?.emoji} {c?.name}</span><span className="font-num">{money(v)}</span></div>
+              <div className="flex justify-between text-xs"><span className="flex min-w-0 items-center gap-1.5 truncate"><Glyph v={c?.emoji} size={12} style={{ color: c?.color }} /> {c?.name}</span><span className="font-num">{money(v)}</span></div>
               <div className="relative mt-0.5 h-1.5 rounded-full bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]">
                 <div className="h-full rounded-full" style={{ width: `${(v / max) * 100}%`, background: over ? "#ff6b8b" : "var(--viz-1)" }} />
                 {c?.budget ? <div className="absolute -top-0.5 h-2.5 w-0.5 rounded bg-fg opacity-60" style={{ left: `${(c.budget / max) * 100}%` }} /> : null}

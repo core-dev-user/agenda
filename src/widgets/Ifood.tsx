@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, Map as MapIcon } from "lucide-react"
 import { bridge, type IfoodOrder, type IfoodRead } from "@/lib/bridge"
 import { useStore } from "@/lib/store"
 import type { Widget } from "@/lib/types"
@@ -123,7 +123,7 @@ export function IfoodWidget({ w }: { w: Widget }) {
           </span>
         </button>
       ) : active && !data.onOrders ? (
-        <button className="btn !py-1 text-xs" onClick={() => { const o = active; if (o.link) bridge.webapp.nav("ifood", o.link); else bridge.webapp.nav("ifood", "https://www.ifood.com.br/pedidos"); open("ifood") }}>🗺️ Ver o mapa do entregador</button>
+        <button className="btn !py-1 text-xs" onClick={() => { const o = active; if (o.link) bridge.webapp.nav("ifood", o.link); else bridge.webapp.nav("ifood", "https://www.ifood.com.br/pedidos"); open("ifood") }}><MapIcon size={12} /> Ver o mapa do entregador</button>
       ) : null}
       {!active && (
         <div className="rounded-[calc(var(--r)*0.6)] border border-line p-3 text-center text-sm text-fg-muted">

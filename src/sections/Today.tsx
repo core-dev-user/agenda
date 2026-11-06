@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
+import { Glyph } from "@/components/Glyph"
 import { motion } from "framer-motion"
-import { Check, Lock, Play, Plus } from "lucide-react"
+import { Check, Lock, Play, Plus, Briefcase, CalendarDays, GraduationCap, ListChecks, Sprout, Star, Trophy, Wallet } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge, type SportMatch } from "@/lib/bridge"
 import { useFinance } from "@/lib/financeStore"
@@ -67,7 +68,7 @@ function WeatherChip({ city }: { city: string }) {
 }
 
 function Title({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
-  return <div className="mb-2 flex items-center gap-2"><div className="flex-1 font-semibold">{children}</div>{right}</div>
+  return <div className="mb-2 flex items-center gap-2"><div className="flex flex-1 items-center gap-2 font-semibold">{children}</div>{right}</div>
 }
 
 function Agenda({ now }: { now: Date }) {
@@ -89,7 +90,7 @@ function Agenda({ now }: { now: Date }) {
   }
   return (
     <Card>
-      <Title>🗓️ Agenda</Title>
+      <Title><CalendarDays size={15} className="text-fg-muted" /> Agenda</Title>
       {!feeds.length ? (
         <div className="text-sm text-fg-muted">Conecte sua agenda do Google em <button className="underline" onClick={() => open("settings")}>Configurações → Rotina e avisos</button>.</div>
       ) : (
@@ -111,8 +112,8 @@ function TasksToday({ today }: { today: string }) {
   const add = () => { if (!txt.trim()) return; setKey("tasks", (ts) => [...ts, { id: uid(), title: txt.trim(), date: today, done: false, createdAt: Date.now() }]); setTxt("") }
   return (
     <Card>
-      <Title right={doneToday > 0 && <span className="text-xs text-fg-muted">{doneToday} feita{doneToday > 1 ? "s" : ""} hoje</span>}>✅ Tarefas</Title>
-      {list.length === 0 && <div className="mb-2 text-sm text-fg-muted">Tudo em dia. 🌸</div>}
+      <Title right={doneToday > 0 && <span className="text-xs text-fg-muted">{doneToday} feita{doneToday > 1 ? "s" : ""} hoje</span>}><ListChecks size={15} className="text-fg-muted" /> Tarefas</Title>
+      {list.length === 0 && <div className="mb-2 text-sm text-fg-muted">Tudo em dia.</div>}
       {list.map((t) => (
         <button key={t.id} className="flex w-full items-center gap-2 py-1 text-left text-sm" onClick={() => setKey("tasks", (ts) => ts.map((x) => (x.id === t.id ? { ...x, done: true, doneAt: Date.now() } : x)))}>
           <span className="flex h-4.5 w-4.5 items-center justify-center rounded-md border border-line" style={{ borderColor: t.color }} />
@@ -137,13 +138,13 @@ function HabitsToday({ today }: { today: string }) {
   const done = habits.filter((h) => log.includes(h.id)).length
   return (
     <Card>
-      <Title right={<span className="font-num text-xs text-fg-muted">{done}/{habits.length}</span>}>🌱 Hábitos</Title>
+      <Title right={<span className="font-num text-xs text-fg-muted">{done}/{habits.length}</span>}><Sprout size={15} className="text-fg-muted" /> Hábitos</Title>
       <div className="flex flex-wrap gap-1.5">
         {habits.map((h) => {
           const on = log.includes(h.id)
           return (
             <motion.button whileTap={{ scale: 0.9 }} key={h.id} onClick={() => toggle(h.id)} className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-colors" style={{ borderColor: on ? h.color : "var(--line)", background: on ? `color-mix(in srgb, ${h.color} 22%, transparent)` : undefined }}>
-              {on ? <Check size={13} style={{ color: h.color }} /> : <span>{h.emoji}</span>} {h.name}
+              {on ? <Check size={13} style={{ color: h.color }} /> : <Glyph v={h.emoji} size={13} />} {h.name}
             </motion.button>
           )
         })}
@@ -164,12 +165,12 @@ function StudyToday({ today }: { today: string }) {
   const next = [...subjects].sort((a, b) => pct(a) - pct(b))[0]
   return (
     <Card>
-      <Title right={<span className="font-num text-xs text-fg-muted">{mins} min hoje</span>}>🎓 Estudos</Title>
+      <Title right={<span className="font-num text-xs text-fg-muted">{mins} min hoje</span>}><GraduationCap size={15} className="text-fg-muted" /> Estudos</Title>
       {timer ? (
         <button className="text-sm underline" onClick={() => open("studies")}>Sessão em andamento: {subjects.find((s) => s.id === timer.subjectId)?.name}</button>
       ) : (
         <div className="flex items-center gap-2 text-sm">
-          <span className="min-w-0 flex-1 truncate">Sugestão: <b>{next.emoji} {next.name}</b> <span className="text-fg-muted">({Math.round(pct(next) * 100)}% da meta)</span></span>
+          <span className="min-w-0 flex-1 truncate">Sugestão: <b>{next.name}</b> <span className="text-fg-muted">({Math.round(pct(next) * 100)}% da meta)</span></span>
           <button className="btn !py-1 text-xs" onClick={() => { setKey("studyTimer", { subjectId: next.id, startedAt: Date.now(), elapsed: 0 }); open("studies") }}><Play size={12} /> Começar</button>
         </div>
       )}
@@ -184,7 +185,7 @@ function ServicesToday({ today }: { today: string }) {
   if (!due.length) return null
   return (
     <Card>
-      <Title>💼 A receber</Title>
+      <Title><Briefcase size={15} className="text-fg-muted" /> A receber</Title>
       {due.slice(0, 5).map((s) => (
         <button key={s.id} className="flex w-full items-center gap-2 py-0.5 text-left text-sm" onClick={() => open("services")}>
           <span className="min-w-0 flex-1 truncate">{s.client || s.description}</span>
@@ -211,10 +212,10 @@ function GamesToday() {
   const games = useMemo(() => (list ?? []).filter((m) => m.state === "live" || sameDay(m.start, day)).sort((a, b) => Number(isFav(b)) - Number(isFav(a)) || Number(b.state === "live") - Number(a.state === "live") || a.start - b.start).slice(0, 8), [list, favs.join()])
   return (
     <Card>
-      <Title>⚽ Jogos de hoje</Title>
+      <Title><Trophy size={15} className="text-fg-muted" /> Jogos de hoje</Title>
       {!list ? <div className="animate-pulse text-sm text-fg-muted">Carregando…</div> : games.length === 0 ? <div className="text-sm text-fg-muted">Nenhum jogo hoje nas ligas que você acompanha.</div> : games.map((m) => (
         <button key={m.id} className="flex w-full items-center gap-2 py-1 text-left text-sm" onClick={() => bridge.app.openExternal(m.link)}>
-          {isFav(m) && <span title="Favorito">⭐</span>}
+          {isFav(m) && <Star size={12} className="fill-current text-amber-300" />}
           <span className="min-w-0 flex-1 truncate">{m.a.short || m.a.name} <span className="text-fg-muted">x</span> {m.b.short || m.b.name}</span>
           {m.state === "live" ? <span className="font-num font-semibold text-[#ff5a63]">{m.a.score ?? 0} - {m.b.score ?? 0} ●</span> : m.state === "done" ? <span className="font-num text-fg-muted">{m.a.score} - {m.b.score}</span> : <span className="font-num text-xs text-fg-muted">{hm(m.start)}</span>}
         </button>
@@ -228,7 +229,7 @@ function MoneyToday() {
   const open = useStore((x) => x.openWindow)
   useEffect(() => { if (fin.status === "idle") fin.check() }, [])
   if (fin.status !== "open") return (
-    <Card><Title>💸 Finanças</Title><button className="flex items-center gap-1.5 text-sm text-fg-muted" onClick={() => open("finance")}><Lock size={13} /> Bloqueado, abra a aba para ver</button></Card>
+    <Card><Title><Wallet size={15} className="text-fg-muted" /> Finanças</Title><button className="flex items-center gap-1.5 text-sm text-fg-muted" onClick={() => open("finance")}><Lock size={13} /> Bloqueado, abra a aba para ver</button></Card>
   )
   if (!fin.data.txns.length) return null
   const m = ym(new Date())
@@ -238,10 +239,10 @@ function MoneyToday() {
   const money = (n: number) => (fin.hidden ? "R$ ••••" : brl(n))
   return (
     <Card>
-      <Title>💸 Finanças do mês</Title>
+      <Title><Wallet size={15} className="text-fg-muted" /> Finanças do mês</Title>
       <button className="w-full text-left" onClick={() => open("finance")}>
         <div className="font-num text-2xl font-semibold">{money(s.expense)}</div>
-        <div className="text-xs text-fg-muted">gastos{cat ? ` · mais em ${cat.emoji} ${cat.name} (${money(top[1])})` : ""}</div>
+        <div className="text-xs text-fg-muted">gastos{cat ? ` · mais em ${cat.name} (${money(top[1])})` : ""}</div>
       </button>
     </Card>
   )

@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Glyph } from "../Glyph"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { X } from "lucide-react"
@@ -167,7 +168,7 @@ export function Stat({ label, value, tone, sub }: { label: string; value: React.
 export function Empty({ icon, title, children }: { icon: React.ReactNode; title: string; children?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-14 text-center text-fg-muted">
-      <div className="text-4xl opacity-70">{icon}</div>
+      <div className="opacity-60">{typeof icon === "string" ? <Glyph v={icon} size={40} strokeWidth={1.3} /> : icon}</div>
       <div className="font-display text-lg text-fg">{title}</div>
       {children}
     </div>

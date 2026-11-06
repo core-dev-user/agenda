@@ -84,7 +84,7 @@ export function WeatherWidget({ w }: { w: Widget }) {
     return () => { alive = false; clearInterval(id) }
   }, [city])
 
-  if (err) return <div className="flex h-full items-center justify-center p-4 text-center text-sm text-fg-muted">☁️ {err}<br />({city})</div>
+  if (err) return <div className="flex h-full items-center justify-center p-4 text-center text-sm text-fg-muted"><Cloud size={20} className="mx-auto mb-1" />{err}<br />({city})</div>
   if (!wx) return <div className="flex h-full items-center justify-center text-sm text-fg-muted">Carregando clima…</div>
   const big = w.h > 260
   return (

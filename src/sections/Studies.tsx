@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { Glyph } from "@/components/Glyph"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   ArrowLeft, BookOpen, Check, ClipboardPaste, Clock, ExternalLink, FileText, Flame, GraduationCap, Music2, Paperclip, Pause, Pencil,
@@ -89,7 +90,7 @@ export default function Studies() {
       {timerSubject && (
         <button className="flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left" style={{ borderColor: timerSubject.color, background: `color-mix(in srgb, ${timerSubject.color} 14%, transparent)` }} onClick={() => setOpenId(timerSubject.id)}>
           <span className="relative flex h-3 w-3"><span className={cn("absolute inset-0 rounded-full opacity-70", timer?.startedAt && "animate-ping")} style={{ background: timerSubject.color }} /><span className="relative h-3 w-3 rounded-full" style={{ background: timerSubject.color }} /></span>
-          <span className="flex-1 text-sm">{timer?.startedAt ? "Cronômetro ativo" : "Sessão pausada"} em <b>{timerSubject.emoji} {timerSubject.name}</b></span>
+          <span className="flex-1 text-sm">{timer?.startedAt ? "Cronômetro ativo" : "Sessão pausada"} em <b>{timerSubject.name}</b></span>
           <span className="font-num text-xl font-semibold">{clock(ms)}</span>
         </button>
       )}
@@ -156,9 +157,9 @@ function SubjectCard({ s, active, onOpen }: { s: Subject; active: boolean; onOpe
       <div className="absolute inset-0" style={{ background: s.cover ? `linear-gradient(180deg, rgb(8 6 12 / .25), rgb(8 6 12 / .88)), linear-gradient(135deg, ${s.color}33, transparent 60%)` : `linear-gradient(140deg, color-mix(in srgb, ${s.color} 30%, #120c18), #0d0a12)` }} />
       <div className="relative flex flex-1 flex-col p-4 text-white">
         <div className="flex items-start gap-2">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl text-2xl" style={{ background: `color-mix(in srgb, ${s.color} 35%, transparent)`, boxShadow: `inset 0 0 0 1px ${s.color}66` }}>{s.emoji}</span>
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ background: `color-mix(in srgb, ${s.color} 35%, transparent)`, boxShadow: `inset 0 0 0 1px ${s.color}66` }}><Glyph v={s.emoji} size={21} /></span>
           <div className="flex-1" />
-          {active && <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: s.color, color: "#111" }}>⏱ cronômetro ativo</span>}
+          {active && <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: s.color, color: "#111" }}>cronômetro ativo</span>}
           {s.music && <Music2 size={15} className="opacity-70" />}
         </div>
         <div className="mt-auto pt-6">
@@ -208,7 +209,7 @@ function SubjectPage({ s, onBack }: { s: Subject; onBack: () => void }) {
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="flex h-16 w-16 items-center justify-center rounded-3xl text-4xl" style={{ background: `color-mix(in srgb, ${s.color} 25%, transparent)`, boxShadow: `inset 0 0 0 1px ${s.color}66, 0 10px 30px -10px ${s.color}` }}>{s.emoji}</span>
+          <span className="flex h-16 w-16 items-center justify-center rounded-3xl" style={{ background: `color-mix(in srgb, ${s.color} 25%, transparent)`, boxShadow: `inset 0 0 0 1px ${s.color}66, 0 10px 30px -10px ${s.color}` }}><Glyph v={s.emoji} size={30} /></span>
           <div className="min-w-0 flex-1">
             <div className="font-display text-4xl leading-tight font-semibold" style={{ color: s.color }}>{s.name}</div>
             {s.subtitle && <div className="text-lg text-fg-muted">{s.subtitle}</div>}
@@ -330,7 +331,7 @@ function FinishDialog({ s, minutes, onClose, onSave }: { s: Subject; minutes: nu
   const [note, setNote] = useState("")
   const [learned, setLearned] = useState(true)
   return (
-    <Modal open onClose={onClose} title="🎉 Aula finalizada" width={460}>
+    <Modal open onClose={onClose} title="Aula finalizada" width={460}>
       <div className="space-y-3">
         <div className="text-sm text-fg-muted">Registre o que aprendeu nesta sessão de <b className="text-fg">{s.name}</b>, se quiser.</div>
         <label className="flex items-center gap-2 text-sm">Duração <input type="number" min={1} className="field font-num w-20" value={min} onChange={(e) => setMin(Number(e.target.value) || 1)} /> minutos</label>
@@ -488,7 +489,7 @@ function Repertoire({ s, upd }: { s: Subject; upd: (p: Partial<Subject>) => void
       <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3">{studying.map(tile)}</div>
       {done.length > 0 && (
         <>
-          <div className="mt-4 mb-2 text-sm font-medium">Músicas aprendidas ✨</div>
+          <div className="mt-4 mb-2 text-sm font-medium">Músicas aprendidas</div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 opacity-90">{done.map(tile)}</div>
         </>
       )}
@@ -523,7 +524,7 @@ function SongForm({ color, onClose, onSave }: { color: string; onClose: () => vo
     onSave({ id: uid(), title: title.trim(), url: id ? `https://www.youtube.com/watch?v=${id}` : "", videoId: id || undefined, cover: cover || undefined, cifra: cifra || undefined, progress: 0, createdAt: Date.now() })
   }
   return (
-    <Modal open onClose={onClose} title="🎵 Adicionar música" width={480}>
+    <Modal open onClose={onClose} title="Adicionar música" width={480}>
       <div className="space-y-3">
         <div className="text-xs text-fg-muted">Cole o link do YouTube para buscar o título e a capa automaticamente.</div>
         <input autoFocus className="field w-full" placeholder="Link da música no YouTube" value={url} onChange={(e) => { setUrl(e.target.value); setErr("") }} />
@@ -585,7 +586,7 @@ function SongDetail({ s, song, onClose, onChange, onDelete }: { s: Subject; song
 
 /* ------------------------------ formulário ------------------------------ */
 function SubjectForm({ s, onClose, onSave }: { s?: Subject; onClose: () => void; onSave: (s: Subject) => void }) {
-  const [v, setV] = useState<Subject>(() => s ?? { id: uid(), name: "", color: COLORS[0], emoji: "📘", goalHours: 20, sessions: [], topics: [], notes: "" })
+  const [v, setV] = useState<Subject>(() => s ?? { id: uid(), name: "", color: COLORS[0], emoji: "i:Book", goalHours: 20, sessions: [], topics: [], notes: "" })
   const [pick, setPick] = useState(false)
   const [err, setErr] = useState("")
   const set = (p: Partial<Subject>) => setV((x) => ({ ...x, ...p }))
@@ -596,7 +597,7 @@ function SubjectForm({ s, onClose, onSave }: { s?: Subject; onClose: () => void;
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="relative">
-              <button className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl" style={{ background: `color-mix(in srgb, ${v.color} 25%, transparent)` }} onClick={() => setPick(!pick)} title="Escolher ícone">{v.emoji}</button>
+              <button className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: `color-mix(in srgb, ${v.color} 25%, transparent)` }} onClick={() => setPick(!pick)} title="Escolher ícone"><Glyph v={v.emoji} size={22} /></button>
               {pick && (
                 <>
                   <div className="fixed inset-0 z-40" onPointerDown={() => setPick(false)} />

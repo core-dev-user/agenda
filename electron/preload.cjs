@@ -41,6 +41,11 @@ contextBridge.exposeInMainWorld("agenda", {
     valorantAgent: () => ipcRenderer.invoke("valorant:agent"),
     onValorantAgent: on("valorant:agent"),
   },
+  sysmon: {
+    sub: (id) => ipcRenderer.invoke("sysmon:sub", id),
+    unsub: (id) => ipcRenderer.invoke("sysmon:unsub", id),
+    onData: on("sysmon:data"),
+  },
   finance: {
     status: () => ipcRenderer.invoke("finance:status"),
     open: (pin) => ipcRenderer.invoke("finance:open", pin),

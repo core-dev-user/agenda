@@ -173,7 +173,7 @@ export function LivingStudio({ m, onClose, onCreated }: { m: MediaItem | null; o
                 <span className="text-fg-muted">Detectei:</span>
                 {(Object.entries(an.coverage) as [keyof Analysis["coverage"], number][]).filter(([, v]) => v > 0.01).map(([k, v]) => (
                   <span key={k} className="rounded-full bg-brand/20 px-2 py-0.5">
-                    {{ person: "🧍 pessoa", foliage: "🌿 folhagem", flowers: "🌸 flores", sky: "☁️ céu", water: "🌊 água" }[k]} {Math.round(v * 100)}%
+                    {{ person: "pessoa", foliage: "folhagem", flowers: "flores", sky: "céu", water: "água" }[k]} {Math.round(v * 100)}%
                   </span>
                 ))}
                 {Object.values(an.coverage).every((v) => v <= 0.01) && <span className="text-fg-muted">nenhum elemento claro, ative os efeitos manualmente</span>}
@@ -182,7 +182,7 @@ export function LivingStudio({ m, onClose, onCreated }: { m: MediaItem | null; o
             {err && <div className="rounded-lg bg-red-500/15 p-2 text-sm text-red-300">{err}</div>}
             {result && (
               <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#5ee3a1]/12 p-3 text-sm">
-                <span className="flex-1">✅ GIF criado e salvo na galeria ({result.width}×{result.height}).</span>
+                <span className="flex-1">GIF criado e salvo na galeria ({result.width}×{result.height}).</span>
                 <button className="btn" onClick={() => { setSettings((s) => ({ wallpaper: { ...s.wallpaper, type: "image", image: result.file } })); onClose() }}><Monitor size={14} /> Usar como papel de parede</button>
                 <button className="btn" onClick={() => { addWidget("photo", { ids: [result.id] }); onClose() }}><LayoutGrid size={14} /> Criar quadro</button>
               </div>

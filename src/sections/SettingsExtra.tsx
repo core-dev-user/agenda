@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react"
-import { CheckCircle2, Cloud, FolderOpen, Keyboard, Loader2, Moon, Plus, RefreshCw, Trash2, XCircle, AlertTriangle } from "lucide-react"
+import { Glyph } from "@/components/Glyph"
+import { CheckCircle2, Cloud, FolderOpen, Keyboard, Loader2, Moon, Plus, RefreshCw, Trash2, XCircle, AlertTriangle, Star } from "lucide-react"
 import { useStore, DEFAULT_NOTIFY, DEFAULT_FOCUS } from "@/lib/store"
 import { bridge, type SysConfig } from "@/lib/bridge"
 import { SOURCE_META, notify } from "@/lib/notify"
@@ -33,18 +34,18 @@ export function RoutineTab() {
         <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 gap-y-1 text-sm">
           <span className="text-xs text-fg-muted uppercase">Origem</span><span className="text-xs text-fg-muted uppercase">Ligado</span><span className="text-xs text-fg-muted uppercase">Aviso do Windows</span>
           {(Object.keys(SOURCE_META) as NotifySource[]).map((k) => (
-            <Row key={k} label={`${SOURCE_META[k].emoji} ${SOURCE_META[k].label}`} on={np.on[k] !== false} toast={!!np.toast[k]} setOn={(v) => setN("on", k, v)} setToast={(v) => setN("toast", k, v)} />
+            <Row key={k} label={<span className="flex items-center gap-2"><Glyph v={SOURCE_META[k].emoji} size={15} className="text-fg-muted" /> {SOURCE_META[k].label}</span>} on={np.on[k] !== false} toast={!!np.toast[k]} setOn={(v) => setN("on", k, v)} setToast={(v) => setN("toast", k, v)} />
           ))}
         </div>
         <Switch label="Som nos avisos" checked={np.sound} onChange={(v) => set({ notify: { ...np, sound: v } })} />
-        <button className="btn mt-1 !py-1 text-xs" onClick={() => notify({ source: "system", title: "Teste de aviso", body: "Se você está vendo isso, os avisos estão funcionando. 🌸" })}>Mandar um aviso de teste</button>
+        <button className="btn mt-1 !py-1 text-xs" onClick={() => notify({ source: "system", title: "Teste de aviso", body: "Se você está vendo isso, os avisos estão funcionando." })}>Mandar um aviso de teste</button>
         <div className="pt-1 text-xs text-fg-muted">O WhatsApp e o Discord também mostram os avisos deles no Windows. Por isso o do WhatsApp vem desligado aqui, para não aparecer duas vezes.</div>
       </Section>
 
       <Section title="Times e equipes favoritos" desc="Avisa quando o jogo começa, quando o placar muda e no fim. Vale para futebol, CS2 e Valorant (ex.: Corinthians, Real Madrid, FURIA, LOUD).">
         <div className="flex flex-wrap gap-1.5">
           {favs.map((f) => (
-            <span key={f} className="flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-sm">⭐ {f}<button className="opacity-60 hover:opacity-100" onClick={() => set({ favTeams: favs.filter((x) => x !== f) })}><XCircle size={13} /></button></span>
+            <span key={f} className="flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-sm"><Star size={11} className="fill-current text-amber-300" /> {f}<button className="opacity-60 hover:opacity-100" onClick={() => set({ favTeams: favs.filter((x) => x !== f) })}><XCircle size={13} /></button></span>
           ))}
         </div>
         <div className="flex gap-2 pt-1">
@@ -72,7 +73,7 @@ export function RoutineTab() {
   )
 }
 
-function Row({ label, on, toast, setOn, setToast }: { label: string; on: boolean; toast: boolean; setOn: (v: boolean) => void; setToast: (v: boolean) => void }) {
+function Row({ label, on, toast, setOn, setToast }: { label: React.ReactNode; on: boolean; toast: boolean; setOn: (v: boolean) => void; setToast: (v: boolean) => void }) {
   return (
     <>
       <span>{label}</span>
@@ -195,7 +196,7 @@ export function IntegrationsTab() {
       <div className="divide-y divide-[var(--line)]">
         {checks.map((c) => (
           <div key={c.label} className="flex items-center gap-3 py-2">
-            <span className="w-6 text-center text-lg">{c.emoji}</span>
+            <span className="flex w-6 justify-center text-fg-muted"><Glyph v={c.emoji} size={16} /></span>
             <span className="w-44 font-medium">{c.label}</span>
             {icon(c.state)}
             <span className="min-w-0 flex-1 truncate text-sm text-fg-muted" title={c.msg}>{c.msg}</span>

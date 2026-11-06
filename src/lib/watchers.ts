@@ -76,7 +76,7 @@ export function useBackground() {
       if (ifood.current != null && key && key !== ifood.current) notify({ source: "ifood", title: `iFood · ${a!.name}`, body: a!.status.replace(/^./, (c) => c.toUpperCase()), open: "ifood", icon: "🍔" })
       else if (ifood.current && !key) {
         const name = ifood.current.split("|")[0]
-        if (r?.orders?.some((o) => o.name === name && /entregue|conclu/i.test(o.status))) notify({ source: "ifood", title: `iFood · ${name}`, body: "Pedido entregue. Bom apetite! 😋", icon: "🍔" })
+        if (r?.orders?.some((o) => o.name === name && /entregue|conclu/i.test(o.status))) notify({ source: "ifood", title: `iFood · ${name}`, body: "Pedido entregue. Bom apetite!", icon: "🍔" })
       }
       // só "esquece" o pedido quando a página de pedidos confirma que não há nenhum em andamento
       if (r && !r.loading && (key || r.onOrders || ifood.current == null)) ifood.current = key
@@ -129,8 +129,8 @@ export function useBackground() {
         if (!c.budget) continue
         const spent = sum.byCat.get(c.id) ?? 0
         const p = spent / c.budget
-        if (p >= 1 && once(`budget|${m}|${c.id}|100`)) notify({ source: "budgets", title: `${c.emoji} ${c.name}: passou do orçamento`, body: `Gastou ${Math.round(p * 100)}% do limite deste mês.`, open: "finance", icon: "💸" })
-        else if (p >= 0.8 && p < 1 && once(`budget|${m}|${c.id}|80`)) notify({ source: "budgets", title: `${c.emoji} ${c.name}: perto do limite`, body: `Já foram ${Math.round(p * 100)}% do orçamento do mês.`, open: "finance", icon: "💸" })
+        if (p >= 1 && once(`budget|${m}|${c.id}|100`)) notify({ source: "budgets", title: `${c.name}: passou do orçamento`, body: `Gastou ${Math.round(p * 100)}% do limite deste mês.`, open: "finance", icon: "💸" })
+        else if (p >= 0.8 && p < 1 && once(`budget|${m}|${c.id}|80`)) notify({ source: "budgets", title: `${c.name}: perto do limite`, body: `Já foram ${Math.round(p * 100)}% do orçamento do mês.`, open: "finance", icon: "💸" })
       }
     })
   }, [])

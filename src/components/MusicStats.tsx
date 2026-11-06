@@ -29,7 +29,7 @@ export function MusicStats() {
       </div>
       {empty ? (
         <Card className="py-10 text-center">
-          <div className="text-4xl">🎧</div>
+          <Headphones size={38} strokeWidth={1.3} className="mx-auto text-fg-muted" />
           <div className="font-display mt-2 text-lg">Ainda juntando dados</div>
           <div className="mx-auto mt-1 max-w-md text-sm text-fg-muted">O Agenda registra o que toca no YouTube Music a partir de agora (o YT Music não entrega o histórico antigo). Ouça um pouco e volte aqui.</div>
           <div className="mt-2 text-xs text-fg-muted">Registrando desde {new Date(L.since).toLocaleDateString("pt-BR")}</div>
