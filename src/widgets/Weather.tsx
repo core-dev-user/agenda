@@ -6,7 +6,7 @@ import { bridge, friendlyError } from "@/lib/bridge"
 const getJSON = async (u: string) => JSON.parse(await bridge.net.text(u))
 import type { Widget } from "@/lib/types"
 
-interface Wx {
+export interface Wx {
   city: string
   temp: number
   feels: number
@@ -20,7 +20,7 @@ interface Wx {
   days: { d: string; max: number; min: number; code: number }[]
 }
 
-const LABEL = (c: number) =>
+export const LABEL = (c: number) =>
   c === 0 ? "Céu limpo" : c <= 2 ? "Parcialmente nublado" : c === 3 ? "Nublado" : c <= 48 ? "Neblina" : c <= 57 ? "Garoa" : c <= 67 ? "Chuva" : c <= 77 ? "Neve" : c <= 82 ? "Pancadas de chuva" : c <= 86 ? "Neve" : "Tempestade"
 
 export function WxIcon({ code, day = true, size = 20 }: { code: number; day?: boolean; size?: number }) {
@@ -37,7 +37,7 @@ export function WxIcon({ code, day = true, size = 20 }: { code: number; day?: bo
 
 const cache = new Map<string, { at: number; data: Wx }>()
 
-async function load(city: string): Promise<Wx> {
+export async function loadWeather(city: string): Promise<Wx> {
   const c = cache.get(city)
   if (c && Date.now() - c.at < 10 * 60000) return c.data
   const g = await getJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=pt`)
@@ -76,7 +76,7 @@ export function WeatherWidget({ w }: { w: Widget }) {
   useEffect(() => {
     let alive = true
     const run = () =>
-      load(city)
+      loadWeather(city)
         .then((d) => alive && (setWx(d), setErr("")))
         .catch((e) => alive && setErr(friendlyError(e)))
     run()

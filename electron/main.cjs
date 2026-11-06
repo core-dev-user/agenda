@@ -7,6 +7,7 @@ const os = require("node:os")
 const { spawn, execFile } = require("node:child_process")
 const { pathToFileURL, fileURLToPath } = require("node:url")
 const music = require("./music.cjs")
+const system = require("./system.cjs")
 
 const isDev = !!process.env.AGENDA_DEV
 // a janela do YouTube Music fica escondida: sem isso o Chromium para de decodificar o vídeo (o clipe do widget congelaria)
@@ -56,10 +57,13 @@ function createWindow() {
       nodeIntegration: false,
     },
   })
-  win.maximize()
-  // a janela do YouTube Music fica escondida tocando; fechar o Agenda encerra tudo
+  // iniciado junto com o Windows: abre direto na bandeja (perto do relógio)
+  const hidden = system.startHidden && !process.env.AGENDA_SHOT
+  if (!hidden) win.maximize()
+  system.attachWindow(win)
+  // fechar pelo X manda para a bandeja; "Sair" na bandeja encerra tudo
   win.on("closed", () => { win = null; app.quit() })
-  win.once("ready-to-show", () => win && win.show())
+  win.once("ready-to-show", () => win && !hidden && win.show())
   win.on("maximize", () => win && win.webContents.send("win:state", { maximized: true }))
   win.on("unmaximize", () => win && win.webContents.send("win:state", { maximized: false }))
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -136,6 +140,9 @@ function createWindow() {
 }
 
 app.setName("Agenda")
+// só uma cópia aberta: abrir de novo traz a janela que já está rodando (inclusive da bandeja)
+if (!process.env.AGENDA_SHOT && !app.requestSingleInstanceLock()) { app.quit(); process.exit(0) }
+app.on("second-instance", () => system.show())
 if (process.platform === "win32") app.setAppUserModelId("com.agenda.desktop")
 
 app.whenReady().then(() => {
@@ -154,16 +161,14 @@ app.on("window-all-closed", () => app.quit())
 music.register(ipcMain, () => win, app)
 require("./sports.cjs").register(ipcMain)
 require("./webapps.cjs").register(ipcMain, () => win, app)
+system.register(ipcMain, () => win)
+require("./finance.cjs").register(ipcMain, { onBackup: (f, n) => system.cloudCopy(f, n) })
 
 /* ---------------- Janela ---------------- */
 ipcMain.on("win:minimize", () => win && win.minimize())
 ipcMain.on("win:toggleMaximize", () => win && (win.isMaximized() ? win.unmaximize() : win.maximize()))
 ipcMain.on("win:fullscreen", (_e, on) => win && win.setFullScreen(!!on))
 ipcMain.on("win:close", () => win && win.close())
-ipcMain.handle("app:autostart", (_e, on) => {
-  if (typeof on === "boolean") app.setLoginItemSettings({ openAtLogin: on })
-  return app.getLoginItemSettings().openAtLogin
-})
 ipcMain.handle("app:openExternal", (_e, url) => {
   if (/^https?:/.test(url)) shell.openExternal(url)
 })
@@ -221,6 +226,7 @@ async function backup(data) {
   lastBackup = Date.now()
   const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19)
   await fsp.writeFile(path.join(backupDir, `agenda-${stamp}.json`), data, "utf8")
+  system.cloudCopy(dataFile, "agenda-data.json")
   for (const old of listBackups().slice(30)) fsp.unlink(path.join(backupDir, old)).catch(() => {})
 }
 async function flush() {

@@ -73,6 +73,10 @@ export function CalendarWidget({ w }: { w: Widget }) {
   const open = useStore((s) => s.openWindow)
   const tasks = useStore((s) => s.tasks)
   const taskDays = new Set(w.config.taskDots ? tasks.filter((t) => !t.done && t.date).map((t) => t.date!) : [])
+  // eventos da agenda do Google (quando conectada)
+  const calEvents = useStore((s) => s.calEvents)
+  const evDays = new Map<string, string>()
+  for (const e of calEvents) evDays.set(todayISO(new Date(e.start)), e.color)
   const y = ref.getFullYear()
   const m = ref.getMonth()
   const first = new Date(y, m, 1).getDay()
@@ -100,6 +104,7 @@ export function CalendarWidget({ w }: { w: Widget }) {
             <div key={i} className={cn("font-num relative flex flex-col items-center justify-center rounded-lg text-sm", iso === today && "bg-brand font-bold text-white shadow-lg")}>
               {d}
               {pct > 0 && iso !== today && <div className="absolute bottom-0.5 h-1 rounded-full bg-brand" style={{ width: `${20 + pct * 50}%`, opacity: 0.4 + pct * 0.6 }} />}
+              {evDays.has(iso) && <div className="absolute top-1 left-1 h-1.5 w-1.5 rounded-full" style={{ background: iso === today ? "#fff" : evDays.get(iso) }} title="Tem evento na agenda" />}
               {taskDays.has(iso) && <div className={cn("absolute top-1 right-1 h-1.5 w-1.5 rounded-full", iso === today ? "bg-white" : "bg-[#ffd36e]")} title="Tem tarefa" />}
             </div>
           )

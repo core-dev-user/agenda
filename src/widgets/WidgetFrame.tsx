@@ -26,6 +26,9 @@ import { TasksWidget } from "./Tasks"
 import { DiscordWidget } from "./Discord"
 import { IfoodWidget } from "./Ifood"
 import { WhatsappWidget } from "./Whatsapp"
+import { FinanceWidget } from "./FinanceWidget"
+import { AgendaWidget } from "./AgendaWidget"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { SECTIONS } from "@/components/sections-meta"
 
 export const WIDGET_META: Record<WidgetType, { label: string; emoji: string }> = {
@@ -46,6 +49,8 @@ export const WIDGET_META: Record<WidgetType, { label: string; emoji: string }> =
   discord: { label: "Discord (call atual)", emoji: "🎧" },
   ifood: { label: "iFood (pedidos)", emoji: "🍔" },
   whatsapp: { label: "WhatsApp (conversas)", emoji: "💬" },
+  finance: { label: "Finanças (gastos do mês)", emoji: "💸" },
+  agenda: { label: "Agenda do Google (próximos eventos)", emoji: "🗓️" },
 }
 
 /** Opções do menu "Adicionar widget": widgets comuns + um atalho para cada aba. */
@@ -57,7 +62,7 @@ export const WIDGET_CHOICES: { type: WidgetType; config: Record<string, any>; la
     type: "shortcut" as WidgetType,
     config: { section: s.id },
     label: s.label,
-    emoji: ({ habits: "✅", studies: "🎓", services: "💼", lists: "🛒", gallery: "🖼️" } as Record<string, string>)[s.id] ?? "🔗",
+    emoji: ({ today: "☀️", finance: "💸", habits: "✅", studies: "🎓", services: "💼", lists: "🛒", gallery: "🖼️" } as Record<string, string>)[s.id] ?? "🔗",
     group: "atalho" as const,
   })),
 ]
@@ -164,7 +169,10 @@ export function WidgetFrame({ w }: { w: Widget }) {
     case "discord": body = <DiscordWidget w={W} />; break
     case "ifood": body = <IfoodWidget w={W} />; break
     case "whatsapp": body = <WhatsappWidget w={W} />; break
+    case "finance": body = <FinanceWidget w={W} />; break
+    case "agenda": body = <AgendaWidget w={W} />; break
   }
+  body = <ErrorBoundary label="widget" compact>{body}</ErrorBoundary>
 
   const ease = "cubic-bezier(.2,.8,.2,1)"
   return (

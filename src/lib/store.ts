@@ -4,10 +4,19 @@ import { bridge } from "./bridge"
 import { uid, todayISO } from "./utils"
 import type {
   Settings, Widget, WidgetType, MediaItem, Geo, Habit, Subject, Service, ShopList, WinState, SectionId, ThemeId, LookTemplate, Task, StudyTimer,
+  AppNotification, CalEvent, NotifyPrefs, FocusPrefs,
 } from "./types"
 
 /** Preferências que não são "visual" e por isso não entram nos templates. */
-const NOT_LOOK: (keyof Settings)[] = ["musicAutostart", "layoutRef", "weatherCity", "newsFeed"]
+const NOT_LOOK: (keyof Settings)[] = ["musicAutostart", "layoutRef", "weatherCity", "newsFeed", "notify", "calendars", "favTeams", "focus", "todayOnStart", "hibernateMin"]
+
+export const DEFAULT_NOTIFY: NotifyPrefs = {
+  on: { tasks: true, whatsapp: true, ifood: true, sports: true, budgets: true, services: true, calendar: true, focus: true, system: true },
+  // o WhatsApp Web e o Discord já mostram os avisos deles no Windows: aqui só entram na central
+  toast: { tasks: true, whatsapp: false, ifood: true, sports: true, budgets: true, services: true, calendar: true, focus: false, system: true },
+  sound: true,
+}
+export const DEFAULT_FOCUS: FocusPrefs = { auto: true, muteApps: true, hideWidgets: false, silence: true, playlist: "" }
 export const lookOf = (s: Settings): Partial<Settings> => {
   const c: Partial<Settings> = JSON.parse(JSON.stringify(s))
   for (const k of NOT_LOOK) delete c[k]
@@ -86,6 +95,8 @@ const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
   discord: [320, 230],
   ifood: [340, 320],
   whatsapp: [340, 380],
+  finance: [340, 300],
+  agenda: [340, 360],
 }
 
 const defaultWidgets = (): Widget[] => [
@@ -108,9 +119,16 @@ interface State {
   templates: LookTemplate[]
   /** como estava antes do último template aplicado (para desfazer) */
   templateUndo: { name: string; settings: Partial<Settings>; widgets?: Widget[] } | null
+  notifications: AppNotification[]
   // não persistido
   windows: WinState[]
   splashDone: boolean
+  /** eventos das agendas (iCal), atualizados sozinhos */
+  calEvents: CalEvent[]
+  /** modo foco ligado à mão (o automático vem do cronômetro de Estudos) */
+  focusManual: boolean
+  /** busca rápida (Ctrl+K) aberta */
+  paletteOpen: boolean
 
   setSettings: (patch: Partial<Settings> | ((s: Settings) => Partial<Settings>)) => void
   applyTheme: (t: ThemeId) => void
@@ -136,6 +154,9 @@ interface State {
   focusWindow: (id: SectionId) => void
   patchWindow: (id: SectionId, patch: Partial<WinState>) => void
   setSplashDone: () => void
+  pushNotification: (n: Omit<AppNotification, "id" | "at">) => AppNotification
+  markNotificationsRead: () => void
+  clearNotifications: () => void
 
   saveTemplate: (name: string, withWidgets: boolean) => LookTemplate
   updateTemplate: (id: string) => void
@@ -172,8 +193,12 @@ export const useStore = create<State>()(
       studyTimer: null,
       templates: [],
       templateUndo: null,
+      notifications: [],
       windows: [],
       splashDone: false,
+      calEvents: [],
+      focusManual: false,
+      paletteOpen: false,
 
       setSettings: (patch) =>
         set((s) => ({ settings: { ...s.settings, ...(typeof patch === "function" ? patch(s.settings) : patch) } })),
@@ -269,6 +294,13 @@ export const useStore = create<State>()(
         }),
       patchWindow: (id, patch) => set((s) => ({ windows: s.windows.map((w) => (w.id === id ? { ...w, ...patch } : w)) })),
       setSplashDone: () => set({ splashDone: true }),
+      pushNotification: (n) => {
+        const full: AppNotification = { ...n, id: uid(), at: Date.now() }
+        set((s) => ({ notifications: [full, ...s.notifications].slice(0, 150) }))
+        return full
+      },
+      markNotificationsRead: () => set((s) => ({ notifications: s.notifications.map((n) => (n.read ? n : { ...n, read: true })) })),
+      clearNotifications: () => set({ notifications: [] }),
 
       saveTemplate: (name, withWidgets) => {
         const s = get()
@@ -331,6 +363,7 @@ export const useStore = create<State>()(
         studyTimer: s.studyTimer,
         templates: s.templates,
         templateUndo: s.templateUndo,
+        notifications: s.notifications,
       }),
       merge: (persisted: any, current) => ({
         ...current,

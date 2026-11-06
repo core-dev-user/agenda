@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="hj-bg" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#ffd27a"/>
+      <stop offset="1" stop-color="#f05a5a"/>
+    </linearGradient>
+    <radialGradient id="hj-light" cx="0.3" cy="0.05" r="0.9">
+      <stop offset="0" stop-color="#fff" stop-opacity=".45"/>
+      <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hj-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="hj-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".7"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".3"/>
+    </linearGradient>
+    <filter id="hj-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+    <filter id="hj-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#hj-bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#hj-light)"/>
+  <g opacity=".35" filter="url(#hj-glow)"><g fill="#ffffff" stroke="#ffffff">
+  <circle cx="256" cy="226" r="74" fill="#fff"/>
+  <rect x="248" y="96" width="16" height="44" rx="8" fill="#fff" transform="rotate(-90 256 226)"/><rect x="248" y="96" width="16" height="44" rx="8" fill="#fff" transform="rotate(-45 256 226)"/><rect x="248" y="96" width="16" height="44" rx="8" fill="#fff" transform="rotate(0 256 226)"/><rect x="248" y="96" width="16" height="44" rx="8" fill="#fff" transform="rotate(45 256 226)"/><rect x="248" y="96" width="16" height="44" rx="8" fill="#fff" transform="rotate(90 256 226)"/>
+  <rect x="112" y="300" width="288" height="96" rx="40" fill="#fff"/>
+  <rect x="150" y="334" width="120" height="16" rx="8" fill="#e8743b" opacity=".7"/>
+  <rect x="150" y="360" width="76" height="12" rx="6" fill="#e8743b" opacity=".45"/>
+  <circle cx="346" cy="348" r="20" fill="#e8743b" opacity=".8"/>
+</g></g>
+  <g filter="url(#hj-shadow)">
+  <circle cx="256" cy="226" r="74" fill="#fff"/>
+  <rect x="248" y="96" width="16" height="44" rx="8" fill="#fff" transform="rotate(-90 256 226)"/><rect x="248" y="96" width="16" height="44" rx="8" fill="#fff" transform="rotate(-45 256 226)"/><rect x="248" y="96" width="16" height="44" rx="8" fill="#fff" transform="rotate(0 256 226)"/><rect x="248" y="96" width="16" height="44" rx="8" fill="#fff" transform="rotate(45 256 226)"/><rect x="248" y="96" width="16" height="44" rx="8" fill="#fff" transform="rotate(90 256 226)"/>
+  <rect x="112" y="300" width="288" height="96" rx="40" fill="#fff"/>
+  <rect x="150" y="334" width="120" height="16" rx="8" fill="#e8743b" opacity=".7"/>
+  <rect x="150" y="360" width="76" height="12" rx="6" fill="#e8743b" opacity=".45"/>
+  <circle cx="346" cy="348" r="20" fill="#e8743b" opacity=".8"/>
+</g>
+  <path d="M60 140 C 60 80 96 46 160 46 L 352 46 C 416 46 452 80 452 140 C 380 190 132 190 60 140 Z" fill="url(#hj-gloss)" opacity=".55"/>
+  <rect x="18" y="18" width="476" height="476" rx="122" fill="none" stroke="url(#hj-rim)" stroke-width="4"/>
+</svg>

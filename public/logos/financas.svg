@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="fi-bg" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#8ff0c4"/>
+      <stop offset="1" stop-color="#0f8a6a"/>
+    </linearGradient>
+    <radialGradient id="fi-light" cx="0.3" cy="0.05" r="0.9">
+      <stop offset="0" stop-color="#fff" stop-opacity=".45"/>
+      <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="fi-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="fi-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".7"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".3"/>
+    </linearGradient>
+    <filter id="fi-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+    <filter id="fi-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#fi-bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#fi-light)"/>
+  <g opacity=".35" filter="url(#fi-glow)"><g fill="#ffffff" stroke="#ffffff">
+  <rect x="104" y="170" width="304" height="210" rx="46" fill="#fff"/>
+  <path d="M136 170 l170 -56 a20 20 0 0 1 26 13 l12 43" fill="#fff" opacity=".85"/>
+  <rect x="300" y="236" width="124" height="84" rx="30" fill="#0f7a4a" opacity=".85"/>
+  <circle cx="340" cy="278" r="16" fill="#fff"/>
+  <path d="M146 336 l52 -48 l40 30 l56 -64" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#14935a" stroke-width="20"/>
+</g></g>
+  <g filter="url(#fi-shadow)">
+  <rect x="104" y="170" width="304" height="210" rx="46" fill="#fff"/>
+  <path d="M136 170 l170 -56 a20 20 0 0 1 26 13 l12 43" fill="#fff" opacity=".85"/>
+  <rect x="300" y="236" width="124" height="84" rx="30" fill="#0f7a4a" opacity=".85"/>
+  <circle cx="340" cy="278" r="16" fill="#fff"/>
+  <path d="M146 336 l52 -48 l40 30 l56 -64" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#14935a" stroke-width="20"/>
+</g>
+  <path d="M60 140 C 60 80 96 46 160 46 L 352 46 C 416 46 452 80 452 140 C 380 190 132 190 60 140 Z" fill="url(#fi-gloss)" opacity=".55"/>
+  <rect x="18" y="18" width="476" height="476" rx="122" fill="none" stroke="url(#fi-rim)" stroke-width="4"/>
+</svg>

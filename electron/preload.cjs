@@ -23,6 +23,21 @@ contextBridge.exposeInMainWorld("agenda", {
     autostart: (v) => ipcRenderer.invoke("app:autostart", v),
     openExternal: (url) => ipcRenderer.invoke("app:openExternal", url),
     screenInfo: () => ipcRenderer.invoke("app:screenInfo"),
+    show: () => ipcRenderer.invoke("app:show"),
+    quit: () => ipcRenderer.invoke("app:quit"),
+  },
+  sys: {
+    get: () => ipcRenderer.invoke("sys:get"),
+    set: (p) => ipcRenderer.invoke("sys:set", p),
+    pickCloud: () => ipcRenderer.invoke("sys:pickCloud"),
+    cloudNow: () => ipcRenderer.invoke("sys:cloudNow"),
+  },
+  finance: {
+    status: () => ipcRenderer.invoke("finance:status"),
+    open: (pin) => ipcRenderer.invoke("finance:open", pin),
+    lock: () => ipcRenderer.invoke("finance:lock"),
+    save: (txt) => ipcRenderer.invoke("finance:save", txt),
+    setPin: (oldPin, newPin) => ipcRenderer.invoke("finance:setPin", oldPin, newPin),
   },
   media: {
     import: () => ipcRenderer.invoke("media:import"),
@@ -58,6 +73,9 @@ contextBridge.exposeInMainWorld("agenda", {
     url: (id) => ipcRenderer.invoke("webapp:url", id),
     whatsapp: () => ipcRenderer.invoke("webapp:whatsapp"),
     whatsappOpen: (name) => ipcRenderer.invoke("webapp:whatsappOpen", name),
+    mute: (id, on) => ipcRenderer.invoke("webapp:mute", id, on),
+    hibernate: (min) => ipcRenderer.invoke("webapp:hibernate", min),
+    status: () => ipcRenderer.invoke("webapp:status"),
     onState: on("webapp:state"),
   },
   music: {

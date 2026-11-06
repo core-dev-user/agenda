@@ -13,6 +13,10 @@ import { CursorLayer } from "@/components/CursorLayer"
 import { Taskbar } from "@/components/Taskbar"
 import { AppWindow, preloadSections } from "@/components/AppWindow"
 import { WidgetFrame, WIDGET_CHOICES } from "@/widgets/WidgetFrame"
+import { useBackground } from "@/lib/watchers"
+import { CommandPalette } from "@/components/CommandPalette"
+import { FocusBar, useFocusActive } from "@/components/FocusBar"
+import { DEFAULT_FOCUS } from "@/lib/store"
 
 function useThemeVars() {
   const s = useStore((x) => x.settings)
@@ -39,24 +43,10 @@ export default function App() {
   const musicAuto = useStore((s) => s.settings.musicAutostart)
   useEffect(() => { if (musicAuto) bridge.music.open() }, [])
   useEffect(() => { const t = setTimeout(preloadSections, 600); return () => clearTimeout(t) }, [])
-  // lembrete das tarefas com horário (notificação do Windows)
-  useEffect(() => {
-    const check = () => {
-      const now = new Date()
-      const today = todayISO(now)
-      const hm = now.toTimeString().slice(0, 5)
-      const due = useStore.getState().tasks.filter((t) => !t.done && !t.notified && t.time && t.date === today && t.time <= hm)
-      if (!due.length) return
-      for (const t of due) {
-        try { new Notification("Agenda · tarefa", { body: `${t.time} — ${t.title}`, silent: false }) } catch {}
-      }
-      const ids = new Set(due.map((t) => t.id))
-      useStore.getState().set("tasks", (ts) => ts.map((t) => (ids.has(t.id) ? { ...t, notified: true } : t)))
-    }
-    check()
-    const id = setInterval(check, 20000)
-    return () => clearInterval(id)
-  }, [])
+  // avisos, agendas, foco, hibernação: tudo em segundo plano
+  useBackground()
+  // tela "Hoje" ao abrir
+  useEffect(() => { if (useStore.getState().settings.todayOnStart) setTimeout(() => useStore.getState().openWindow("today"), 900) }, [])
   // salvamento automático extra: regrava a cada 20 s e garante a gravação ao fechar a janela
   useEffect(() => {
     const save = () => useStore.setState({})
@@ -79,7 +69,11 @@ export default function App() {
   }, [])
   const splashOn = useStore((s) => s.settings.sakura.splash)
   const splashDone = useStore((s) => s.splashDone)
-  const widgets = useStore((s) => s.widgets)
+  const allWidgets = useStore((s) => s.widgets)
+  // modo foco com "só o essencial": esconde os widgets que distraem
+  const focusOn = useFocusActive()
+  const hideInFocus = useStore((s) => s.settings.focus?.hideWidgets ?? DEFAULT_FOCUS.hideWidgets)
+  const widgets = focusOn && hideInFocus ? allWidgets.filter((w) => ["clock", "stopwatch", "music", "lyrics", "tasks", "calendar", "agenda", "note"].includes(w.type)) : allWidgets
   const windows = useStore((s) => s.windows)
   const showSplash = splashOn && !splashDone
   const [ctx, setCtx] = useState<{ x: number; y: number } | null>(null)
@@ -100,6 +94,8 @@ export default function App() {
         <Taskbar />
         <AnimatePresence>{ctx && <DesktopMenu at={ctx} close={() => setCtx(null)} />}</AnimatePresence>
       </motion.div>
+      <FocusBar />
+      <CommandPalette />
       <Overlays />
       <AnimatePresence>{showSplash && <Splash />}</AnimatePresence>
       <CursorLayer />

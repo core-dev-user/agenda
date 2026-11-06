@@ -10,6 +10,7 @@ import { Logo } from "./Logo"
 import { AppIcon } from "./AppIcon"
 import { WIDGET_CHOICES } from "@/widgets/WidgetFrame"
 import { useNow } from "@/widgets/Clock"
+import { BellIcon, NotificationPanel } from "./NotificationCenter"
 
 export function Taskbar() {
   const s = useStore((x) => x.settings)
@@ -18,7 +19,10 @@ export function Taskbar() {
   const open = useStore((x) => x.openWindow)
   const patch = useStore((x) => x.patchWindow)
   const setSettings = useStore((x) => x.setSettings)
-  const [menu, setMenu] = useState<null | "start" | "widgets">(null)
+  const [menu, setMenuRaw] = useState<null | "start" | "widgets" | "bell">(null)
+  const readAll = useStore((x) => x.markNotificationsRead)
+  // fechar o painel de avisos marca tudo como lido
+  const setMenu = (m: null | "start" | "widgets" | "bell") => { if (menu === "bell" && m !== "bell") readAll(); setMenuRaw(m) }
   const [hidden, setHidden] = useState(false)
   const [mouse, setMouse] = useState<number | null>(null)
   const barRef = useRef<HTMLDivElement>(null)
@@ -141,6 +145,9 @@ export function Taskbar() {
           <DockBtn label={s.widgetsLocked ? "Destravar widgets" : "Travar widgets"} size={size} onClick={() => setSettings({ widgetsLocked: !s.widgetsLocked })} scaleFn={(el) => magnify(100, el)} position={tb.position} vertical={vertical}>
             {s.widgetsLocked ? <Lock size={icon * 0.8} /> : <Unlock size={icon * 0.8} />}
           </DockBtn>
+          <DockBtn label="Avisos" size={size} active={menu === "bell"} onClick={() => setMenu(menu === "bell" ? null : "bell")} scaleFn={(el) => magnify(101, el)} position={tb.position} vertical={vertical}>
+            <BellIcon size={Math.round(icon * 0.8)} />
+          </DockBtn>
           {!isDock && (
             <div className={cn("font-num flex flex-col items-center px-3 text-xs leading-tight", vertical && "py-2")}>
               <span className="text-sm font-semibold">{now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
@@ -166,7 +173,7 @@ export function Taskbar() {
               exit={{ opacity: 0, y: tb.position === "top" ? -10 : 10, scale: 0.97 }}
               transition={{ type: "spring", stiffness: 380, damping: 28 }}
             >
-              {menu === "start" ? <StartMenu onPick={clickSection} close={() => setMenu(null)} /> : <WidgetMenu close={() => setMenu(null)} />}
+              {menu === "start" ? <StartMenu onPick={clickSection} close={() => setMenu(null)} /> : menu === "bell" ? <NotificationPanel close={() => setMenu(null)} /> : <WidgetMenu close={() => setMenu(null)} />}
             </motion.div>
           </>
         )}
@@ -260,7 +267,10 @@ function StartMenu({ onPick, close }: { onPick: (id: SectionId) => void; close: 
           <button className="btn btn-ghost btn-icon" title="Restaurar/maximizar" onClick={() => bridge.win.toggleMaximize()}><Square size={13} /></button>
           <button className="btn btn-ghost btn-icon" title="Tela cheia" onClick={() => { fs.current = !fs.current; bridge.win.fullscreen(fs.current) }}><Maximize size={15} /></button>
         </div>
-        <button className="btn hover:!text-red-400" onClick={() => bridge.win.close()}><Power size={15} /> Sair</button>
+        <div className="flex gap-1">
+          <button className="btn btn-ghost !px-2 text-xs" title="Busca rápida" onClick={() => { close(); useStore.setState({ paletteOpen: true }) }}>Ctrl+K</button>
+          <button className="btn hover:!text-red-400" title="Fecha de vez (não fica na bandeja)" onClick={() => bridge.app.quit()}><Power size={15} /> Sair</button>
+        </div>
       </div>
     </div>
   )

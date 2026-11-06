@@ -7,8 +7,11 @@ import { cn } from "@/lib/utils"
 import { SECTIONS } from "./sections-meta"
 import { AppIcon } from "./AppIcon"
 import { useViewport } from "@/lib/viewport"
+import { ErrorBoundary } from "./ErrorBoundary"
 
 const LOADERS = {
+  today: () => import("@/sections/Today"),
+  finance: () => import("@/sections/Finance"),
   habits: () => import("@/sections/Habits"),
   studies: () => import("@/sections/Studies"),
   services: () => import("@/sections/Services"),
@@ -119,9 +122,11 @@ export function AppWindow({ win }: { win: WinState }) {
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto">
-          <Suspense fallback={null}>
-            <View />
-          </Suspense>
+          <ErrorBoundary label={meta.label}>
+            <Suspense fallback={null}>
+              <View />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </div>
       {!win.maximized && <div className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize" onPointerDown={(e) => drag(e, "resize")} />}

@@ -3,9 +3,9 @@ export type CursorStyle = "system" | "dot" | "ring" | "sakura" | "pixel" | "cros
 export type CursorEffect = "none" | "trail" | "sakura" | "sparkle" | "glow" | "ripple" | "pixels" | "hearts" | "stars" | "bubbles" | "confetti" | "fire" | "snow" | "rainbow" | "comet" | "leaves" | "magic"
 export type TaskbarPosition = "bottom" | "top" | "left" | "right"
 export type TaskbarStyle = "dock" | "bar" | "floating"
-export type SectionId = "habits" | "studies" | "services" | "lists" | "music" | "discord" | "whatsapp" | "ifood" | "gallery" | "settings"
+export type SectionId = "today" | "habits" | "studies" | "services" | "finance" | "lists" | "music" | "discord" | "whatsapp" | "ifood" | "gallery" | "settings"
 export type IconStyle = "auto" | "logos" | "color" | "glass" | "metal" | "neon" | "outline" | "flat" | "pixel"
-export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp"
+export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp" | "finance" | "agenda"
 
 export interface Settings {
   theme: ThemeId
@@ -64,6 +64,48 @@ export interface Settings {
   layoutRef?: { w: number; h: number }
   weatherCity: string
   newsFeed: string
+  /** avisos: o que entra na central de notificações e quem também mostra aviso do Windows */
+  notify?: NotifyPrefs
+  /** agendas do Google (ou outra) pelo endereço secreto iCal */
+  calendars?: CalendarFeed[]
+  /** times/equipes favoritos (avisa quando o jogo começa, gols, fim) */
+  favTeams?: string[]
+  focus?: FocusPrefs
+  /** abrir a tela Hoje quando o Agenda abre */
+  todayOnStart?: boolean
+  /** minutos sem uso até Discord/WhatsApp/iFood dormirem (0 = nunca) */
+  hibernateMin?: number
+}
+
+export type NotifySource = "tasks" | "whatsapp" | "ifood" | "sports" | "budgets" | "services" | "calendar" | "focus" | "system"
+export interface NotifyPrefs {
+  /** fonte ligada (aparece na central) */
+  on: Partial<Record<NotifySource, boolean>>
+  /** também mostra o aviso do Windows */
+  toast: Partial<Record<NotifySource, boolean>>
+  sound: boolean
+}
+export interface CalendarFeed { id: string; name: string; url: string; color: string; on: boolean }
+export interface CalEvent { id: string; feedId: string; title: string; start: number; end: number; allDay: boolean; location?: string; color: string }
+export interface FocusPrefs {
+  /** liga sozinho quando o cronômetro de Estudos começa */
+  auto: boolean
+  muteApps: boolean
+  hideWidgets: boolean
+  silence: boolean
+  /** link de playlist do YouTube Music para tocar no foco */
+  playlist: string
+}
+export interface AppNotification {
+  id: string
+  at: number
+  source: NotifySource
+  title: string
+  body?: string
+  read?: boolean
+  /** o que abrir ao clicar */
+  open?: SectionId
+  icon?: string
 }
 
 export interface LockClock {

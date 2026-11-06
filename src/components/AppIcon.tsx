@@ -26,6 +26,7 @@ export function sectionColor(s: Settings, id: SectionId) {
 
 /** Arquivos em public/logos (cópia da pasta "logos"). A Música usa o logo oficial do YouTube Music. */
 const LOGO_FILES: Record<SectionId, string> = {
+  today: "hoje", finance: "financas",
   habits: "habitos", studies: "estudos", services: "servicos", lists: "listas",
   music: "youtube-music", discord: "discord", whatsapp: "whatsapp", ifood: "ifood", gallery: "imagens", settings: "configuracoes",
 }

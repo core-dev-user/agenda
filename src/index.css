@@ -337,3 +337,7 @@ html.dark[data-theme="retro"] .btn, html.dark[data-theme="retro"] .btn-accent { 
 @keyframes cursor-beat { 0%, 100% { transform: scale(1) } 15% { transform: scale(1.18) } 30% { transform: scale(1) } 45% { transform: scale(1.1) } }
 @keyframes cursor-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .55 } }
 @keyframes eq-bar { from { transform: scaleY(.25) } to { transform: scaleY(1) } }
+
+/* cores dos gráficos (Finanças): entradas / gastos — passos validados para fundo escuro e claro */
+:root { --viz-1: #2a78d6; --viz-2: #eb6834; }
+html.dark { --viz-1: #3987e5; --viz-2: #d95926; }

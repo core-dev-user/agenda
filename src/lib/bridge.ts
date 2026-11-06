@@ -9,7 +9,20 @@ export interface AgendaBridge {
     close(): void
     onState(cb: (s: { maximized: boolean }) => void): Unsub
   }
-  app: { autostart(v?: boolean): Promise<boolean>; openExternal(url: string): Promise<void>; screenInfo(): Promise<{ long: number }> }
+  app: { autostart(v?: boolean): Promise<boolean>; openExternal(url: string): Promise<void>; screenInfo(): Promise<{ long: number }>; show(): Promise<void>; quit(): Promise<void> }
+  sys: {
+    get(): Promise<SysConfig>
+    set(p: Partial<Pick<SysConfig, "closeToTray" | "hotkey" | "cloudDir" | "cloudOn">>): Promise<SysConfig>
+    pickCloud(): Promise<string>
+    cloudNow(): Promise<SysConfig>
+  }
+  finance: {
+    status(): Promise<{ exists: boolean; hasPin: boolean; unlocked: boolean; secure: boolean; waitMs: number }>
+    open(pin?: string): Promise<{ ok: boolean; data?: string | null; error?: "pin" | "wait"; waitMs?: number }>
+    lock(): Promise<boolean>
+    save(txt: string): Promise<boolean>
+    setPin(oldPin: string, newPin: string | null): Promise<boolean>
+  }
   media: {
     import(): Promise<{ file: string; name: string; width: number; height: number; animated?: boolean }[]>
     saveAnimation(p: { width: number; height: number; frames: Uint8Array; delay: number; name: string; loopName?: string }): Promise<{ file: string; name: string; width: number; height: number; animated?: boolean }>
@@ -49,6 +62,11 @@ export interface AgendaBridge {
     url(id: WebAppId): Promise<string>
     whatsapp(): Promise<WhatsRead>
     whatsappOpen(name: string): Promise<void>
+    /** silencia o som do app (modo foco) */
+    mute(id: WebAppId, on: boolean): Promise<void>
+    /** minutos sem uso até o app dormir (0 = nunca) */
+    hibernate(min: number): Promise<void>
+    status(): Promise<Record<WebAppId, { alive: boolean; url: string; asleep: boolean; lastUse: number }>>
     onState(cb: (s: WebAppState) => void): Unsub
   }
   music: {
@@ -71,6 +89,7 @@ export interface AgendaBridge {
 }
 
 export type WebAppId = "discord" | "ifood" | "whatsapp"
+export interface SysConfig { closeToTray: boolean; hotkey: string; cloudDir: string; cloudOn: boolean; lastCloud: number; cloudError: string; guesses: { path: string; label: string }[]; hotkeyOk?: boolean }
 export interface WhatsChat { name: string; last: string; unread: number; time: string; avatar: string }
 export interface WhatsRead { loggedIn: boolean; qr?: boolean; loading?: boolean; totalUnread: number; chats: WhatsChat[] }
 export interface DiscordPerson { name: string; avatar: string; speaking: boolean; muted: boolean; deaf: boolean }
@@ -139,7 +158,15 @@ const noop = () => () => {}
 const browserFallback: AgendaBridge = {
   store: { get: () => localStorage.getItem("agenda-data"), set: (d) => localStorage.setItem("agenda-data", d) },
   win: { minimize() {}, toggleMaximize() {}, fullscreen(on) { on ? document.documentElement.requestFullscreen() : document.exitFullscreen() }, close() {}, onState: noop },
-  app: { autostart: async () => false, openExternal: async (u) => void window.open(u, "_blank"), screenInfo: async () => ({ long: Math.max(screen.width, screen.height) * devicePixelRatio }) },
+  app: { autostart: async () => false, openExternal: async (u) => void window.open(u, "_blank"), screenInfo: async () => ({ long: Math.max(screen.width, screen.height) * devicePixelRatio }), show: async () => {}, quit: async () => {} },
+  sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
+  finance: {
+    status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),
+    open: async () => ({ ok: true, data: localStorage.getItem("agenda-finance") }),
+    lock: async () => true,
+    save: async (t) => (localStorage.setItem("agenda-finance", t), true),
+    setPin: async () => false,
+  },
   media: {
     import: async () => [],
     paste: async () => [],
@@ -157,7 +184,7 @@ const browserFallback: AgendaBridge = {
   ai: { status: async () => ({ installed: false, sharp: false }), install: async () => false, onProgress: noop },
   net: { text: async (u) => (await fetch(u)).text() },
   sports: { get: async () => [] },
-  webapp: { open: async () => {}, embed: async () => {}, popout: async () => {}, dock: async () => {}, nav: async () => {}, watch: async () => {}, discord: async () => {}, ifoodOrders: async () => ({ loggedOut: false, orders: [] as IfoodOrder[] }), whatsapp: async () => ({ loggedIn: false, totalUnread: 0, chats: [] }), ifoodMap: async () => null, url: async () => "", whatsappOpen: async () => {}, onState: noop },
+  webapp: { open: async () => {}, embed: async () => {}, popout: async () => {}, dock: async () => {}, nav: async () => {}, watch: async () => {}, discord: async () => {}, ifoodOrders: async () => ({ loggedOut: false, orders: [] as IfoodOrder[] }), whatsapp: async () => ({ loggedIn: false, totalUnread: 0, chats: [] }), ifoodMap: async () => null, url: async () => "", whatsappOpen: async () => {}, mute: async () => {}, hibernate: async () => {}, status: async () => ({} as any), onState: noop },
   music: { open: async () => {}, embed: async () => {}, queue: async () => [], popout: async () => {}, dock: async () => {}, cmd: async () => {}, logout: async () => {}, video: async () => {}, onState: noop, onFrame: noop },
 }
 

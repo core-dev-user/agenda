@@ -17,6 +17,10 @@ let getMain = () => null
 
 const ua = () => session.defaultSession.getUserAgent().replace(/\s*Electron\/\S+/i, "").replace(/\s*agenda\/\S+/i, "")
 const alive = (id) => !!S[id] && !!S[id].view && !S[id].view.webContents.isDestroyed()
+const touch = (id) => { if (S[id]) S[id].lastUse = Date.now() }
+/** minutos sem uso até o app "dormir" (0 = nunca) */
+let hibernateMin = 15
+const muted = {}
 const wc = (id) => S[id].view.webContents
 function send(ch, data) { const w = getMain(); if (w && !w.isDestroyed()) w.webContents.send(ch, data) }
 
@@ -236,7 +240,8 @@ function ensure(id) {
   if (id === "discord") view.webContents.on("dom-ready", () => { view.webContents.executeJavaScript(MIC_HOOK, true).catch(() => {}) })
   view.setBounds({ x: 0, y: 0, width: 1280, height: 860 })
   view.webContents.loadURL(cfg.home)
-  S[id] = { view, popup: null, embedded: false }
+  S[id] = { view, popup: null, embedded: false, lastUse: Date.now() }
+  if (muted[id]) view.webContents.setAudioMuted(true)
   return view
 }
 
@@ -271,6 +276,7 @@ function hostOffscreen(id) {
 
 function embed(id, b) {
   ensure(id)
+  touch(id)
   const s = S[id]
   if (s.popup) return
   const main = getMain()
@@ -288,6 +294,7 @@ function embed(id, b) {
 
 function popOut(id) {
   ensure(id)
+  touch(id)
   const s = S[id]
   if (s.popup && !s.popup.isDestroyed()) { s.popup.show(); s.popup.focus(); return }
   detach(id)
@@ -311,12 +318,26 @@ function pushState(id, extra = {}) {
   send("webapp:state", { id, open: alive(id), popped: !!(s && s.popup), embedded: !!(s && s.embedded), ...extra })
 }
 
+const asleep = {}
+function hibernate(id) {
+  const s = S[id]
+  if (!s) return
+  detach(id)
+  try { if (s.host && !s.host.isDestroyed()) s.host.destroy() } catch {}
+  try { s.view.webContents.close() } catch {}
+  delete S[id]
+  asleep[id] = Date.now()
+  pushState(id)
+}
+
 /* ---------------- leitura periódica ---------------- */
 let discordWatchers = 0
 async function pollDiscord() {
   if (!alive("discord")) return
   try {
     const st = await wc("discord").executeJavaScript(DISCORD_POLL, true)
+    S.discord.inCall = !!(st && st.inCall)
+    touch("discord")
     pushState("discord", { discord: st })
   } catch {}
 }
@@ -324,6 +345,7 @@ async function pollDiscord() {
 // iFood: lê só a página que você mesmo abriu no app iFood do Agenda (sem janela escondida, sem navegar sozinho)
 async function ifoodOrders() {
   if (!alive("ifood")) { ensure("ifood"); return { loggedOut: false, orders: [], onOrders: false, loading: true } }
+  touch("ifood")
   try { return await wc("ifood").executeJavaScript(IFOOD_ORDERS, true) } catch (e) { return { loggedOut: false, orders: [], onOrders: false, error: String((e && e.message) || e) } }
 }
 
@@ -374,6 +396,7 @@ function register(ipcMain, mainGetter, app) {
   ipcMain.handle("webapp:ifoodOrders", () => ifoodOrders())
   ipcMain.handle("webapp:whatsapp", async () => {
     if (!alive("whatsapp")) { ensure("whatsapp"); return { loggedIn: false, loading: true, chats: [], totalUnread: 0 } }
+    touch("whatsapp")
     try { return await wc("whatsapp").executeJavaScript(WHATSAPP_POLL, true) } catch { return { loggedIn: false, chats: [], totalUnread: 0 } }
   })
   // abre uma conversa pelo nome (como clicar nela na lista)
@@ -383,6 +406,35 @@ function register(ipcMain, mainGetter, app) {
     try { await wc("whatsapp").executeJavaScript(js, true) } catch {}
   })
   setInterval(() => { if (discordWatchers > 0) pollDiscord() }, 300)
+
+  // modo foco: silencia o som do app (Discord numa call nunca é silenciado)
+  ipcMain.handle("webapp:mute", (_e, id, on) => {
+    if (!APPS[id]) return
+    muted[id] = !!on
+    if (alive(id)) {
+      const inCall = id === "discord" && S.discord.inCall
+      wc(id).setAudioMuted(!!on && !inCall)
+    }
+  })
+  ipcMain.handle("webapp:hibernate", (_e, min) => { hibernateMin = Math.max(0, Number(min) || 0) })
+  ipcMain.handle("webapp:status", () => Object.fromEntries(Object.keys(APPS).map((id) => [id, {
+    alive: alive(id), url: alive(id) ? wc(id).getURL() : "", asleep: !alive(id) && !!asleep[id], lastUse: S[id] ? S[id].lastUse : 0,
+  }])))
+
+  // apps que ninguém está usando "dormem" para liberar memória; acordam sozinhos quando você abre ou um widget precisa
+  setInterval(async () => {
+    if (!hibernateMin) return
+    for (const id of Object.keys(APPS)) {
+      const s = S[id]
+      if (!alive(id) || s.embedded || (s.popup && !s.popup.isDestroyed())) { if (s && (s.embedded || s.popup)) touch(id); continue }
+      if (id === "discord") {
+        if (discordWatchers > 0) continue
+        try { if (await wc("discord").executeJavaScript(`!!document.querySelector('[class*="rtcConnectionStatus"]')`, true)) { touch(id); continue } } catch {}
+      }
+      if (Date.now() - (s.lastUse || 0) < hibernateMin * 60_000) continue
+      hibernate(id)
+    }
+  }, 60_000)
 }
 
 module.exports = { register, DISCORD_POLL, DISCORD_CMD, IFOOD_ORDERS, WHATSAPP_POLL }

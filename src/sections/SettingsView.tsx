@@ -16,6 +16,7 @@ import { FEEDS } from "@/widgets/News"
 import { AppIcon, ICON_STYLES, sectionColor } from "@/components/AppIcon"
 import { SECTIONS } from "@/components/sections-meta"
 import { TemplatesTab } from "./Templates"
+import { IntegrationsTab, RoutineTab, SystemExtra } from "./SettingsExtra"
 
 const TABS = [
   { id: "templates", label: "Templates", e: "🎭" },
@@ -26,6 +27,8 @@ const TABS = [
   { id: "wallpaper", label: "Papel de parede", e: "🏞️" },
   { id: "fx", label: "Sakura e efeitos", e: "🌸" },
   { id: "widgets", label: "Widgets", e: "🧩" },
+  { id: "routine", label: "Rotina e avisos", e: "🔔" },
+  { id: "integrations", label: "Integrações", e: "🔌" },
   { id: "system", label: "Sistema", e: "💾" },
 ] as const
 
@@ -60,6 +63,8 @@ export default function SettingsView() {
           {tab === "wallpaper" && <WallpaperTab />}
           {tab === "fx" && <Fx />}
           {tab === "widgets" && <WidgetsTab />}
+          {tab === "routine" && <RoutineTab />}
+          {tab === "integrations" && <IntegrationsTab />}
           {tab === "system" && <System />}
         </motion.div>
       </div>
@@ -532,7 +537,7 @@ function System() {
 
   const exportData = () => {
     const st = useStore.getState()
-    const data = { settings: st.settings, widgets: st.widgets, media: st.media, habits: st.habits, habitLog: st.habitLog, subjects: st.subjects, services: st.services, lists: st.lists }
+    const data = { settings: st.settings, widgets: st.widgets, media: st.media, habits: st.habits, habitLog: st.habitLog, subjects: st.subjects, services: st.services, lists: st.lists, tasks: st.tasks, templates: st.templates }
     const a = document.createElement("a")
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }))
     a.download = `agenda-backup-${new Date().toISOString().slice(0, 10)}.json`
@@ -555,6 +560,7 @@ function System() {
         {!isDesktop && <div className="text-xs text-fg-muted">Disponível no app desktop.</div>}
         <button className="btn mt-2" onClick={() => bridge.win.fullscreen(true)}>Entrar em tela cheia</button>
       </Section>
+      <SystemExtra />
       <Section title="Backup" desc="Exporta hábitos, estudos, serviços, listas, widgets e configurações (as imagens ficam na pasta do app).">
         <div className="flex gap-2">
           <button className="btn" onClick={exportData}><Download size={14} /> Exportar backup</button>
