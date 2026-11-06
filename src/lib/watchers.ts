@@ -12,6 +12,7 @@ import { useFinance } from "./financeStore"
 import { summary, ym } from "./finance"
 import { todayISO } from "./utils"
 import type { CalEvent } from "./types"
+import { startListening } from "./listening"
 
 const once = (key: string) => {
   try {
@@ -22,6 +23,9 @@ const once = (key: string) => {
 }
 
 export function useBackground() {
+  /* ---------- histórico de escuta do YouTube Music ---------- */
+  useEffect(() => { startListening() }, [])
+
   /* ---------- tarefas com horário ---------- */
   useEffect(() => {
     const check = () => {

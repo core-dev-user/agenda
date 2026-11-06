@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import { bridge } from "./bridge"
 import { uid, todayISO } from "./utils"
+import type { ListenStats } from "./listening"
 import type {
   Settings, Widget, WidgetType, MediaItem, Geo, Habit, Subject, Service, ShopList, WinState, SectionId, ThemeId, LookTemplate, Task, StudyTimer,
   AppNotification, CalEvent, NotifyPrefs, FocusPrefs,
@@ -97,6 +98,7 @@ const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
   whatsapp: [340, 380],
   finance: [340, 300],
   agenda: [340, 360],
+  musicstats: [360, 380],
 }
 
 const defaultWidgets = (): Widget[] => [
@@ -120,6 +122,8 @@ interface State {
   /** como estava antes do último template aplicado (para desfazer) */
   templateUndo: { name: string; settings: Partial<Settings>; widgets?: Widget[] } | null
   notifications: AppNotification[]
+  /** histórico de escuta do YouTube Music */
+  listening?: ListenStats
   // não persistido
   windows: WinState[]
   splashDone: boolean
@@ -129,6 +133,8 @@ interface State {
   focusManual: boolean
   /** busca rápida (Ctrl+K) aberta */
   paletteOpen: boolean
+  /** aba Música: player ou estatísticas */
+  musicTab: "player" | "stats"
 
   setSettings: (patch: Partial<Settings> | ((s: Settings) => Partial<Settings>)) => void
   applyTheme: (t: ThemeId) => void
@@ -199,6 +205,7 @@ export const useStore = create<State>()(
       calEvents: [],
       focusManual: false,
       paletteOpen: false,
+      musicTab: "player",
 
       setSettings: (patch) =>
         set((s) => ({ settings: { ...s.settings, ...(typeof patch === "function" ? patch(s.settings) : patch) } })),
@@ -364,6 +371,7 @@ export const useStore = create<State>()(
         templates: s.templates,
         templateUndo: s.templateUndo,
         notifications: s.notifications,
+        listening: s.listening,
       }),
       merge: (persisted: any, current) => ({
         ...current,

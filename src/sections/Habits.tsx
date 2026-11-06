@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
-import { motion } from "framer-motion"
-import { Archive, ChevronLeft, ChevronRight, Flame, Pencil, Plus, Trash2 } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
+import { Archive, Check, ChevronLeft, ChevronRight, Flame, Pencil, Plus, Trash2 } from "lucide-react"
 import { useStore } from "@/lib/store"
 import type { Habit } from "@/lib/types"
 import { cn, MONTHS, todayISO, uid, WEEKDAYS } from "@/lib/utils"
@@ -43,7 +43,7 @@ export default function Habits() {
     }
     const best = active.map((h) => ({ h, s: streak(h.id, log) })).sort((a, b) => b.s - a.s)[0]
     return { pct: possible ? Math.round((done / possible) * 100) : 0, done, best }
-  }, [log, habits, y, m])
+  }, [log, habits, y, m, today])
 
   const todayDone = (log[today] ?? []).filter((id) => active.some((h) => h.id === id)).length
 
@@ -68,56 +68,93 @@ export default function Habits() {
       {active.length === 0 ? (
         <Empty icon="🌱" title="Nenhum hábito ainda">Crie seu primeiro hábito para acompanhar no calendário.</Empty>
       ) : view === "grid" ? (
-        <div className="overflow-auto rounded-[calc(var(--r)*0.7)] border border-line">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="sticky left-0 z-10 min-w-52 p-2 text-left font-medium" style={{ background: "var(--field)" }}>Hábito</th>
-                {Array.from({ length: days }, (_, i) => {
-                  const k = iso(y, m, i + 1)
-                  const wd = new Date(y, m, i + 1).getDay()
-                  return (
-                    <th key={i} className={cn("w-8 p-1 text-center font-normal", k === today && "text-brand", (wd === 0 || wd === 6) && "text-fg-muted")}>
-                      <div className="text-[10px] uppercase">{WEEKDAYS[wd][0]}</div>
-                      <div className="font-num">{i + 1}</div>
-                    </th>
-                  )
-                })}
-                <th className="p-2 text-center font-medium">🔥</th>
-              </tr>
-            </thead>
-            <tbody>
-              {active.map((h) => (
-                <tr key={h.id} className="group border-t border-line">
-                  <td className="sticky left-0 z-10 p-2" style={{ background: "var(--field)" }}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{h.emoji}</span>
-                      <span className="flex-1 truncate">{h.name}</span>
-                      <button className="opacity-0 group-hover:opacity-60 hover:!opacity-100" onClick={() => setEdit(h)}><Pencil size={13} /></button>
+        <>
+          {/* checklist de hoje: marcar rápido */}
+          <div className="flex flex-wrap gap-2">
+            {active.map((h) => {
+              const on = (log[today] ?? []).includes(h.id)
+              return (
+                <motion.button
+                  key={h.id}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => toggle(h.id, today)}
+                  className="flex items-center gap-2.5 rounded-full border py-1.5 pr-4 pl-1.5 text-sm transition-colors"
+                  style={{ borderColor: on ? h.color : "var(--line)", background: on ? `color-mix(in srgb, ${h.color} 20%, transparent)` : "color-mix(in srgb, var(--fg) 4%, transparent)" }}
+                >
+                  <span className="relative flex h-7 w-7 items-center justify-center rounded-full" style={{ background: on ? h.color : "color-mix(in srgb, var(--fg) 10%, transparent)" }}>
+                    <AnimatePresence mode="wait" initial={false}>
+                      {on ? (
+                        <motion.span key="c" initial={{ scale: 0, rotate: -40 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 600, damping: 22 }}><Check size={15} strokeWidth={3} color="#fff" /></motion.span>
+                      ) : (
+                        <motion.span key="e" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>{h.emoji}</motion.span>
+                      )}
+                    </AnimatePresence>
+                  </span>
+                  <span className={cn(on && "font-medium")}>{h.name}</span>
+                </motion.button>
+              )
+            })}
+          </div>
+
+          {/* grade do mês: cabe na janela (quadrados se ajustam); só rola de lado em janelas bem estreitas */}
+          <div className="overflow-x-auto rounded-[calc(var(--r)*0.7)] border border-line" style={{ background: "color-mix(in srgb, var(--fg) 3%, transparent)" }}>
+            <div className="grid" style={{ gridTemplateColumns: `minmax(140px, 200px) repeat(${days}, minmax(18px, 1fr)) 52px`, minWidth: 140 + days * 20 + 52 }}>
+              <div className="sticky left-0 z-10 flex items-end px-3 pt-2 pb-1.5 text-sm font-medium" style={{ background: "var(--field)" }}>Hábito</div>
+              {Array.from({ length: days }, (_, i) => {
+                const k = iso(y, m, i + 1)
+                const wd = new Date(y, m, i + 1).getDay()
+                return (
+                  <div key={i} className={cn("flex flex-col items-center pt-2 pb-1.5 leading-tight", k === today ? "rounded-t-lg bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] font-semibold text-brand" : wd === 0 || wd === 6 ? "text-fg-muted" : "")}>
+                    <span className="text-[9px] uppercase opacity-70">{WEEKDAYS[wd][0]}</span>
+                    <span className="font-num text-xs">{i + 1}</span>
+                  </div>
+                )
+              })}
+              <div className="flex items-end justify-center pb-1.5 text-sm" title="Sequência atual">🔥</div>
+
+              {active.map((h) => {
+                const monthDone = Array.from({ length: days }, (_, i) => (log[iso(y, m, i + 1)] ?? []).includes(h.id)).filter(Boolean).length
+                return (
+                  <div key={h.id} className="group contents">
+                    <div className="sticky left-0 z-10 flex min-w-0 items-center gap-2 border-t border-line px-3 py-1.5" style={{ background: "var(--field)" }}>
+                      <span className="text-base">{h.emoji}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm">{h.name}</span>
+                        <span className="block text-[10px] text-fg-muted">{monthDone} no mês</span>
+                      </span>
+                      <button className="opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100" title="Editar" onClick={() => setEdit(h)}><Pencil size={13} /></button>
                     </div>
-                  </td>
-                  {Array.from({ length: days }, (_, i) => {
-                    const k = iso(y, m, i + 1)
-                    const on = (log[k] ?? []).includes(h.id)
-                    const future = k > today
-                    return (
-                      <td key={i} className="p-0.5 text-center">
-                        <motion.button
-                          whileTap={{ scale: 0.7, rotateY: 180 }}
-                          disabled={future}
-                          onClick={() => toggle(h.id, k)}
-                          className={cn("h-6 w-6 rounded-md transition-all", future ? "opacity-20" : "hover:scale-110", k === today && !on && "ring-1 ring-brand")}
-                          style={on ? { background: `linear-gradient(160deg, ${h.color}, color-mix(in srgb, ${h.color} 60%, #000))`, boxShadow: `0 2px 8px -2px ${h.color}, inset 0 1px 0 rgb(255 255 255 / .5)` } : { background: "color-mix(in srgb, var(--fg) 7%, transparent)" }}
-                        />
-                      </td>
-                    )
-                  })}
-                  <td className="font-num p-2 text-center">{streak(h.id, log)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    {Array.from({ length: days }, (_, i) => {
+                      const k = iso(y, m, i + 1)
+                      const on = (log[k] ?? []).includes(h.id)
+                      const future = k > today
+                      return (
+                        <div key={i} className={cn("flex items-center justify-center border-t border-line px-[2px] py-1.5", k === today && "bg-[color-mix(in_srgb,var(--accent)_16%,transparent)]")}>
+                          <motion.button
+                            whileHover={future ? undefined : { scale: 1.12 }}
+                            whileTap={future ? undefined : { scale: 0.82 }}
+                            disabled={future}
+                            title={`${h.name} · ${new Date(k + "T12:00").toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}`}
+                            onClick={() => toggle(h.id, k)}
+                            className={cn("flex aspect-square w-full max-w-[26px] items-center justify-center rounded-[7px] transition-colors", future && "cursor-default opacity-25")}
+                            style={on
+                              ? { background: `linear-gradient(160deg, ${h.color}, color-mix(in srgb, ${h.color} 62%, #000))`, boxShadow: `0 2px 8px -2px ${h.color}, inset 0 1px 0 rgb(255 255 255 / .45)` }
+                              : { background: "color-mix(in srgb, var(--fg) 8%, transparent)", boxShadow: k === today ? `inset 0 0 0 1.5px ${h.color}` : undefined }}
+                          >
+                            <AnimatePresence initial={false}>
+                              {on && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 700, damping: 24 }}><Check size={12} strokeWidth={3.2} color="#fff" /></motion.span>}
+                            </AnimatePresence>
+                          </motion.button>
+                        </div>
+                      )
+                    })}
+                    <div className="font-num flex items-center justify-center border-t border-line text-sm">{streak(h.id, log)}</div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </>
       ) : (
         <div>
           <div className="grid grid-cols-7 gap-2 text-center text-xs text-fg-muted uppercase">{WEEKDAYS.map((d) => <div key={d}>{d}</div>)}</div>

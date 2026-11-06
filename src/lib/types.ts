@@ -5,7 +5,7 @@ export type TaskbarPosition = "bottom" | "top" | "left" | "right"
 export type TaskbarStyle = "dock" | "bar" | "floating"
 export type SectionId = "today" | "habits" | "studies" | "services" | "finance" | "lists" | "music" | "discord" | "whatsapp" | "ifood" | "gallery" | "settings"
 export type IconStyle = "auto" | "logos" | "color" | "glass" | "metal" | "neon" | "outline" | "flat" | "pixel"
-export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp" | "finance" | "agenda"
+export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp" | "finance" | "agenda" | "musicstats"
 
 export interface Settings {
   theme: ThemeId

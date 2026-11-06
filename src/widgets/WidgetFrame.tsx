@@ -28,6 +28,7 @@ import { IfoodWidget } from "./Ifood"
 import { WhatsappWidget } from "./Whatsapp"
 import { FinanceWidget } from "./FinanceWidget"
 import { AgendaWidget } from "./AgendaWidget"
+import { MusicStatsWidget } from "./MusicStatsWidget"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { SECTIONS } from "@/components/sections-meta"
 
@@ -51,6 +52,7 @@ export const WIDGET_META: Record<WidgetType, { label: string; emoji: string }> =
   whatsapp: { label: "WhatsApp (conversas)", emoji: "💬" },
   finance: { label: "Finanças (gastos do mês)", emoji: "💸" },
   agenda: { label: "Agenda do Google (próximos eventos)", emoji: "🗓️" },
+  musicstats: { label: "Música: o que mais ouço", emoji: "📊" },
 }
 
 /** Opções do menu "Adicionar widget": widgets comuns + um atalho para cada aba. */
@@ -171,6 +173,7 @@ export function WidgetFrame({ w }: { w: Widget }) {
     case "whatsapp": body = <WhatsappWidget w={W} />; break
     case "finance": body = <FinanceWidget w={W} />; break
     case "agenda": body = <AgendaWidget w={W} />; break
+    case "musicstats": body = <MusicStatsWidget w={W} />; break
   }
   body = <ErrorBoundary label="widget" compact>{body}</ErrorBoundary>
 

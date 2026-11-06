@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { ArrowLeft, ExternalLink, Home, Library, Loader2, LogOut, MicVocal, MonitorDown, Search } from "lucide-react"
+import { ArrowLeft, BarChart3, ExternalLink, Home, Library, Loader2, LogOut, MicVocal, MonitorDown, Search } from "lucide-react"
+import { MusicStats } from "@/components/MusicStats"
 import { bridge } from "@/lib/bridge"
 import { useStore } from "@/lib/store"
 import { Switch } from "@/components/ui/controls"
@@ -57,8 +58,11 @@ export default function Music() {
   const setSettings = useStore((s) => s.setSettings)
   const slot = useRef<HTMLDivElement>(null)
   const showLyrics = useStore((s) => s.settings.musicLyrics ?? false)
+  const tab = useStore((s) => s.musicTab)
+  const stats = tab === "stats"
   useEffect(() => { bridge.music.open() }, [])
-  useEmbedSlot(slot, !m.popped)
+  // nas estatísticas o player sai da frente (ele é uma camada nativa por cima de tudo)
+  useEmbedSlot(slot, !m.popped && !stats)
 
   return (
     <div className="flex h-full flex-col">
@@ -71,6 +75,7 @@ export default function Music() {
             e.preventDefault()
             const v = q.trim()
             if (!v) return
+            useStore.setState({ musicTab: "player" })
             if (/^https?:\/\/(www\.|music\.|m\.)?(youtube\.com|youtu\.be)\//.test(v)) { bridge.music.cmd("url", v); setQ("") }
             else bridge.music.cmd("search", v)
           }}
@@ -78,8 +83,9 @@ export default function Music() {
           <Search size={15} className="text-fg-muted" />
           <input className="field flex-1" placeholder="Buscar música, artista, playlist… ou cole um link do YouTube" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
-        <button className="btn" onClick={() => bridge.music.cmd("home")}><Home size={14} /> Início</button>
-        <button className="btn" onClick={() => bridge.music.cmd("library")}><Library size={14} /> Biblioteca</button>
+        <button className="btn" onClick={() => { useStore.setState({ musicTab: "player" }); bridge.music.cmd("home") }}><Home size={14} /> Início</button>
+        <button className="btn" onClick={() => { useStore.setState({ musicTab: "player" }); bridge.music.cmd("library") }}><Library size={14} /> Biblioteca</button>
+        <button className={cn("btn", stats && "btn-accent")} onClick={() => useStore.setState({ musicTab: stats ? "player" : "stats" })} title="Música mais ouvida, artistas, gêneros, minutos…"><BarChart3 size={14} /> Estatísticas</button>
         {m.popped ? (
           <button className="btn" onClick={() => bridge.music.dock()} title="Trazer o YouTube Music de volta para dentro do Agenda"><MonitorDown size={14} /> Trazer para o Agenda</button>
         ) : (
@@ -90,7 +96,9 @@ export default function Music() {
       {/* o YouTube Music fica aqui dentro */}
       <div className="relative flex min-h-0 flex-1 gap-3 p-3 pb-0">
         <div className="relative min-w-0 flex-1">
-        {m.popped ? (
+        {stats ? (
+          <MusicStats />
+        ) : m.popped ? (
           <div className="relative flex h-full flex-col items-center justify-center gap-4 overflow-hidden rounded-[calc(var(--r)*0.6)] border border-line text-center">
             {m.art && <div className="absolute inset-0 opacity-40" style={{ backgroundImage: `url("${m.art}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(50px) saturate(1.4)", transform: "scale(1.3)" }} />}
             <div className="relative"><Artwork size={180} /></div>
@@ -107,7 +115,7 @@ export default function Music() {
           </div>
         )}
         </div>
-        {showLyrics && (
+        {showLyrics && !stats && (
           <div className="relative w-[min(38%,400px)] shrink-0 overflow-hidden rounded-[calc(var(--r)*0.6)] border border-line">
             {m.art && <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url("${m.art}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(40px) saturate(1.5)", transform: "scale(1.4)" }} />}
             <LyricsScroll className="relative" />
