@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="jg-bg" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#c4b5fd"/>
+      <stop offset="1" stop-color="#5b3fd6"/>
+    </linearGradient>
+    <radialGradient id="jg-light" cx="0.3" cy="0.05" r="0.9">
+      <stop offset="0" stop-color="#fff" stop-opacity=".45"/>
+      <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="jg-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="jg-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".7"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".3"/>
+    </linearGradient>
+    <filter id="jg-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+    <filter id="jg-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#jg-bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="124" fill="url(#jg-light)"/>
+  <g opacity=".35" filter="url(#jg-glow)"><g fill="#ffffff" stroke="#ffffff">
+  <path d="M168 176 h176 c52 0 86 40 96 96 l14 78 c8 44 -40 70 -72 38 l-46 -46 h-160 l-46 46 c-32 32 -80 6 -72 -38 l14 -78 c10 -56 44 -96 96 -96 z" fill="#fff"/>
+  <rect x="160" y="238" width="68" height="22" rx="11" fill="#6d4bd8" opacity=".85"/>
+  <rect x="183" y="215" width="22" height="68" rx="11" fill="#6d4bd8" opacity=".85"/>
+  <circle cx="320" cy="232" r="15" fill="#ff5c8a"/>
+  <circle cx="354" cy="266" r="15" fill="#4fc3f7"/>
+  <circle cx="286" cy="266" r="15" fill="#ffd36e"/>
+  <circle cx="320" cy="300" r="15" fill="#6ee7a8"/>
+</g></g>
+  <g filter="url(#jg-shadow)">
+  <path d="M168 176 h176 c52 0 86 40 96 96 l14 78 c8 44 -40 70 -72 38 l-46 -46 h-160 l-46 46 c-32 32 -80 6 -72 -38 l14 -78 c10 -56 44 -96 96 -96 z" fill="#fff"/>
+  <rect x="160" y="238" width="68" height="22" rx="11" fill="#6d4bd8" opacity=".85"/>
+  <rect x="183" y="215" width="22" height="68" rx="11" fill="#6d4bd8" opacity=".85"/>
+  <circle cx="320" cy="232" r="15" fill="#ff5c8a"/>
+  <circle cx="354" cy="266" r="15" fill="#4fc3f7"/>
+  <circle cx="286" cy="266" r="15" fill="#ffd36e"/>
+  <circle cx="320" cy="300" r="15" fill="#6ee7a8"/>
+</g>
+  <path d="M60 140 C 60 80 96 46 160 46 L 352 46 C 416 46 452 80 452 140 C 380 190 132 190 60 140 Z" fill="url(#jg-gloss)" opacity=".55"/>
+  <rect x="18" y="18" width="476" height="476" rx="122" fill="none" stroke="url(#jg-rim)" stroke-width="4"/>
+</svg>

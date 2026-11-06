@@ -1,4 +1,4 @@
-import { Briefcase, CalendarCheck, GraduationCap, Headphones, Images, ListChecks, MessageCircle, Music, Settings, Sun, UtensilsCrossed, Wallet } from "lucide-react"
+import { Briefcase, CalendarCheck, Gamepad2, GraduationCap, Headphones, Images, ListChecks, MessageCircle, Music, Settings, Sun, UtensilsCrossed, Wallet } from "lucide-react"
 import type { SectionId } from "@/lib/types"
 
 export const SECTIONS: { id: SectionId; label: string; icon: typeof Briefcase; color: string }[] = [
@@ -9,6 +9,7 @@ export const SECTIONS: { id: SectionId; label: string; icon: typeof Briefcase; c
   { id: "finance", label: "Finanças", icon: Wallet, color: "#5ee3a1" },
   { id: "lists", label: "Listas", icon: ListChecks, color: "#ff8fb8" },
   { id: "music", label: "Música", icon: Music, color: "#ff5c7a" },
+  { id: "games", label: "Jogos", icon: Gamepad2, color: "#a78bfa" },
   { id: "discord", label: "Discord", icon: Headphones, color: "#5865F2" },
   { id: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "#25D366" },
   { id: "ifood", label: "iFood", icon: UtensilsCrossed, color: "#EA1D2C" },

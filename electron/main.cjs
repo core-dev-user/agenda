@@ -112,6 +112,18 @@ function createWindow() {
             wc.sendInputEvent({ type: "keyDown", keyCode: "V", modifiers: ["control"] })
             wc.sendInputEvent({ type: "keyUp", keyCode: "V", modifiers: ["control"] })
           }
+          else if (js.startsWith("dblclick:")) {
+            const [x, y] = js.slice(9).split(",").map(Number)
+            const wc = win.webContents
+            wc.sendInputEvent({ type: "mouseMove", x, y })
+            await wait(80)
+            for (const n of [1, 2]) {
+              wc.sendInputEvent({ type: "mouseDown", x, y, button: "left", clickCount: n })
+              await wait(40)
+              wc.sendInputEvent({ type: "mouseUp", x, y, button: "left", clickCount: n })
+              await wait(60)
+            }
+          }
           else if (js.startsWith("click:")) {
             const [x, y] = js.slice(6).split(",").map(Number)
             const wc = win.webContents
@@ -162,6 +174,7 @@ music.register(ipcMain, () => win, app)
 require("./sports.cjs").register(ipcMain)
 require("./webapps.cjs").register(ipcMain, () => win, app)
 system.register(ipcMain, () => win)
+require("./games.cjs").register(ipcMain, () => win)
 require("./finance.cjs").register(ipcMain, { onBackup: (f, n) => system.cloudCopy(f, n) })
 
 /* ---------------- Janela ---------------- */

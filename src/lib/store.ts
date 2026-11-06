@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware"
 import { bridge } from "./bridge"
 import { uid, todayISO } from "./utils"
 import type { ListenStats } from "./listening"
+import type { GamingData } from "./gaming"
 import type {
   Settings, Widget, WidgetType, MediaItem, Geo, Habit, Subject, Service, ShopList, WinState, SectionId, ThemeId, LookTemplate, Task, StudyTimer,
   AppNotification, CalEvent, NotifyPrefs, FocusPrefs,
@@ -99,6 +100,7 @@ const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
   finance: [340, 300],
   agenda: [340, 360],
   musicstats: [360, 380],
+  gaming: [340, 230],
 }
 
 const defaultWidgets = (): Widget[] => [
@@ -124,6 +126,8 @@ interface State {
   notifications: AppNotification[]
   /** histórico de escuta do YouTube Music */
   listening?: ListenStats
+  /** histórico de jogos */
+  gaming?: GamingData
   // não persistido
   windows: WinState[]
   splashDone: boolean
@@ -372,6 +376,7 @@ export const useStore = create<State>()(
         templateUndo: s.templateUndo,
         notifications: s.notifications,
         listening: s.listening,
+        gaming: s.gaming,
       }),
       merge: (persisted: any, current) => ({
         ...current,

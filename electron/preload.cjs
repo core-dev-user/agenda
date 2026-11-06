@@ -32,6 +32,13 @@ contextBridge.exposeInMainWorld("agenda", {
     pickCloud: () => ipcRenderer.invoke("sys:pickCloud"),
     cloudNow: () => ipcRenderer.invoke("sys:cloudNow"),
   },
+  games: {
+    get: () => ipcRenderer.invoke("games:get"),
+    config: (cfg) => ipcRenderer.invoke("games:config", cfg),
+    scan: () => ipcRenderer.invoke("games:scan"),
+    icon: (p) => ipcRenderer.invoke("games:icon", p),
+    onState: on("games:state"),
+  },
   finance: {
     status: () => ipcRenderer.invoke("finance:status"),
     open: (pin) => ipcRenderer.invoke("finance:open", pin),

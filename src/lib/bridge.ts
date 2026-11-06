@@ -16,6 +16,13 @@ export interface AgendaBridge {
     pickCloud(): Promise<string>
     cloudNow(): Promise<SysConfig>
   }
+  games: {
+    get(): Promise<GamesState>
+    config(cfg: { custom: { exe: string; name: string }[]; ignored: string[] }): Promise<void>
+    scan(): Promise<void>
+    icon(path: string): Promise<string>
+    onState(cb: (s: GamesState) => void): Unsub
+  }
   finance: {
     status(): Promise<{ exists: boolean; hasPin: boolean; unlocked: boolean; secure: boolean; waitMs: number }>
     open(pin?: string): Promise<{ ok: boolean; data?: string | null; error?: "pin" | "wait"; waitMs?: number }>
@@ -89,6 +96,8 @@ export interface AgendaBridge {
 }
 
 export type WebAppId = "discord" | "ifood" | "whatsapp"
+export interface RunningGame { id: string; name: string; color: string; start: number; path: string; exe: string }
+export interface GamesState { playing: RunningGame[]; at: number }
 export interface SysConfig { closeToTray: boolean; hotkey: string; cloudDir: string; cloudOn: boolean; lastCloud: number; cloudError: string; guesses: { path: string; label: string }[]; hotkeyOk?: boolean }
 export interface WhatsChat { name: string; last: string; unread: number; time: string; avatar: string }
 export interface WhatsRead { loggedIn: boolean; qr?: boolean; loading?: boolean; totalUnread: number; chats: WhatsChat[] }
@@ -160,6 +169,7 @@ const browserFallback: AgendaBridge = {
   win: { minimize() {}, toggleMaximize() {}, fullscreen(on) { on ? document.documentElement.requestFullscreen() : document.exitFullscreen() }, close() {}, onState: noop },
   app: { autostart: async () => false, openExternal: async (u) => void window.open(u, "_blank"), screenInfo: async () => ({ long: Math.max(screen.width, screen.height) * devicePixelRatio }), show: async () => {}, quit: async () => {} },
   sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
+  games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop },
   finance: {
     status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),
     open: async () => ({ ok: true, data: localStorage.getItem("agenda-finance") }),
