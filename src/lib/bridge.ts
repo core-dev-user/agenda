@@ -178,6 +178,7 @@ export type BarToMain =
   | { type: "palette" }
   | { type: "widgets" }
   | { type: "bell" }
+  | { type: "assistant" }
   | { type: "pin"; app: PinnedApp }
   | { type: "unpin"; path: string }
 export interface ShareSource { id: string; name: string; screen: boolean; thumb: string; icon: string }

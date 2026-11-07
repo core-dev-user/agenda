@@ -16,6 +16,7 @@ import { Logo } from "./Logo"
 import { VIEWS, preloadSections } from "./AppWindow"
 import { ErrorBoundary } from "./ErrorBoundary"
 import { CommandPalette } from "./CommandPalette"
+import { Assistant } from "./Assistant"
 import { BellIcon, NotificationPanel } from "./NotificationCenter"
 
 const drag = { WebkitAppRegion: "drag" } as React.CSSProperties
@@ -109,6 +110,7 @@ export default function AppShell() {
         </div>
       </main>
       <CommandPalette />
+      <Assistant />
       <Toast />
     </div>
   )

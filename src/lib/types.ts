@@ -85,6 +85,8 @@ export interface Settings {
   nick?: string
   /** salas salvas ("servidores" com os amigos) */
   savedRooms?: { code: string; name: string }[]
+  /** assistente: IA local ligada (já baixada) e qual modelo */
+  ai?: { on: boolean; model: "small" | "big" }
 }
 
 export type NotifySource = "tasks" | "whatsapp" | "ifood" | "sports" | "budgets" | "services" | "calendar" | "focus" | "system"

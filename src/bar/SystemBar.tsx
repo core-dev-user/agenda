@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { Bell, ChevronUp, Search, Volume2, Wifi } from "lucide-react"
+import { Bell, Bot, ChevronUp, Search, Volume2, Wifi } from "lucide-react"
 import { bridge, type BarMenu, type PcWindow } from "@/lib/bridge"
 import { Logo } from "@/components/Logo"
 import { cn } from "@/lib/utils"
@@ -89,6 +89,7 @@ export function SystemBar() {
         <button className="bar-btn h-10 gap-1.5 px-2.5 text-sm" title="Busca rápida do Agenda (Ctrl+K)" onClick={() => bridge.bar.toMain({ type: "palette" })}>
           <Search size={16} /> {!compact && <span className="text-fg-muted">Pesquisar</span>}
         </button>
+        <button className="bar-btn size-10" title="Assistente (IA)" onClick={() => bridge.bar.toMain({ type: "assistant" })}><Bot size={17} /></button>
       </div>
 
       {/* centro: Iniciar + programas */}

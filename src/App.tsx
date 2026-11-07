@@ -23,6 +23,7 @@ import { toast } from "@/lib/toast"
 import { useBackground } from "@/lib/watchers"
 import { usePerf } from "@/lib/perf"
 import { CommandPalette } from "@/components/CommandPalette"
+import { Assistant, openAssistant, useAssistant } from "@/components/Assistant"
 import { FocusBar, useFocusActive } from "@/components/FocusBar"
 import { DEFAULT_FOCUS } from "@/lib/store"
 import { useUiMode } from "@/lib/uimode"
@@ -45,14 +46,15 @@ function useDesktopLayer() {
     let up = false
     const sync = () => {
       const s = useStore.getState()
-      const want = s.windows.some((w) => !w.minimized) || s.paletteOpen
+      const want = s.windows.some((w) => !w.minimized) || s.paletteOpen || useAssistant.getState().open
       if (want !== up) { up = want; bridge.mode.raise(want) }
     }
     const off = useStore.subscribe(sync)
+    const offA = useAssistant.subscribe(sync)
     // atalho global / bandeja: abre a busca rápida por cima de tudo
     const off2 = bridge.mode.onSummon(() => useStore.setState({ paletteOpen: true }))
     sync()
-    return () => { off(); off2() }
+    return () => { off(); offA(); off2() }
   }, [])
 }
 
@@ -82,6 +84,7 @@ function useMainBar() {
       if (m.type === "open") s.openWindow(m.id as SectionId)
       else if (m.type === "palette") useStore.setState({ paletteOpen: true })
       else if (m.type === "bell") { s.openWindow("today") }
+      else if (m.type === "assistant") openAssistant()
       else if (m.type === "pin") { const pins = s.settings.pcPins ?? []; if (!pins.some((p) => p.path.toLowerCase() === m.app.path.toLowerCase())) s.setSettings({ pcPins: [...pins, m.app] }) }
       else if (m.type === "unpin") s.setSettings({ pcPins: (s.settings.pcPins ?? []).filter((p) => p.path.toLowerCase() !== m.path.toLowerCase()) })
     })
@@ -166,6 +169,7 @@ export default function App() {
       </motion.div>
       <FocusBar />
       <CommandPalette />
+      <Assistant />
       <AutoStylePrompt />
       <Overlays />
       <AnimatePresence>{showSplash && <Splash />}</AnimatePresence>

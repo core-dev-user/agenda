@@ -9,6 +9,8 @@ import { SECTIONS } from "./sections-meta"
 import { AppIcon } from "./AppIcon"
 import { Glyph } from "./Glyph"
 import { WIDGET_CHOICES } from "@/widgets/WidgetFrame"
+import { openAssistant } from "./Assistant"
+import { Bot } from "lucide-react"
 import { brl, cn, todayISO } from "@/lib/utils"
 import type { SectionId, ThemeId } from "@/lib/types"
 
@@ -97,7 +99,10 @@ function Palette({ close }: { close: () => void }) {
       if (!toks.every((k) => hay.includes(k))) continue
       scored.push({ i, s: (t.startsWith(toks[0]) ? 0 : t.includes(toks[0]) ? 1 : 2) + (i.group === "Abrir" ? -0.5 : 0) })
     }
-    return scored.sort((a, b) => a.s - b.s).slice(0, 60).map((x) => x.i)
+    const found = scored.sort((a, b) => a.s - b.s).slice(0, 60).map((x) => x.i)
+    // pedido em frase ("arruma os widgets"): o assistente vem primeiro
+    const askItem: Item = { id: "ask", group: "Assistente", title: "Pedir ao assistente: " + q.trim(), sub: "Ctrl+J abre o assistente", icon: <Bot size={17} />, run: () => { close(); openAssistant(q.trim()) } }
+    return toks.length >= 3 || !found.length ? [askItem, ...found] : [...found, askItem]
   }, [q, items])
 
   useEffect(() => setSel(0), [q])
