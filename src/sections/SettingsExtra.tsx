@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { Glyph } from "@/components/Glyph"
-import { CheckCircle2, Cloud, FolderOpen, Keyboard, Loader2, Moon, Plus, RefreshCw, Trash2, XCircle, AlertTriangle, Star } from "lucide-react"
+import { AppWindow, Monitor, MonitorUp, CheckCircle2, Cloud, FolderOpen, Keyboard, Loader2, Moon, Plus, RefreshCw, Trash2, XCircle, AlertTriangle, Star } from "lucide-react"
 import { useStore, DEFAULT_NOTIFY, DEFAULT_FOCUS } from "@/lib/store"
-import { bridge, type SysConfig, type UiMode } from "@/lib/bridge"
+import { bridge, type DisplayInfo, type SysConfig, type UiMode } from "@/lib/bridge"
 import { MODE_INFO, useUiMode } from "@/lib/uimode"
 import { SOURCE_META, notify } from "@/lib/notify"
 import { eventsFrom, feedUrl } from "@/lib/ical"
@@ -214,27 +214,110 @@ export function IntegrationsTab() {
 const HOTKEYS = ["Control+Alt+Space", "Alt+Shift+A", "Control+Shift+Space", "Control+Alt+A", "Super+Alt+A", ""]
 const hotkeyLabel = (k: string) => (k ? k.replace("Control", "Ctrl").replace("Super", "Win").replace("Space", "Espaço").replace(/\+/g, " + ") : "Desligado")
 
-/** trocar entre Aplicativo / Área de trabalho / Tela própria (o app reabre) */
-function ModeSection() {
-  const cur = useUiMode((s) => s.mode)
+const MODE_ICON: Record<UiMode, typeof Monitor> = { desktop: Monitor, app: AppWindow, screen: MonitorUp }
+
+/** aba "Modo de uso": Área de trabalho / Aplicativo / Tela própria + em qual monitor (o app reabre ao aplicar) */
+export function ModeTab() {
+  const cur = useUiMode((s) => s.mode) || "screen"
+  const [mode, setMode] = useState<UiMode>(cur)
+  const [shows, setShows] = useState<DisplayInfo[] | null>(null)
+  const [disp, setDisp] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    bridge.mode.displays().then((d) => { setShows(d); setDisp(d.find((x) => x.current)?.id ?? null) }).catch(() => setShows([]))
+  }, [])
+  const curDisp = shows?.find((x) => x.current)?.id ?? null
+  const changed = mode !== cur || (disp != null && disp !== curDisp)
+  const chosen = shows?.find((x) => x.id === disp)
+  const apply = async () => {
+    setBusy(true)
+    bridge.store.flush?.()
+    await bridge.mode.set(mode, disp ?? undefined)
+    setTimeout(() => setBusy(false), 4000)
+  }
+
   return (
-    <Section title="Modo de uso" desc="Trocar o modo reabre o Agenda. Seus dados, widgets e abas continuam iguais.">
-      <div className="grid gap-2 sm:grid-cols-3">
-        {(["desktop", "app", "screen"] as UiMode[]).map((m) => (
-          <button
-            key={m}
-            disabled={busy}
-            onClick={async () => { if (m === cur) return; setBusy(true); bridge.store.flush?.(); await bridge.mode.set(m) }}
-            className={cn("rounded-xl border p-3 text-left transition-colors", m === cur ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]")}
-          >
-            <div className="text-sm font-semibold">{MODE_INFO[m].label}{m === cur && <span className="ml-1.5 text-xs font-normal text-fg-muted">(atual)</span>}</div>
-            <div className="mt-1 text-xs leading-relaxed text-fg-muted">{MODE_INFO[m].desc}</div>
-          </button>
-        ))}
+    <>
+      <Section title="Modo de uso" desc="Escolha como o Agenda aparece no seu PC. Seus dados, widgets e abas continuam iguais em qualquer modo.">
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(["desktop", "app", "screen"] as UiMode[]).map((m) => {
+            const Icon = MODE_ICON[m]
+            const on = m === mode
+            return (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={cn("rounded-xl border p-3 text-left transition-colors", on ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]")}
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Icon size={16} className={on ? "text-[var(--accent)]" : "text-fg-muted"} />
+                  {MODE_INFO[m].label}
+                  {m === cur && <span className="text-xs font-normal text-fg-muted">(atual)</span>}
+                </div>
+                <div className="mt-1 text-xs leading-relaxed text-fg-muted">{MODE_INFO[m].desc}</div>
+              </button>
+            )
+          })}
+        </div>
+      </Section>
+
+      <Section title="Monitor" desc={mode === "app" ? "Em qual monitor a janela abre." : mode === "desktop" ? "Em qual monitor o Agenda vira a área de trabalho (os outros continuam com o papel de parede do Windows)." : "Em qual monitor fica a tela própria do Agenda — por exemplo, o segundo monitor."}>
+        {!shows && <div className="flex items-center gap-2 py-2 text-sm text-fg-muted"><Loader2 size={14} className="animate-spin" /> Procurando monitores…</div>}
+        {shows && shows.length <= 1 && <div className="py-1 text-sm text-fg-muted">Só um monitor ligado agora. Se ligar outro, ele aparece aqui.</div>}
+        {shows && shows.length > 1 && <MonitorMap list={shows} value={disp} onPick={setDisp} />}
+        {mode === "desktop" && chosen && !chosen.primary && (
+          <div className="mt-2 text-xs" style={{ color: "#ffd36e" }}>A barra do Agenda só pode substituir a do Windows no monitor principal.</div>
+        )}
+      </Section>
+
+      <div className="flex items-center justify-end gap-3">
+        {changed && <span className="text-sm text-fg-muted">O Agenda vai fechar e abrir de novo já no modo novo.</span>}
+        <button className="btn btn-accent disabled:opacity-40" disabled={!changed || busy} onClick={apply}>
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Aplicar e reabrir
+        </button>
       </div>
-      {cur === "desktop" && <MainBarSwitch />}
-    </Section>
+
+      {cur === "desktop" && chosen?.primary && (
+        <Section title="Barra de tarefas">
+          <MainBarSwitch />
+        </Section>
+      )}
+    </>
+  )
+}
+
+/** desenho dos monitores na posição real (como em Configurações de tela do Windows) */
+function MonitorMap({ list, value, onPick }: { list: DisplayInfo[]; value: number | null; onPick: (id: number) => void }) {
+  const minX = Math.min(...list.map((d) => d.bounds.x)), minY = Math.min(...list.map((d) => d.bounds.y))
+  const maxX = Math.max(...list.map((d) => d.bounds.x + d.bounds.width)), maxY = Math.max(...list.map((d) => d.bounds.y + d.bounds.height))
+  const W = maxX - minX, H = maxY - minY
+  const scale = Math.min(520 / W, 170 / H)
+  return (
+    <div className="flex justify-center py-3">
+      <div className="relative" style={{ width: W * scale, height: H * scale }}>
+        {list.map((d) => {
+          const on = d.id === value
+          return (
+            <button
+              key={d.id}
+              onClick={() => onPick(d.id)}
+              className={cn("absolute flex flex-col items-center justify-center rounded-lg border-2 transition-all", on ? "border-[var(--accent)]" : "border-line hover:border-[color-mix(in_srgb,var(--fg)_40%,transparent)]")}
+              style={{
+                left: (d.bounds.x - minX) * scale + 3, top: (d.bounds.y - minY) * scale + 3,
+                width: d.bounds.width * scale - 6, height: d.bounds.height * scale - 6,
+                background: on ? "color-mix(in srgb, var(--accent) 22%, transparent)" : "color-mix(in srgb, var(--fg) 6%, transparent)",
+              }}
+              title={d.label}
+            >
+              <span className="font-display text-2xl leading-none font-semibold">{d.n}</span>
+              <span className="mt-1 text-[10px] text-fg-muted">{d.w}×{d.h}{d.hz ? ` · ${Math.round(d.hz)} Hz` : ""}</span>
+              {d.primary && <span className="text-[10px] text-fg-muted">principal</span>}
+              {d.current && <span className="absolute top-1 right-1.5 text-[9px] text-fg-muted">atual</span>}
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -263,7 +346,6 @@ export function SystemExtra() {
   const hib = s.hibernateMin ?? 15
   return (
     <>
-      <ModeSection />
       <Section title="Bandeja e atalho" desc="O Agenda pode ficar rodando perto do relógio do Windows: o YouTube Music, as calls e os avisos continuam funcionando.">
         <Switch label="Fechar no X manda para a bandeja (em vez de encerrar)" checked={cfg.closeToTray} onChange={(v) => upd({ closeToTray: v })} />
         <div className="flex items-center justify-between gap-3 py-1.5 text-sm">

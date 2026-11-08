@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
-import { Download, Upload, RotateCcw, Ban, Bell, Circle, CircleDashed, CircleDot, Crosshair, Droplets, Flame, Flashlight, Flower2, Gem, Grid3x3, HardDrive, Heart, Image, LayoutGrid, LayoutTemplate, Leaf, MousePointer, MousePointer2, Navigation, Orbit, Palette, PanelBottom, PartyPopper, PawPrint, Plug, Rainbow, Scissors, Snowflake, Sparkles, Spline, Star, Type, Wand2, WandSparkles, Waves, type LucideIcon } from "lucide-react"
+import { Download, Upload, RotateCcw, Ban, Bell, Circle, CircleDashed, CircleDot, Crosshair, Droplets, Flame, Flashlight, Flower2, Gem, Grid3x3, HardDrive, Heart, Image, LayoutGrid, LayoutTemplate, Leaf, MonitorSmartphone, MousePointer, MousePointer2, Navigation, Orbit, Palette, PanelBottom, PartyPopper, PawPrint, Plug, Rainbow, Scissors, Snowflake, Sparkles, Spline, Star, Type, Wand2, WandSparkles, Waves, type LucideIcon } from "lucide-react"
 import { GlyphTile } from "@/components/Glyph"
 import { useStore, THEME_PRESETS } from "@/lib/store"
 import { bridge, isDesktop, mediaUrl } from "@/lib/bridge"
@@ -17,9 +17,10 @@ import { FEEDS } from "@/widgets/News"
 import { AppIcon, ICON_STYLES, sectionColor } from "@/components/AppIcon"
 import { SECTIONS } from "@/components/sections-meta"
 import { TemplatesTab } from "./Templates"
-import { IntegrationsTab, RoutineTab, SystemExtra } from "./SettingsExtra"
+import { IntegrationsTab, ModeTab, RoutineTab, SystemExtra } from "./SettingsExtra"
 
 const TABS = [
+  { id: "mode", label: "Modo de uso", e: MonitorSmartphone, c: "#6ea8ff" },
   { id: "templates", label: "Templates", e: LayoutTemplate, c: "#a78bfa" },
   { id: "look", label: "Aparência", e: Palette, c: "#ff8fb8" },
   { id: "fonts", label: "Fontes", e: Type, c: "#8f9bff" },
@@ -56,6 +57,7 @@ export default function SettingsView() {
       </aside>
       <div className="min-w-0 flex-1 overflow-auto p-6">
         <motion.div key={tab} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="mx-auto max-w-3xl space-y-5">
+          {tab === "mode" && <ModeTab />}
           {tab === "templates" && <TemplatesTab />}
           {tab === "look" && <Look />}
           {tab === "fonts" && <Fonts />}

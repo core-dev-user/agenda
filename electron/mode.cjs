@@ -10,7 +10,7 @@ const fs = require("node:fs")
 
 const MODES = ["app", "desktop", "screen"]
 const cfgFile = () => path.join(app.getPath("userData"), "mode.json")
-let cfg = { mode: "" }
+let cfg = { mode: "", display: 0 } // display: id do monitor escolhido (0 = o principal)
 try { cfg = { ...cfg, ...JSON.parse(fs.readFileSync(cfgFile(), "utf8")) } } catch {}
 if (process.env.AGENDA_MODE != null) cfg.mode = process.env.AGENDA_MODE
 if (cfg.mode && !MODES.includes(cfg.mode)) cfg.mode = ""
@@ -18,14 +18,45 @@ const save = () => { try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null,
 
 const mode = () => cfg.mode
 
+/** monitor onde o Agenda fica (o escolhido, se ainda estiver ligado; senão o principal) */
+function target() {
+  const all = screen.getAllDisplays()
+  return all.find((d) => d.id === cfg.display) || screen.getPrimaryDisplay()
+}
+const isPrimary = () => target().id === screen.getPrimaryDisplay().id
+const workArea = () => target().workArea
+
+function displays() {
+  const prim = screen.getPrimaryDisplay().id
+  const cur = target().id
+  return screen.getAllDisplays()
+    .sort((a, b) => a.bounds.x - b.bounds.x || a.bounds.y - b.bounds.y)
+    .map((d, i) => ({
+      id: d.id,
+      label: d.label || `Monitor ${i + 1}`,
+      n: i + 1,
+      primary: d.id === prim,
+      current: d.id === cur,
+      w: Math.round(d.size.width * (d.scaleFactor || 1)),
+      h: Math.round(d.size.height * (d.scaleFactor || 1)),
+      hz: d.displayFrequency || 0,
+      bounds: d.bounds,
+    }))
+}
+
 /** opções extras do BrowserWindow para o modo atual */
 function windowOptions() {
   if (cfg.mode === "desktop") {
-    const wa = screen.getPrimaryDisplay().workArea
+    const wa = workArea()
     return { ...wa, skipTaskbar: true, resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false, hasShadow: false, roundedCorners: false }
   }
-  if (cfg.mode === "app") return { width: 1280, height: 820, minWidth: 820, minHeight: 560 }
-  return {}
+  const wa = workArea()
+  if (cfg.mode === "app") {
+    const width = Math.min(1280, wa.width), height = Math.min(820, wa.height)
+    return { width, height, minWidth: 820, minHeight: 560, x: Math.round(wa.x + (wa.width - width) / 2), y: Math.round(wa.y + (wa.height - height) / 2) }
+  }
+  // tela própria: nasce no monitor escolhido e maximiza lá
+  return { x: wa.x + 40, y: wa.y + 40 }
 }
 
 const winh = require("./winhelper.cjs")
@@ -35,10 +66,10 @@ const hwndOf = winh.hwndOf
 /* ---------------- modo área de trabalho ---------------- */
 let raised = false // uma aba aberta: o Agenda vem para a frente como um app normal
 function attach(win) {
-  if (cfg.mode === "app") { win.center(); return }
+  if (cfg.mode === "app") return
   if (cfg.mode !== "desktop") return
   const h = hwndOf(win)
-  const fit = () => { if (!win.isDestroyed()) win.setBounds(screen.getPrimaryDisplay().workArea) }
+  const fit = () => { if (!win.isDestroyed()) win.setBounds(workArea()) }
   const sink = () => { if (!raised && !win.isDestroyed()) native("bottom " + h) }
   win.once("ready-to-show", () => { native("own " + h); sink() })
   win.on("focus", () => setTimeout(sink, 0))
@@ -85,11 +116,14 @@ function detectApps() {
 }
 
 function register(ipcMain, getWin, onQuit) {
-  ipcMain.handle("mode:get", () => ({ mode: cfg.mode, monitors: screen.getAllDisplays().length }))
-  // trocar de modo reabre o app (a janela é criada de outro jeito em cada modo)
-  ipcMain.handle("mode:set", (_e, m) => {
+  ipcMain.handle("mode:get", () => ({ mode: cfg.mode, monitors: screen.getAllDisplays().length, display: target().id }))
+  ipcMain.handle("mode:displays", () => displays())
+  // trocar de modo (ou de monitor) reabre o app (a janela é criada de outro jeito em cada modo)
+  ipcMain.handle("mode:set", (_e, m, display) => {
     if (!MODES.includes(m)) return false
-    const changed = m !== cfg.mode
+    const before = target().id
+    if (typeof display === "number" && screen.getAllDisplays().some((d) => d.id === display)) cfg.display = display
+    const changed = m !== cfg.mode || target().id !== before
     cfg.mode = m
     save()
     if (changed && !process.env.AGENDA_SHOT) { app.relaunch(); onQuit() }
@@ -102,4 +136,4 @@ function register(ipcMain, getWin, onQuit) {
   ipcMain.handle("apps:detect", () => detectApps())
 }
 
-module.exports = { mode, windowOptions, attach, register }
+module.exports = { mode, windowOptions, attach, register, isPrimary, workArea }

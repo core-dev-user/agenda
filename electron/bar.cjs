@@ -15,7 +15,8 @@ try { cfg = { ...cfg, ...JSON.parse(fs.readFileSync(cfgFile(), "utf8")) } } catc
 const save = () => { try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null, 2)) } catch {} }
 
 const isDev = !!process.env.AGENDA_DEV
-const active = () => cfg.on && modes.mode() === "desktop" && process.platform === "win32" && !process.env.AGENDA_SHOT
+// a barra do Windows fica no monitor principal: só substitui quando o Agenda está nele
+const active = () => cfg.on && modes.mode() === "desktop" && modes.isPrimary() && process.platform === "win32" && !process.env.AGENDA_SHOT
 
 /** @type {BrowserWindow | null} */
 let bar = null
@@ -146,7 +147,7 @@ function destroy() {
   bar = null
   winh.call("restore")
   cfg.hidTaskbar = false; save()
-  setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(screen.getPrimaryDisplay().workArea) }, 300)
+  setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(modes.workArea()) }, 300)
 }
 
 /* ---------------- apps do Menu Iniciar ---------------- */
@@ -187,7 +188,7 @@ function register(ipcMain, mainGetter) {
   })
   app.on("before-quit", () => { if (bar) destroy() })
 
-  ipcMain.handle("bar:get", () => ({ on: cfg.on, height: cfg.height, position: cfg.position, available: modes.mode() === "desktop", active: !!bar }))
+  ipcMain.handle("bar:get", () => ({ on: cfg.on, height: cfg.height, position: cfg.position, available: modes.mode() === "desktop" && modes.isPrimary(), active: !!bar }))
   ipcMain.handle("bar:set", (_e, p) => {
     const q = p || {}
     if (typeof q.on === "boolean") cfg.on = q.on
@@ -196,7 +197,7 @@ function register(ipcMain, mainGetter) {
     save()
     if (active()) { if (!bar) create(); else layout() }
     else if (bar) destroy()
-    return { on: cfg.on, height: cfg.height, position: cfg.position, available: modes.mode() === "desktop", active: !!bar }
+    return { on: cfg.on, height: cfg.height, position: cfg.position, available: modes.mode() === "desktop" && modes.isPrimary(), active: !!bar }
   })
   // a janela principal manda tema, fixados e avisos; a barra recebe
   ipcMain.on("bar:sync", (_e, data) => { lastSync = data; if (bar && !bar.isDestroyed()) bar.webContents.send("bar:sync", data) })

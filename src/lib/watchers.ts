@@ -90,7 +90,10 @@ export function useBackground() {
   useEffect(() => {
     const tick = async () => {
       const s = useStore.getState()
-      const favs = (s.settings.favTeams ?? []).map((f) => f.trim().toLowerCase()).filter(Boolean)
+      // favoritos gerais + os times escolhidos nos widgets de futebol / CS2 / Valorant
+      const fromWidgets = s.widgets.filter((w) => w.type === "football" || w.type === "cs2" || w.type === "valorant")
+        .flatMap((w) => (Array.isArray(w.config.favs) ? w.config.favs.map((f: { name: string }) => f.name) : String(w.config.teams ?? "").split(",")))
+      const favs = [...new Set([...(s.settings.favTeams ?? []), ...fromWidgets].map((f) => String(f).trim().toLowerCase()).filter(Boolean))]
       if (!favs.length || !notifyPrefs().on.sports) return
       const leagues = new Set<string>(["bra.1", "conmebol.libertadores", "uefa.champions", "uefa.europa", "eng.1", "esp.1", "eng.3", "bra.copa_do_brazil"])
       for (const w of s.widgets) if (w.type === "football") for (const l of w.config.leagues ?? []) leagues.add(l)

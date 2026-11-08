@@ -39,9 +39,11 @@ export interface AgendaBridge {
   }
   sysmon: { sub(id: string): Promise<boolean>; unsub(id: string): Promise<boolean>; onData(cb: (d: SysStats) => void): Unsub }
   mode: {
-    get(): Promise<{ mode: UiMode | ""; monitors: number }>
-    /** salva e reabre o app no novo modo */
-    set(m: UiMode): Promise<boolean>
+    get(): Promise<{ mode: UiMode | ""; monitors: number; display?: number }>
+    /** salva e reabre o app no novo modo (e/ou no monitor escolhido) */
+    set(m: UiMode, display?: number): Promise<boolean>
+    /** monitores ligados, da esquerda para a direita */
+    displays(): Promise<DisplayInfo[]>
     /** modo área de trabalho: true = vem para a frente (aba aberta), false = volta para o fundo */
     raise(on: boolean): Promise<void>
     detectApps(): Promise<{ apps: PcApp[]; monitors: number }>
@@ -109,7 +111,11 @@ export interface AgendaBridge {
   }
   ai: { status(): Promise<{ installed: boolean; sharp: boolean }>; install(): Promise<boolean>; onProgress(cb: (n: number) => void): Unsub }
   net: { text(url: string): Promise<string> }
-  sports: { get(sport: "cs2" | "valorant" | "football", opts?: { leagues?: string[] }): Promise<SportMatch[]> }
+  sports: {
+    get(sport: "cs2" | "valorant" | "football", opts?: { leagues?: string[]; teams?: { id?: string; league?: string }[] }): Promise<SportMatch[]>
+    /** times para escolher como favoritos */
+    teams(sport: "cs2" | "valorant" | "football", opts?: { leagues?: string[] }): Promise<FavTeam[]>
+  }
   webapp: {
     open(id: WebAppId): Promise<void>
     embed(id: WebAppId, b: { x: number; y: number; w: number; h: number; radius?: number } | null): Promise<void>
@@ -184,6 +190,7 @@ export type BarToMain =
 export interface ShareSource { id: string; name: string; screen: boolean; thumb: string; icon: string }
 export type BarMenu ="start" | "power" | "clock"
 export type UiMode = "app" | "desktop" | "screen"
+export interface DisplayInfo { id: number; label: string; n: number; primary: boolean; current: boolean; w: number; h: number; hz: number; bounds: { x: number; y: number; width: number; height: number } }
 export type PcApp = "spotify" | "deezer" | "applemusic" | "amazonmusic" | "tidal" | "discord" | "whatsapp" | "steam" | "cs2" | "valorant" | "lol" | "epic"
 export interface PcMedia {
   none?: boolean
@@ -208,7 +215,9 @@ export interface WebAppState { id: WebAppId; open: boolean; popped: boolean; emb
 export interface IfoodRead { loggedOut: boolean; orders: IfoodOrder[]; mapRect?: { x: number; y: number; w: number; h: number } | null; onOrders?: boolean; check?: boolean; loading?: boolean; error?: string }
 export interface IfoodOrder { name: string; status: string; price: string; when: string; img: string; link: string; lines: string[] }
 
-export interface SportTeam { name: string; short: string; logo?: string; flag?: string; score?: string; win?: boolean }
+export interface SportTeam { id?: string; name: string; short: string; logo?: string; flag?: string; score?: string; win?: boolean }
+/** time favorito escolhido no widget (id/league só no futebol — ESPN) */
+export interface FavTeam { id?: string; name: string; short?: string; logo?: string; flag?: string; league?: string }
 export interface SportMatch {
   id: string
   start: number
@@ -274,7 +283,7 @@ const browserFallback: AgendaBridge = {
   sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
   games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop, valorantAgent: async () => null, onValorantAgent: noop },
   sysmon: { sub: async () => false, unsub: async () => false, onData: noop },
-  mode: { get: async () => ({ mode: "screen", monitors: 1 }), set: async () => false, raise: async () => {}, detectApps: async () => ({ apps: [], monitors: 1 }), onSummon: noop },
+  mode: { get: async () => ({ mode: "screen", monitors: 1 }), set: async () => false, displays: async () => [], raise: async () => {}, detectApps: async () => ({ apps: [], monitors: 1 }), onSummon: noop },
   pcmedia: { sub: async () => null, unsub: async () => {}, cmd: async () => {}, onState: noop },
   share: { sources: async () => [], pick: async () => {}, audioStart: async () => ({ ok: false, excluded: "agenda" }), audioStop: async () => {}, onAudio: noop, onAudioEnd: noop },
   bar: (() => {
@@ -304,7 +313,7 @@ const browserFallback: AgendaBridge = {
   },
   ai: { status: async () => ({ installed: false, sharp: false }), install: async () => false, onProgress: noop },
   net: { text: async (u) => (await fetch(u)).text() },
-  sports: { get: async () => [] },
+  sports: { get: async () => [], teams: async () => [] },
   webapp: { open: async () => {}, embed: async () => {}, popout: async () => {}, dock: async () => {}, nav: async () => {}, watch: async () => {}, discord: async () => {}, ifoodOrders: async () => ({ loggedOut: false, orders: [] as IfoodOrder[] }), whatsapp: async () => ({ loggedIn: false, totalUnread: 0, chats: [] }), ifoodMap: async () => null, url: async () => "", whatsappOpen: async () => {}, mute: async () => {}, hibernate: async () => {}, status: async () => ({} as any), onState: noop },
   music: { open: async () => {}, embed: async () => {}, clip: async () => {}, queue: async () => [], popout: async () => {}, dock: async () => {}, cmd: async () => {}, logout: async () => {}, video: async () => {}, onState: noop, onFrame: noop },
 }

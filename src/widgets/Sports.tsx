@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { RefreshCw, Star, Volleyball } from "lucide-react"
-import { bridge, friendlyError, type SportMatch, type SportTeam } from "@/lib/bridge"
+import { Check, Pin, Plus, RefreshCw, Search, Star, Volleyball, X } from "lucide-react"
+import { bridge, friendlyError, type FavTeam, type SportMatch, type SportTeam } from "@/lib/bridge"
+import { useStore } from "@/lib/store"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/controls"
@@ -40,8 +41,22 @@ const META: Record<Sport, { title: string; color: string; site: string; siteUrl:
 }
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim()
-const favList = (w: Widget): string[] => String(w.config.teams ?? "").split(",").map(norm).filter(Boolean)
-const isFav = (m: SportMatch, fav: string[]) => fav.length > 0 && [m.a, m.b].some((t) => fav.some((f) => norm(t.name).includes(f) || norm(t.short) === f))
+/** times favoritos do widget (lista escolhida; versões antigas guardavam um texto separado por vírgula) */
+export function widgetFavs(w: Widget): FavTeam[] {
+  if (Array.isArray(w.config.favs)) return w.config.favs
+  return String(w.config.teams ?? "").split(",").map((x) => x.trim()).filter(Boolean).map((name) => ({ name }))
+}
+const sameFav = (a: FavTeam, b: FavTeam) => (a.id && b.id ? a.id === b.id : norm(a.name) === norm(b.name))
+/** o time da partida é esse favorito? (futebol compara pelo id da ESPN; e-sports pelo nome) */
+function teamIs(t: SportTeam, f: FavTeam) {
+  if (f.id && t.id) return f.id === t.id
+  const n = norm(t.name), sh = norm(t.short || ""), fn = norm(f.name)
+  if (!fn || n === norm("A definir")) return false
+  if (n === fn || sh === fn || (!!f.short && sh === norm(f.short))) return true
+  return fn.length >= 4 && n.length >= 4 && (n.includes(fn) || fn.includes(n))
+}
+const isFav = (m: SportMatch, favs: FavTeam[]) => favs.some((f) => teamIs(m.a, f) || teamIs(m.b, f))
+const asTeam = (f: FavTeam): SportTeam => ({ ...f, short: f.short || f.name })
 
 function when(ms: number) {
   if (!ms) return ""
@@ -116,7 +131,7 @@ function Hero({ m, color, fav, crests }: { m: SportMatch; color: string; fav: bo
   )
 }
 
-function Row({ m, color, fav, crests }: { m: SportMatch; color: string; fav: boolean; crests: boolean }) {
+function Row({ m, color, fav, crests, pinned }: { m: SportMatch; color: string; fav: boolean; crests: boolean; pinned?: boolean }) {
   const done = m.state === "done"
   const live = m.state === "live"
   const team = (t: SportTeam, other: SportTeam) => {
@@ -131,7 +146,8 @@ function Row({ m, color, fav, crests }: { m: SportMatch; color: string; fav: boo
   }
   return (
     <button
-      className={cn("flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_7%,transparent)]", fav && "bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]")}
+      className={cn("flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_7%,transparent)]", fav && !pinned && "bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]")}
+      style={pinned ? { background: `linear-gradient(90deg, color-mix(in srgb, ${color} 16%, transparent), color-mix(in srgb, ${color} 4%, transparent))`, boxShadow: `inset 2px 0 0 ${color}` } : undefined}
       onClick={() => bridge.app.openExternal(m.link)}
       title={`${m.event}${m.detail ? " · " + m.detail : ""}`}
     >
@@ -147,7 +163,7 @@ function Row({ m, color, fav, crests }: { m: SportMatch; color: string; fav: boo
         ) : (
           <span className="font-num text-fg">{when(m.start)}</span>
         )}
-        <div className="truncate text-[10px] text-fg-muted">{fav ? "★ " : ""}{m.detail && !live && m.detail !== "Encerrado" ? m.detail : ""}</div>
+        <div className="truncate text-[10px] text-fg-muted">{pinned ? m.event : <>{fav ? "★ " : ""}{m.detail && !live && m.detail !== "Encerrado" ? m.detail : ""}</>}</div>
       </div>
     </button>
   )
@@ -157,7 +173,11 @@ export function SportsWidget({ w }: { w: Widget }) {
   const sport = w.type as Sport
   const meta = META[sport]
   const leagues: string[] = w.config.leagues?.length ? w.config.leagues : DEFAULT_LEAGUES
-  const fav = favList(w)
+  const globalFavs = useStore((x) => x.settings.favTeams)
+  const own = widgetFavs(w)
+  // sem times escolhidos no widget: usa os favoritos gerais (Configurações › Rotina e avisos)
+  const fav = useMemo<FavTeam[]>(() => (own.length ? own : (globalFavs ?? []).map((name) => ({ name }))), [JSON.stringify(own), (globalFavs ?? []).join(",")])
+  const favKey = fav.map((f) => f.id || f.name).join(",")
   const onlyFav = !!w.config.onlyFav && fav.length > 0
   // dá para esconder o ícone do widget, os escudos/logos dos times e os logos dos campeonatos
   const showIcon = w.config.showIcon !== false
@@ -172,12 +192,12 @@ export function SportsWidget({ w }: { w: Widget }) {
   useEffect(() => {
     let alive = true
     setBusy(true)
-    bridge.sports.get(sport, { leagues })
+    bridge.sports.get(sport, { leagues, teams: fav.filter((f) => f.id && f.league).map((f) => ({ id: f.id, league: f.league })) })
       .then((d) => { if (alive) { setData(d); setErr("") } })
       .catch((e) => alive && setErr(friendlyError(e)))
       .finally(() => alive && setBusy(false))
     return () => { alive = false }
-  }, [sport, leagues.join(","), tick])
+  }, [sport, leagues.join(","), favKey, tick])
 
   const hasLive = !!data?.some((m) => m.state === "live")
   // atualiza sozinho: mais rápido quando tem jogo ao vivo
@@ -196,11 +216,28 @@ export function SportsWidget({ w }: { w: Widget }) {
       next: all.filter((m) => m.state === "upcoming").sort((a, b) => a.start - b.start),
       results: all.filter((m) => m.state === "done").sort((a, b) => b.start - a.start),
     }
-  }, [data, onlyFav, fav.join(",")])
+  }, [data, onlyFav, favKey])
 
-  const heroOn = tab === "next" && live.length > 0 && w.h >= 280
-  const hero = heroOn ? live[0] : null
-  const list = tab === "next" ? [...live.filter((m) => m !== hero), ...next] : results
+  // fixados no topo: o próximo jogo (ou o que está ao vivo) de cada time favorito, na ordem escolhida
+  const pins = useMemo(() => {
+    const out: { f: FavTeam; m?: SportMatch }[] = []
+    const used = new Set<string>()
+    const soon = [...live, ...next]
+    for (const f of fav) {
+      const m = soon.find((x) => teamIs(x.a, f) || teamIs(x.b, f))
+      if (m && used.has(m.id)) continue // os dois favoritos se enfrentam: um cartão só
+      if (m) used.add(m.id)
+      out.push({ f, m })
+    }
+    return out
+  }, [live, next, favKey])
+  const pinnedIds = new Set(pins.flatMap((p) => (p.m ? [p.m.id] : [])))
+  const showPins = tab === "next" && pins.length > 0 && !!data
+  const room = w.h >= 280
+  const pinHero = showPins && room ? pins.find((p) => p.m?.state === "live")?.m ?? null : null
+  const heroOn = tab === "next" && !pinHero && live.length > 0 && room
+  const hero = heroOn ? live.find((m) => !pinnedIds.has(m.id)) ?? null : null
+  const list = tab === "next" ? [...live, ...next].filter((m) => m !== hero && !(showPins && pinnedIds.has(m.id))) : results
 
   // agrupa por campeonato (como no widget do Google)
   const groups: { event: string; logo?: string; items: SportMatch[] }[] = []
@@ -232,6 +269,28 @@ export function SportsWidget({ w }: { w: Widget }) {
         <button className="btn btn-ghost btn-icon !p-1" title="Atualizar" onClick={() => setTick((t) => t + 1)}><RefreshCw size={12} className={cn(busy && "animate-spin")} /></button>
       </div>
 
+      {showPins && (
+        <div className="mb-1.5 max-h-[58%] shrink-0 overflow-auto border-b border-line pb-1.5" data-nodrag>
+          <div className="flex items-center gap-1 px-2 pb-0.5 text-[10px] font-semibold tracking-wide text-fg-muted uppercase">
+            <Pin size={10} style={{ color: meta.color }} /> {pins.length > 1 ? "Seus times" : "Seu time"}
+          </div>
+          {pinHero && <Hero m={pinHero} color={meta.color} fav crests={crests} />}
+          <div className="space-y-1">
+            {pins.filter((p) => p.m !== pinHero).map((p) =>
+              p.m ? (
+                <Row key={p.m.id} m={p.m} color={meta.color} fav crests={crests} pinned />
+              ) : (
+                <div key={p.f.id || p.f.name} className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-[13px] text-fg-muted" style={{ boxShadow: `inset 2px 0 0 color-mix(in srgb, ${meta.color} 45%, transparent)` }}>
+                  {crests && <Crest t={asTeam(p.f)} size={18} color={meta.color} />}
+                  <span className="min-w-0 flex-1 truncate text-fg">{p.f.name}</span>
+                  <span className="text-[11px]">sem jogo marcado</span>
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-auto pr-0.5" data-nodrag>
         {err && !data && <div className="p-3 text-center text-sm text-fg-muted">Não consegui carregar agora.<div className="text-xs">{err}</div></div>}
         {!data && !err && (
@@ -244,7 +303,8 @@ export function SportsWidget({ w }: { w: Widget }) {
             </motion.div>
           )}
         </AnimatePresence>
-        {data && list.length === 0 && !hero && (
+        {showPins && !onlyFav && list.length > 0 && <div className="px-2 pt-0.5 text-[10px] font-semibold tracking-wide text-fg-muted uppercase">Outros jogos</div>}
+        {data && list.length === 0 && !hero && !(showPins && onlyFav) && (
           <div className="p-4 text-center text-sm text-fg-muted">
             {tab === "next" ? (onlyFav ? "Nenhum jogo dos seus times nos próximos dias." : "Nenhum jogo nos próximos dias.") : "Sem resultados recentes."}
           </div>
@@ -313,24 +373,116 @@ export function SportsSettings({ w, set }: { w: Widget; set: (p: Record<string, 
           ))}
         </>
       )}
-      <label className="block text-sm">
-        {w.type === "football" ? "Seus times" : "Seus times favoritos"} <span className="text-fg-muted">(separados por vírgula)</span>
-        <input
-          className="field mt-1 w-full"
-          defaultValue={c.teams ?? ""}
-          placeholder={w.type === "football" ? "Ex.: Palmeiras, Flamengo" : w.type === "cs2" ? "Ex.: FURIA, MIBR, paiN" : "Ex.: LOUD, FURIA, MIBR"}
-          onBlur={(e) => set({ teams: e.target.value })}
-        />
-      </label>
+      <TeamPicker w={w} set={set} leagues={leagues} />
       <Switch label="Mostrar só os jogos dos meus times" checked={!!c.onlyFav} onChange={(v) => set({ onlyFav: v })} />
       <div className="text-sm text-fg-muted">Ícones</div>
       <Switch label="Ícone do widget (no canto de cima)" checked={c.showIcon !== false} onChange={(v) => set({ showIcon: v })} />
       <Switch label={w.type === "football" ? "Escudos dos times" : "Logos e bandeiras dos times"} checked={c.crests !== false} onChange={(v) => set({ crests: v })} />
       <Switch label="Logos dos campeonatos" checked={c.leagueLogos !== false} onChange={(v) => set({ leagueLogos: v })} />
       <div className="text-xs text-fg-muted">
-        Os jogos dos seus times aparecem com estrela e sobem para o topo quando estão ao vivo. Clique numa partida para abrir no {META[w.type as Sport].site}.
+        O próximo jogo de cada time escolhido fica fixado no topo do widget; embaixo vêm os outros jogos. Clique numa partida para abrir no {META[w.type as Sport].site}.
         {w.type === "cs2" && " Dados de jogos via Liquipedia (a HLTV não permite leitura automática)."}
       </div>
     </>
+  )
+}
+
+/** escolher os times favoritos: busca + lista com escudos (futebol: times dos campeonatos marcados) */
+function TeamPicker({ w, set, leagues }: { w: Widget; set: (p: Record<string, any>) => void; leagues: string[] }) {
+  const sport = w.type as Sport
+  const color = META[sport].color
+  const favs = widgetFavs(w)
+  const [all, setAll] = useState<FavTeam[] | null>(null)
+  const [q, setQ] = useState("")
+  const [lg, setLg] = useState("")
+  useEffect(() => {
+    let alive = true
+    setAll(null)
+    bridge.sports.teams(sport, { leagues }).then((t) => alive && setAll(t)).catch(() => alive && setAll([]))
+    return () => { alive = false }
+  }, [sport, leagues.join(",")])
+
+  const has = (t: FavTeam) => favs.some((f) => sameFav(f, t))
+  const save = (next: FavTeam[]) => set({ favs: next })
+  const toggle = (t: FavTeam) => save(has(t) ? favs.filter((f) => !sameFav(f, t)) : [...favs, t])
+  const move = (i: number, d: number) => {
+    const next = [...favs]
+    const j = i + d
+    if (j < 0 || j >= next.length) return
+    ;[next[i], next[j]] = [next[j], next[i]]
+    save(next)
+  }
+
+  const nq = norm(q)
+  const shown = (all ?? []).filter((t) => (!lg || t.league === lg) && (!nq || norm(t.name).includes(nq) || norm(t.short || "").includes(nq)))
+  const exact = (all ?? []).some((t) => norm(t.name) === nq) || favs.some((f) => norm(f.name) === nq)
+  const leagueLabel = (id?: string) => LEAGUES.find((l) => l.id === id)?.label ?? id ?? ""
+  const leagueIds = sport === "football" ? [...new Set((all ?? []).map((t) => t.league).filter(Boolean) as string[])] : []
+
+  return (
+    <div className="space-y-2">
+      <div className="text-sm">Seus times <span className="text-fg-muted">— ficam fixados no topo</span></div>
+      {favs.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {favs.map((f, i) => (
+            <span key={f.id || f.name} className="group flex items-center gap-1.5 rounded-full border border-line py-0.5 pr-1 pl-1 text-sm">
+              <Crest t={asTeam(f)} size={18} color={color} />
+              <span className="max-w-[9rem] truncate">{f.name}</span>
+              {favs.length > 1 && (
+                <span className="hidden items-center group-hover:flex">
+                  <button className="px-0.5 text-xs text-fg-muted hover:text-fg disabled:opacity-30" disabled={i === 0} title="Mais para cima" onClick={() => move(i, -1)}>◀</button>
+                  <button className="px-0.5 text-xs text-fg-muted hover:text-fg disabled:opacity-30" disabled={i === favs.length - 1} title="Mais para baixo" onClick={() => move(i, 1)}>▶</button>
+                </span>
+              )}
+              <button className="rounded-full p-0.5 text-fg-muted hover:text-fg" title="Tirar" onClick={() => toggle(f)}><X size={12} /></button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="text-xs text-fg-muted">Nenhum time escolhido ainda. Toque nos times abaixo.</div>
+      )}
+
+      <div className="relative">
+        <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-muted" />
+        <input className="field w-full !pl-8" placeholder={sport === "football" ? "Buscar time (ex.: Palmeiras)" : sport === "cs2" ? "Buscar time (ex.: FURIA)" : "Buscar time (ex.: LOUD)"} value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      {leagueIds.length > 1 && (
+        <div className="flex flex-wrap gap-1">
+          {["", ...leagueIds].map((id) => (
+            <button key={id || "all"} onClick={() => setLg(id)} className={cn("rounded-full border px-2 py-0.5 text-[11px] transition-colors", lg === id ? "border-transparent bg-brand text-white" : "border-line text-fg-muted hover:text-fg")}>
+              {id ? leagueLabel(id) : "Todos"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="max-h-60 overflow-auto rounded-xl border border-line p-1">
+        {!all && <div className="p-3 text-center text-xs text-fg-muted">Carregando times…</div>}
+        {all && shown.length === 0 && !q && <div className="p-3 text-center text-xs text-fg-muted">Não consegui carregar a lista agora. Dá para buscar pelo nome e adicionar.</div>}
+        <div className="grid grid-cols-2 gap-0.5">
+          {shown.slice(0, 160).map((t) => {
+            const on = has(t)
+            return (
+              <button
+                key={(t.id || t.name) + (t.league ?? "")}
+                onClick={() => toggle(t)}
+                className={cn("flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] transition-colors", on ? "text-fg" : "text-fg-muted hover:bg-[color-mix(in_srgb,var(--fg)_7%,transparent)] hover:text-fg")}
+                style={on ? { background: `color-mix(in srgb, ${color} 18%, transparent)` } : undefined}
+                title={t.league ? leagueLabel(t.league) : undefined}
+              >
+                <Crest t={asTeam(t)} size={20} color={color} />
+                <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                {on && <Check size={13} style={{ color }} />}
+              </button>
+            )
+          })}
+        </div>
+        {q.trim() && !exact && (
+          <button className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-fg-muted hover:bg-[color-mix(in_srgb,var(--fg)_7%,transparent)] hover:text-fg" onClick={() => { save([...favs, { name: q.trim() }]); setQ("") }}>
+            <Plus size={14} /> Adicionar “{q.trim()}” mesmo assim
+          </button>
+        )}
+      </div>
+    </div>
   )
 }

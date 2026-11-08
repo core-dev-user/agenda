@@ -147,19 +147,22 @@ function parseEspn(j, league) {
   const llogo = (j.leagues && j.leagues[0] && j.leagues[0].logos && j.leagues[0].logos[0] && j.leagues[0].logos[0].href) || ""
   return (j.events || []).map((e) => {
     const c = e.competitions[0]
-    const st = e.status.type
+    // a agenda do time (teams/:id/schedule) traz o status dentro da competição e os escudos em "logos"
+    const status = e.status || c.status || { type: { state: "pre" } }
+    const st = status.type
     const home = c.competitors.find((t) => t.homeAway === "home") || c.competitors[0]
     const away = c.competitors.find((t) => t.homeAway === "away") || c.competitors[1]
     const team = (t) => ({
+      id: t.team.id ? String(t.team.id) : undefined,
       name: t.team.shortDisplayName || t.team.displayName,
       short: t.team.abbreviation || t.team.shortDisplayName,
-      logo: t.team.logo || "",
-      score: st.state === "pre" ? undefined : t.score,
+      logo: t.team.logo || (t.team.logos && t.team.logos[0] && t.team.logos[0].href) || "",
+      score: st.state === "pre" ? undefined : t.score && typeof t.score === "object" ? t.score.displayValue : t.score,
       win: !!t.winner,
     })
     const state = st.state === "in" ? "live" : st.state === "post" ? "done" : "upcoming"
     let detail = ""
-    if (state === "live") detail = /half/i.test(st.name || "") || /HT/.test(st.shortDetail || "") ? "Intervalo" : e.status.displayClock || st.shortDetail
+    if (state === "live") detail = /half/i.test(st.name || "") || /HT/.test(st.shortDetail || "") ? "Intervalo" : status.displayClock || st.shortDetail
     else if (state === "done") detail = /pen/i.test(st.shortDetail || "") ? "Pênaltis" : "Encerrado"
     if (/postpon|cancel|suspend/i.test(st.name || "")) detail = "Adiado"
     return {
@@ -171,7 +174,7 @@ function parseEspn(j, league) {
       detail,
       event: lname,
       eventLogo: llogo,
-      league,
+      league: (e.league && e.league.slug) || league,
       link: (e.links && e.links[0] && e.links[0].href) || `https://www.espn.com.br/futebol/partida/_/jogoId/${e.id}`,
     }
   })
@@ -194,13 +197,73 @@ async function football(leagues = ["bra.1"], days = 6) {
   return all.flat().filter((m) => (seen.has(m.id) ? false : seen.add(m.id))).sort((a, b) => a.start - b.start)
 }
 
+/** próximos jogos de um time (qualquer data, não só a semana do placar) */
+async function teamSchedule(league, id) {
+  return cached(`fbt-${league}-${id}`, 30 * 60_000, async () => {
+    const j = JSON.parse(await getText(`${ESPN}/${encodeURIComponent(league)}/teams/${encodeURIComponent(id)}/schedule?fixture=true`))
+    return parseEspn({ events: j.events || [] }, league)
+  })
+}
+
+/** todos os times de um campeonato (para escolher os favoritos) */
+async function leagueTeams(league) {
+  return cached(`fbteams-${league}`, 12 * 3600_000, async () => {
+    const j = JSON.parse(await getText(`${ESPN}/${encodeURIComponent(league)}/teams`))
+    const list = (((j.sports || [])[0] || {}).leagues || [])[0]
+    return ((list && list.teams) || []).map(({ team: t }) => ({
+      id: String(t.id),
+      name: t.shortDisplayName || t.displayName,
+      short: t.abbreviation || "",
+      logo: (t.logos && t.logos[0] && t.logos[0].href) || "",
+      league,
+    }))
+  })
+}
+
+// times conhecidos de CS2 e Valorant (aparecem na lista mesmo sem jogo marcado; os logos vêm das partidas)
+const SEED = {
+  cs2: ["FURIA", "MIBR", "paiN", "Imperial", "Legacy", "Fluxo", "ODDIK", "RED Canids", "Sharks", "Vitality", "Natus Vincere", "FaZe Clan", "G2 Esports", "Team Spirit", "MOUZ", "Team Falcons", "The MongolZ", "Aurora", "Astralis", "Team Liquid", "3DMAX", "Virtus.pro", "HEROIC", "Complexity", "NRG", "Ninjas in Pyjamas", "Eternal Fire", "BIG", "GamerLegion", "FlyQuest"],
+  valorant: [["LOUD", "br"], ["FURIA", "br"], ["MIBR", "br"], ["paiN Gaming", "br"], ["Sentinels", "us"], ["100 Thieves", "us"], ["Cloud9", "us"], ["G2 Esports", "us"], ["NRG", "us"], ["Evil Geniuses", "us"], ["LEVIATÁN", "cl"], ["KRÜ Esports", "cl"], ["2GAME Esports", "br"], ["FNATIC", "eu"], ["Team Heretics", "eu"], ["Team Liquid", "eu"], ["Karmine Corp", "fr"], ["Team Vitality", "eu"], ["Paper Rex", "sg"], ["DRX", "kr"], ["Gen.G", "kr"], ["T1", "kr"], ["EDward Gaming", "cn"], ["Trace Esports", "cn"]],
+}
+
+async function teams(sport, opts = {}) {
+  if (sport === "football") {
+    const leagues = Array.isArray(opts.leagues) && opts.leagues.length ? opts.leagues : ["bra.1"]
+    const all = await Promise.all(leagues.map((l) => leagueTeams(l).catch(() => [])))
+    const seen = new Set()
+    return all.flat().filter((t) => (seen.has(t.id) ? false : seen.add(t.id)))
+  }
+  const matches = await (sport === "cs2" ? cs2() : valorant()).catch(() => [])
+  const map = new Map()
+  const key = (n) => String(n || "").toLowerCase().trim()
+  for (const s of SEED[sport] || []) {
+    const [name, flag] = Array.isArray(s) ? s : [s]
+    map.set(key(name), { name, short: name, flag })
+  }
+  for (const m of matches) for (const t of [m.a, m.b]) {
+    if (!t.name || t.name === "A definir") continue
+    const old = map.get(key(t.name))
+    map.set(key(t.name), { name: t.name, short: t.short || t.name, logo: t.logo || (old && old.logo) || "", flag: t.flag || (old && old.flag) })
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
+}
+
 function register(ipcMain) {
   ipcMain.handle("sports:get", async (_e, sport, opts = {}) => {
     if (sport === "cs2") return cs2()
     if (sport === "valorant") return valorant()
-    if (sport === "football") return football(Array.isArray(opts.leagues) && opts.leagues.length ? opts.leagues : ["bra.1"])
+    if (sport === "football") {
+      const base = await football(Array.isArray(opts.leagues) && opts.leagues.length ? opts.leagues : ["bra.1"])
+      // times favoritos com id da ESPN: junta a agenda completa deles (o próximo jogo pode estar a semanas)
+      const favs = (Array.isArray(opts.teams) ? opts.teams : []).filter((t) => t && t.id && t.league).slice(0, 12)
+      if (!favs.length) return base
+      const extra = (await Promise.all(favs.map((t) => teamSchedule(String(t.league), String(t.id)).catch(() => [])))).flat()
+      const seen = new Set(base.map((m) => m.id))
+      return [...base, ...extra.filter((m) => m.state !== "done" && (seen.has(m.id) ? false : seen.add(m.id)))].sort((a, b) => a.start - b.start)
+    }
     throw new Error("esporte desconhecido")
   })
+  ipcMain.handle("sports:teams", (_e, sport, opts = {}) => teams(sport, opts))
 }
 
 module.exports = { register, parseLiquipedia, parseVlr, parseEspn }

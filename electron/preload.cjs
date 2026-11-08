@@ -43,7 +43,8 @@ contextBridge.exposeInMainWorld("agenda", {
   },
   mode: {
     get: () => ipcRenderer.invoke("mode:get"),
-    set: (m) => ipcRenderer.invoke("mode:set", m),
+    set: (m, display) => ipcRenderer.invoke("mode:set", m, display),
+    displays: () => ipcRenderer.invoke("mode:displays"),
     raise: (on) => ipcRenderer.invoke("mode:raise", on),
     detectApps: () => ipcRenderer.invoke("apps:detect"),
     onSummon: on("app:summon"),
@@ -115,7 +116,7 @@ contextBridge.exposeInMainWorld("agenda", {
     onProgress: on("ai:progress"),
   },
   net: { text: (url) => ipcRenderer.invoke("net:text", url) },
-  sports: { get: (sport, opts) => ipcRenderer.invoke("sports:get", sport, opts) },
+  sports: { get: (sport, opts) => ipcRenderer.invoke("sports:get", sport, opts), teams: (sport, opts) => ipcRenderer.invoke("sports:teams", sport, opts) },
   webapp: {
     open: (id) => ipcRenderer.invoke("webapp:open", id),
     embed: (id, b) => ipcRenderer.invoke("webapp:embed", id, b),
