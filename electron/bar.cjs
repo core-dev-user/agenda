@@ -16,9 +16,10 @@ try { cfg = { ...cfg, ...JSON.parse(fs.readFileSync(cfgFile(), "utf8")) } } catc
 const save = () => { try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null, 2)) } catch {} }
 
 const isDev = !!process.env.AGENDA_DEV
+let shuttingDown = false
 // a barra do Windows fica no monitor principal: só substitui quando o Agenda está nele
 const available = () => modes.mode() === "desktop" && modes.isPrimary() && process.platform === "win32" && !process.env.AGENDA_SHOT
-const active = () => cfg.on && available()
+const active = () => !shuttingDown && cfg.on && available()
 
 /** @type {BrowserWindow | null} */
 let bar = null
@@ -147,7 +148,11 @@ function create() {
     // Reconciliation covers missed OS events; ordinary updates come from WinEvent hooks.
     reconcile = setInterval(() => windowRunner?.request(), 30000)
     publish()
-  })().catch((e) => { if (epoch === generation) fail(e) }).finally(() => { createPromise = null })
+  })().catch((e) => { if (epoch === generation) fail(e) }).finally(() => {
+    createPromise = null
+    // A quick off/on can cancel this attempt while the new request awaits it.
+    if (epoch !== generation && active() && !bar && !lastError) return create()
+  })
   return createPromise
 }
 function onDisplay() {
@@ -248,7 +253,7 @@ function register(ipcMain, mainGetter) {
     powerMonitor.on("resume", () => { layoutRunner?.request(); windowRunner?.request() })
     powerMonitor.on("unlock-screen", () => { layoutRunner?.request(); windowRunner?.request() })
   })
-  app.on("before-quit", () => { if (bar) destroy() })
+  app.on("before-quit", () => { shuttingDown = true; if (bar) destroy() })
   winh.on("windows", () => windowRunner?.request())
   winh.on("shell-restarted", () => { layoutRunner?.request(); windowRunner?.request() })
   winh.on("unavailable", (reason) => { if (bar) fail(new Error(reason)) })

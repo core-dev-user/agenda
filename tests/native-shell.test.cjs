@@ -62,7 +62,7 @@ test('window-event bursts have one in-flight snapshot and one follow-up', async 
   assert.equal(calls,2)
 })
 
-function barHarness() {
+function barHarness({ holdReady = false } = {}) {
   const fs = require('node:fs'), path = require('node:path')
   const handlers=new Map(), native=new EventEmitter(), app=new EventEmitter(), windows=[], commands=[]
   let rejectReservation=false, primary=true
@@ -70,7 +70,7 @@ function barHarness() {
     constructor(opts) { super();this.bounds=opts;this.dead=false;this.webContents=new EventEmitter();this.webContents.send=()=>{};windows.push(this) }
     isDestroyed(){return this.dead} setBounds(b){this.bounds=b} getBounds(){return this.bounds}
     setAlwaysOnTop(){} hookWindowMessage(){} showInactive(){} hide(){}
-    loadFile(){queueMicrotask(()=>this.emit('ready-to-show'));return Promise.resolve()}
+    loadFile(){if(!holdReady)queueMicrotask(()=>this.emit('ready-to-show'));return Promise.resolve()}
     destroy(){this.dead=true;this.emit('closed')}
   }
   app.getPath=()=>'/fake';app.whenReady=()=>new Promise(()=>{});app.getFileIcon=async()=>({toDataURL:()=>''})
@@ -81,7 +81,7 @@ function barHarness() {
   const module={exports:{}}
   new Function('require','module','exports','__dirname','process','setTimeout','clearTimeout','setInterval','clearInterval',fs.readFileSync(path.join(__dirname,'../electron/bar.cjs'),'utf8'))((n)=>imports[n]||require(n),module,module.exports,path.join(__dirname,'../electron'),{platform:'win32',env:{},execPath:'agenda.exe'},setTimeout,clearTimeout,setInterval,clearInterval)
   module.exports.register({handle:(n,fn)=>handlers.set(n,fn),on(){}},()=>null)
-  return {call:(n,...args)=>handlers.get(n)(null,...args),windows,commands,native,setReject:(v)=>{rejectReservation=v},setPrimary:(v)=>{primary=v}}
+  return {call:(n,...args)=>handlers.get(n)(null,...args),windows,commands,native,app,setReject:(v)=>{rejectReservation=v},setPrimary:(v)=>{primary=v}}
 }
 
 test('AppBar activation is confirmed only after native reservation; renderer loss restores Explorer', async () => {
@@ -107,5 +107,31 @@ test('secondary monitor never hides the primary Windows taskbar', async () => {
   const h=barHarness();h.setPrimary(false)
   const state=await h.call('bar:set',{on:true})
   assert.equal(state.available,false);assert.equal(state.active,false);assert.equal(h.windows.length,0)
+  assert.equal(h.commands.some(c=>c.startsWith('appbar')),false)
+})
+
+test('off/on during startup waits for a fresh bar instead of leaving activation stranded', async () => {
+  const h=barHarness({holdReady:true})
+  const first=h.call('bar:set',{on:true})
+  const off=h.call('bar:set',{on:false})
+  const second=h.call('bar:set',{on:true})
+  await drain()
+  assert.equal(h.windows.length,2);assert.equal(h.windows[0].dead,true)
+  assert.equal(h.commands.some(c=>c.startsWith('appbar')),false)
+  h.windows[1].emit('ready-to-show')
+  await Promise.all([first,off,second])
+  assert.equal((await h.call('bar:get')).active,true)
+  await h.call('bar:set',{on:false})
+})
+
+test('quitting during a cancelled startup prevents a queued activation from reopening the bar', async () => {
+  const h=barHarness({holdReady:true})
+  const first=h.call('bar:set',{on:true})
+  const off=h.call('bar:set',{on:false})
+  const second=h.call('bar:set',{on:true})
+  h.app.emit('before-quit')
+  await Promise.all([first,off,second])
+  assert.equal(h.windows.length,1);assert.equal(h.windows[0].dead,true)
+  assert.equal((await h.call('bar:get')).active,false)
   assert.equal(h.commands.some(c=>c.startsWith('appbar')),false)
 })
