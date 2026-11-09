@@ -26,8 +26,8 @@ const version = JSON.parse(readFileSync("package.json", "utf8")).version
 
 sh("git add package.json package-lock.json")
 sh(`git commit -m "Versão ${version}"`)
-sh(`git tag v${version}`)
-sh("git push origin main --follow-tags")
+sh(`git tag -a v${version} -m "Versão ${version}"`)
+sh(`git push origin main v${version}`)
 
 console.log(`
 ✔ Versão ${version} enviada. O GitHub está gerando o instalador agora (uns 10 minutos):
