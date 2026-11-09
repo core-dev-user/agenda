@@ -103,10 +103,12 @@ public static class AgWin {
   static void NativeTray(bool show) {
     // Só substituímos a barra principal. As barras dos outros monitores continuam utilizáveis.
     IntPtr tray = FindWindow("Shell_TrayWnd", null);
-    if (tray != IntPtr.Zero) ShowWindow(tray, show ? 5 : 0);
+    if (tray != IntPtr.Zero && IsWindowVisible(tray) != show) ShowWindow(tray, show ? 5 : 0);
   }
   static void SetTaskbarState(uint state) {
-    var d = Data(FindWindow("Shell_TrayWnd", null)); d.lParam = new IntPtr(state);
+    var d = Data(FindWindow("Shell_TrayWnd", null));
+    if ((uint)SHAppBarMessage(4, ref d).ToUInt64() == state) return;
+    d.lParam = new IntPtr(state);
     SHAppBarMessage(10, ref d); // ABM_SETSTATE
   }
   static void SaveRecovery() {
@@ -224,7 +226,7 @@ public static class AgWin {
       case "appbar": return SetBar(a[1], int.Parse(a[2]), int.Parse(a[3]), int.Parse(a[4]), int.Parse(a[5]), int.Parse(a[6]), int.Parse(a[7]));
       case "position": if (registered) { var d=Data(barHandle); SHAppBarMessage(9, ref d); } break;
       case "restore": Restore(); break;
-      case "recover": Recover(recoveryFile, 0); break;
+      case "recover": Recover(recoveryFile, 0); if (!replacing) NativeTray(true); break;
       case "peek": PeekTray(a[1] == "1"); break;
       case "list": return List();
       case "activate": Activate(a[1]); break;
@@ -272,7 +274,8 @@ public static class AgWin {
               int id=0;
               try {
                 int split=request.IndexOf('\t');
-                id=int.Parse(request.Substring(0,split));
+                if (split < 1 || !int.TryParse(request.Substring(0,split).Trim('\uFEFF'), out id))
+                  throw new ArgumentException("Cabeçalho inválido no protocolo nativo (separador " + split + ")");
                 string result=Command(request.Substring(split+1));
                 Write("{\"id\":"+id+",\"result\":\""+Esc(result)+"\"}");
               } catch (Exception e) { Write("{\"id\":"+id+",\"error\":\""+Esc(e.Message)+"\"}"); }

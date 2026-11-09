@@ -29,6 +29,7 @@ let lastFg = ""
 let reconcile = null, createPromise = null, ready = false, lastError = "", generation = 0
 let layoutRunner = null, windowRunner = null
 let lastWindows = "", peekTimer = null
+const ownedShortcuts = []
 const APPBAR_CALLBACK = 0x8001
 const status = () => ({ on: cfg.on, height: cfg.height, position: cfg.position, available: !!available(), active: ready, error: lastError })
 function publish() { const m = getMain(); if (m && !m.isDestroyed()) m.webContents.send("bar:status", status()) }
@@ -138,7 +139,11 @@ function create() {
     cfg.hidTaskbar = true; save()
     layoutRunner = coalescedRunner(layout, fail)
     windowRunner = coalescedRunner(tick, fail)
-    windowRunner.request()
+    layoutRunner.request(); windowRunner.request()
+    for (const [key, action] of [
+      ["Control+Alt+Home", () => { if (ready) openMenu("start", 90, 640, 660) }],
+      ["Control+Alt+Backspace", () => { cfg.on = false; save(); destroy() }],
+    ]) if (globalShortcut.register(key, action)) ownedShortcuts.push(key)
     // Reconciliation covers missed OS events; ordinary updates come from WinEvent hooks.
     reconcile = setInterval(() => windowRunner?.request(), 30000)
     publish()
@@ -192,6 +197,7 @@ function destroy() {
   clearInterval(reconcile); reconcile = null
   clearTimeout(peekTimer); peekTimer = null
   layoutRunner?.stop(); windowRunner?.stop(); layoutRunner = null; windowRunner = null
+  for (const key of ownedShortcuts.splice(0)) globalShortcut.unregister(key)
   closeMenu()
   const old = bar; bar = null
   if (old && !old.isDestroyed()) old.destroy()
@@ -238,8 +244,6 @@ function register(ipcMain, mainGetter) {
   app.whenReady().then(() => {
     if (cfg.hidTaskbar) winh.call("recover")
     create()
-    globalShortcut.register("Control+Alt+Home", () => { if (ready) openMenu("start", 90, 640, 660) })
-    globalShortcut.register("Control+Alt+Backspace", () => { cfg.on = false; save(); destroy() })
     for (const ev of ["display-metrics-changed", "display-added", "display-removed"]) screen.on(ev, onDisplay)
     powerMonitor.on("resume", () => { layoutRunner?.request(); windowRunner?.request() })
     powerMonitor.on("unlock-screen", () => { layoutRunner?.request(); windowRunner?.request() })
