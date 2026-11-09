@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { Glyph } from "@/components/Glyph"
 import { AppWindow, Monitor, MonitorUp, CheckCircle2, Cloud, FolderOpen, Keyboard, Loader2, Moon, Plus, RefreshCw, Trash2, XCircle, AlertTriangle, Star } from "lucide-react"
-import { useStore, DEFAULT_NOTIFY, DEFAULT_FOCUS } from "@/lib/store"
+import { flushStore, useStore, DEFAULT_NOTIFY, DEFAULT_FOCUS } from "@/lib/store"
 import { bridge, type DisplayInfo, type SysConfig, type UiMode } from "@/lib/bridge"
 import { MODE_INFO, useUiMode } from "@/lib/uimode"
 import { SOURCE_META, notify } from "@/lib/notify"
@@ -231,7 +231,7 @@ export function ModeTab() {
   const chosen = shows?.find((x) => x.id === disp)
   const apply = async () => {
     setBusy(true)
-    bridge.store.flush?.()
+    flushStore(); bridge.store.flush?.()
     await bridge.mode.set(mode, disp ?? undefined)
     setTimeout(() => setBusy(false), 4000)
   }
@@ -328,7 +328,7 @@ function MainBarSwitch() {
       <Switch
         label="Usar a barra do Agenda como barra principal do Windows"
         checked={on}
-        onChange={async (v) => { bridge.store.flush?.(); await bridge.bar.set({ on: v }); location.reload() }}
+        onChange={async (v) => { flushStore(); bridge.store.flush?.(); await bridge.bar.set({ on: v }); location.reload() }}
       />
       <div className="text-xs text-fg-muted">Esconde a barra do Windows e põe a do Agenda no lugar: Iniciar, programas abertos e fixados, relógio. Se o Agenda fechar, a barra do Windows volta sozinha. A seta perto do relógio mostra os ícones da bandeja do Windows.</div>
     </div>
@@ -371,7 +371,7 @@ export function SystemExtra() {
           </div>
         )}
         <div className="flex items-center gap-3 pt-1">
-          <button className="btn !py-1 text-xs" disabled={!cfg.cloudOn || !cfg.cloudDir || copying} onClick={async () => { setCopying(true); setCfg({ ...(await bridge.sys.cloudNow()), guesses: cfg.guesses }); setCopying(false) }}>{copying ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Copiar agora</button>
+          <button className="btn !py-1 text-xs" disabled={!cfg.cloudOn || !cfg.cloudDir || copying} onClick={async () => { setCopying(true); flushStore(); bridge.store.flush?.(); setCfg({ ...(await bridge.sys.cloudNow()), guesses: cfg.guesses }); setCopying(false) }}>{copying ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Copiar agora</button>
           <span className="text-xs text-fg-muted">{cfg.cloudError ? <span style={{ color: "#ff6b8b" }}>{cfg.cloudError}</span> : cfg.lastCloud ? `Última cópia: ${new Date(cfg.lastCloud).toLocaleString("pt-BR")}` : ""}</span>
         </div>
         <div className="text-xs text-fg-muted">Vai para a pasta “Agenda backup”. As Finanças vão criptografadas: só abrem nesta conta do Windows.</div>

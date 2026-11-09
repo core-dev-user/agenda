@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "concurrently -k -n vite,app \"vite\" \"wait-on tcp:5173 && cross-env AGENDA_DEV=1 electron .\"",
     "build": "tsc -b && vite build",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "start": "electron .",
     "icon": "node scripts/make-icon.mjs",
     "dist": "npm run icon && npm run build && electron-builder --win --dir"

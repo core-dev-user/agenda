@@ -1,5 +1,6 @@
 import { create } from "zustand"
-import { persist, createJSONStorage } from "zustand/middleware"
+import { persist } from "zustand/middleware"
+import { createFileStorage } from "./persistence"
 import { bridge } from "./bridge"
 import { uid, todayISO } from "./utils"
 import { findSpot } from "./placement"
@@ -197,11 +198,8 @@ interface State {
 
 let zTop = 10
 
-const fileStorage = createJSONStorage(() => ({
-  getItem: () => bridge.store.get(),
-  setItem: (_k: string, v: string) => bridge.store.set(v),
-  removeItem: () => bridge.store.set("{}"),
-}))
+const fileStorage = createFileStorage<Partial<State>>(bridge.store)
+export const flushStore = fileStorage.flush
 
 export const useStore = create<State>()(
   persist(
@@ -396,7 +394,7 @@ export const useStore = create<State>()(
     {
       name: "agenda",
       version: 1,
-      storage: fileStorage,
+      storage: fileStorage.storage,
       partialize: (s) => ({
         settings: s.settings,
         widgets: s.widgets,

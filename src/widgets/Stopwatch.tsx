@@ -4,6 +4,7 @@ import { useStore } from "@/lib/store"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { perfPaused } from "@/lib/perf"
+import { startTicker, stopwatchDelay } from "@/lib/ticker"
 
 const fmt = (ms: number, cs = true) => {
   const neg = ms < 0
@@ -39,12 +40,12 @@ export function StopwatchWidget({ w }: { w: Widget }) {
   const [, force] = useState(0)
   useEffect(() => {
     if (!startedAt) return
-    // 30 quadros por segundo só quando alguém está vendo; com jogo aberto ou Agenda escondido, 1 por segundo
-    // (o aviso do fim do timer continua chegando na hora)
-    let n = 0
-    const id = setInterval(() => { if (!perfPaused() || ++n % 30 === 0) force((x) => x + 1) }, 33)
-    return () => clearInterval(id)
-  }, [startedAt])
+    // O próprio timer desacelera; não fica acordando a cada 33 ms em segundo plano.
+    const deadline = mode === "timer" ? startedAt + duration - acc : null
+    const ticker = startTicker(() => force((x) => x + 1), () => stopwatchDelay(perfPaused(), deadline))
+    window.addEventListener("agenda:perf", ticker.refresh)
+    return () => { ticker.stop(); window.removeEventListener("agenda:perf", ticker.refresh) }
+  }, [startedAt, mode, duration, acc])
 
   const elapsed = acc + (startedAt ? Date.now() - startedAt : 0)
   const remaining = duration - elapsed
