@@ -50,6 +50,8 @@ contextBridge.exposeInMainWorld("agenda", {
     onSummon: on("app:summon"),
   },
   bar: {
+    onStatus: on("bar:status"),
+    onPeekState: on("bar:peekState"),
     get: () => ipcRenderer.invoke("bar:get"),
     set: (p) => ipcRenderer.invoke("bar:set", p),
     sync: (data) => ipcRenderer.send("bar:sync", data),

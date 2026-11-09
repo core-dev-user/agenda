@@ -19,6 +19,10 @@ if (process.env.AGENDA_SHOT) {
   app.setPath("userData", path.join(process.env.AGENDA_SHOT, "userdata"))
   app.disableHardwareAcceleration()
 }
+// Only one owner may replace Explorer's taskbar for this user profile.
+if (!app.requestSingleInstanceLock()) { app.quit(); return }
+app.on("second-instance", () => system.show())
+
 const userDir = app.getPath("userData")
 const mediaDir = path.join(userDir, "media")
 const toolsDir = path.join(userDir, "tools")

@@ -62,8 +62,9 @@ function useDesktopLayer() {
 
 /** barra principal do Windows (janela separada): manda aparência/fixados/avisos e atende os pedidos dela */
 function useMainBar() {
+  const active = useUiMode((s) => s.mainBar)
   useEffect(() => {
-    if (!useUiMode.getState().mainBar) return
+    if (!active) return
     let last = ""
     const send = () => {
       const s = useStore.getState()
@@ -99,7 +100,7 @@ function useMainBar() {
       else if (m.type === "unpin") s.setSettings({ pcPins: (s.settings.pcPins ?? []).filter((p) => p.path.toLowerCase() !== m.path.toLowerCase()) })
     })
     return () => { clearTimeout(t); off(); off2() }
-  }, [])
+  }, [active])
 }
 
 export function useThemeVars() {

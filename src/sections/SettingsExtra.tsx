@@ -323,13 +323,27 @@ function MonitorMap({ list, value, onPick }: { list: DisplayInfo[]; value: numbe
 
 function MainBarSwitch() {
   const on = useUiMode((s) => s.mainBar)
+  const error = useUiMode((s) => s.barError)
+  const [busy, setBusy] = useState(false)
   return (
     <div className="mt-3 border-t border-line pt-3">
       <Switch
         label="Usar a barra do Agenda como barra principal do Windows"
         checked={on}
-        onChange={async (v) => { flushStore(); bridge.store.flush?.(); await bridge.bar.set({ on: v }); location.reload() }}
+        onChange={async (v) => {
+          if (busy) return
+          setBusy(true)
+          try {
+            flushStore(); bridge.store.flush?.()
+            const bar = await bridge.bar.set({ on: v })
+            useUiMode.setState({ mainBar: bar.active, barError: bar.error || "" })
+          } catch { useUiMode.setState({ barError: "Não foi possível alterar a barra. Tente novamente." }) }
+          finally { setBusy(false) }
+        }}
       />
+      {busy && <p className="text-xs text-fg-muted" role="status">Preparando a barra…</p>}
+      {error && <p className="text-xs text-red-400" role="alert">{error}</p>}
+      <p className="text-xs text-fg-muted">Ctrl+Alt+Home abre o menu Iniciar do Agenda. Ctrl+Alt+Backspace restaura a barra do Windows.</p>
       <div className="text-xs text-fg-muted">Esconde a barra do Windows e põe a do Agenda no lugar: Iniciar, programas abertos e fixados, relógio. Se o Agenda fechar, a barra do Windows volta sozinha. A seta perto do relógio mostra os ícones da bandeja do Windows.</div>
     </div>
   )
