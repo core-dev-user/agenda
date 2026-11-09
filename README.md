@@ -29,3 +29,7 @@ src/lib            estado (zustand), temas, fontes, tipos
 
 - Padrão: Lanczos3 + nitidez suave (mantém a foto idêntica, só mais definida).
 - Com IA: em **Imagens → Instalar motor de IA** baixa o Real-ESRGAN (usa a placa de vídeo), que reconstrói detalhes de verdade.
+
+## Testes de desempenho e persistência
+
+Execute `npm test` com Node 22.18+ ou Node 24. Os cenários e os limites desta primeira rodada estão em [docs/performance.md](docs/performance.md).

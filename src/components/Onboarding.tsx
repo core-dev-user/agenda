@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { AppWindow as AppWindowIcon, ArrowLeft, ArrowRight, Check, Gamepad2, Headphones, Monitor, MonitorSmartphone, Music, Target, Crosshair, MessageCircle, type LucideIcon } from "lucide-react"
-import { useStore } from "@/lib/store"
+import { flushStore, useStore } from "@/lib/store"
 import { bridge, type PcApp, type UiMode } from "@/lib/bridge"
 import { MODE_INFO, useUiMode } from "@/lib/uimode"
 import { cn } from "@/lib/utils"
@@ -99,7 +99,7 @@ export default function Onboarding() {
       for (const e of shownExtras) if (extras[e.id] && !exists(e.type)) st.addWidget(e.type)
     }
     st.setSettings({ musicAutostart: music === "ytmusic" ? st.settings.musicAutostart : false })
-    bridge.store.flush?.()
+    flushStore(); bridge.store.flush?.()
     await bridge.bar.set({ on: mode === "desktop" && mainBar })
     const ok = await bridge.mode.set(mode)
     // sem reabrir (modo de teste): troca aqui mesmo

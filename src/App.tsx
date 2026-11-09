@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { ChevronRight, Image, Lock, LockOpen, Settings } from "lucide-react"
-import { useStore } from "@/lib/store"
+import { useStore, flushStore } from "@/lib/store"
+import { shallowEqual } from "@/lib/persistence"
+import { barInputs } from "@/lib/barInputs"
 import { bridge } from "@/lib/bridge"
 import type { MediaItem } from "@/lib/types"
 import { importDropped, pasteImages } from "@/components/MediaPicker"
@@ -28,10 +30,10 @@ import { FocusBar, useFocusActive } from "@/components/FocusBar"
 import { DEFAULT_FOCUS } from "@/lib/store"
 import { useUiMode } from "@/lib/uimode"
 
-/** salvamento automático extra: regrava a cada 20 s e garante a gravação ao fechar a janela */
+/** Drena alterações pendentes; não regrava dados inalterados. Ao sair, confirma a gravação no Electron. */
 export function useAutosave() {
   useEffect(() => {
-    const save = () => useStore.setState({})
+    const save = () => flushStore()
     const id = setInterval(save, 20000)
     const bye = () => { save(); bridge.store.flush?.() }
     window.addEventListener("beforeunload", bye)
@@ -77,8 +79,16 @@ function useMainBar() {
       const j = JSON.stringify(data)
       if (j !== last) { last = j; bridge.bar.sync(data) }
     }
-    const t = setTimeout(send, 300)
-    const off = useStore.subscribe(() => setTimeout(send, 50))
+    let t: ReturnType<typeof setTimeout> | undefined = setTimeout(() => { t = undefined; send() }, 300)
+    let inputs = barInputs(useStore.getState())
+    const off = useStore.subscribe((s, prev) => {
+      if (s.settings === prev.settings && s.notifications === prev.notifications) return
+      const next = barInputs(s)
+      if (shallowEqual(inputs, next)) return
+      inputs = next
+      // Uma única atualização pendente, sem adiar indefinidamente durante sliders/arrastos.
+      if (t === undefined) t = setTimeout(() => { t = undefined; send() }, 50)
+    })
     const off2 = bridge.bar.onMain((m) => {
       const s = useStore.getState()
       if (m.type === "open") s.openWindow(m.id as SectionId)
@@ -122,7 +132,6 @@ export default function App() {
   usePerf()
   // tela "Hoje" ao abrir
   useEffect(() => { if (useStore.getState().settings.todayOnStart) setTimeout(() => useStore.getState().openWindow("today"), 900) }, [])
-  useAutosave()
   useDesktopLayer()
   useMainBar()
   const mainBar = useUiMode((s) => s.mainBar)

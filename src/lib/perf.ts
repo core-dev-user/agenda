@@ -32,8 +32,11 @@ export function usePerf() {
     let t: ReturnType<typeof setTimeout> | undefined
     const update = () => {
       const looking = document.hasFocus() || Date.now() - lastMove < 4000
-      paused = document.hidden || (gaming && pauseInGame && !looking)
+      const next = document.hidden || (gaming && pauseInGame && !looking)
+      const changed = next !== paused
+      paused = next
       document.documentElement.classList.toggle("perf-paused", paused)
+      if (changed) window.dispatchEvent(new Event("agenda:perf"))
     }
     const moved = () => {
       lastMove = Date.now()
