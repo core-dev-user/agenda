@@ -50,6 +50,8 @@ export interface AgendaBridge {
     onSummon(cb: () => void): Unsub
   }
   bar: {
+    onStatus(cb: (s: BarConfig) => void): Unsub
+    onPeekState(cb: (show: boolean) => void): Unsub
     get(): Promise<BarConfig>
     set(p: Partial<Pick<BarConfig, "on" | "height" | "position">>): Promise<BarConfig>
     sync(data: BarSync): void
@@ -164,7 +166,7 @@ export interface RunningGame { id: string; name: string; color: string; start: n
 export interface ValAgentNow { id: string; locked: boolean; state: string }
 export interface GamesState { playing: RunningGame[]; at: number }
 
-export interface BarConfig { on: boolean; height: number; position: "bottom" | "top"; available: boolean; active: boolean }
+export interface BarConfig { on: boolean; height: number; position: "bottom" | "top"; available: boolean; active: boolean; error?: string }
 export interface PcWindow { h: string; title: string; exe: string; name: string; min: boolean; icon: string }
 export interface PinnedApp { path: string; name: string }
 /** o que a janela principal manda para a barra: aparência, fixados e avisos */
@@ -288,7 +290,7 @@ const browserFallback: AgendaBridge = {
   share: { sources: async () => [], pick: async () => {}, audioStart: async () => ({ ok: false, excluded: "agenda" }), audioStop: async () => {}, onAudio: noop, onAudioEnd: noop },
   bar: (() => {
     const c: BarConfig = { on: false, height: 64, position: "bottom", available: false, active: false }
-    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, onWins: noop, onSync: noop, onMain: noop }
+    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, onStatus: noop, onPeekState: noop, onWins: noop, onSync: noop, onMain: noop }
   })(),
   finance: {
     status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),

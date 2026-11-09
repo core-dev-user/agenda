@@ -48,6 +48,7 @@ export function SystemBar() {
   const center = useRef<HTMLDivElement>(null)
   useEffect(() => bridge.bar.onWins((d) => { setWins(d.wins); setFg(d.fg) }), [])
   useEffect(() => bridge.bar.onMenuState(setMenu), [])
+  useEffect(() => bridge.bar.onPeekState(setPeek), [])
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 5000); return () => clearInterval(t) }, [])
   useLayoutEffect(() => { const f = () => setW(innerWidth); addEventListener("resize", f); return () => removeEventListener("resize", f) }, [])
 
@@ -94,7 +95,7 @@ export function SystemBar() {
 
       {/* centro: Iniciar + programas */}
       <div ref={center} className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-hidden">
-        <button className="bar-btn shrink-0" style={{ width: size, height: size }} data-on={menu === "start"} title="Iniciar" onClick={(e) => openMenu("start", e.currentTarget, 640, 660)}>
+        <button className="bar-btn shrink-0" style={{ width: size, height: size }} data-on={menu === "start"} title="Iniciar (Ctrl+Alt+Home)" onClick={(e) => openMenu("start", e.currentTarget, 640, 660)}>
           <Logo size={Math.round(size * 0.72)} />
         </button>
         {groups.map((g) => <AppBtn key={g.key} g={g} size={size} fg={fg} onClick={() => click(g)} onRight={() => pin(g)} />)}

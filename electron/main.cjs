@@ -19,6 +19,10 @@ if (process.env.AGENDA_SHOT) {
   app.setPath("userData", path.join(process.env.AGENDA_SHOT, "userdata"))
   app.disableHardwareAcceleration()
 }
+// Only one owner may replace Explorer's taskbar for this user profile.
+if (!process.env.AGENDA_SHOT && !app.requestSingleInstanceLock()) { app.quit(); return }
+app.on("second-instance", () => system.show())
+
 const userDir = app.getPath("userData")
 const mediaDir = path.join(userDir, "media")
 const toolsDir = path.join(userDir, "tools")
@@ -157,9 +161,6 @@ function createWindow() {
 }
 
 app.setName("Agenda")
-// só uma cópia aberta: abrir de novo traz a janela que já está rodando (inclusive da bandeja)
-if (!process.env.AGENDA_SHOT && !app.requestSingleInstanceLock()) { app.quit(); process.exit(0) }
-app.on("second-instance", () => system.show())
 if (process.platform === "win32") app.setAppUserModelId("com.agenda.desktop")
 
 app.whenReady().then(() => {
@@ -233,14 +234,19 @@ ipcMain.on("store:get", (e) => { e.returnValue = loadData() })
 
 let pending = null
 let writing = false
+let inFlight = null
+let writeGeneration = 0
 let lastBackup = 0
-async function writeSafe(data) {
+async function writeSafe(data, generation) {
   const tmp = dataFile + ".tmp"
   const fh = await fsp.open(tmp, "w")
   try { await fh.writeFile(data, "utf8"); await fh.sync() } finally { await fh.close() }
   // o Windows (antivírus/indexador) às vezes segura o arquivo por um instante: tenta de novo
   for (let i = 0; ; i++) {
-    try { await fsp.rename(tmp, dataFile); return } catch (e) {
+    // A synchronous exit/manual flush may have committed a newer snapshot.
+    if (generation !== writeGeneration) return false
+    // Keep the generation check and commit in one turn, without an async rename race.
+    try { fs.renameSync(tmp, dataFile); return true } catch (e) {
       if (i >= 5) throw e
       await new Promise((r) => setTimeout(r, 60 * (i + 1)))
     }
@@ -258,15 +264,17 @@ async function flush() {
   if (writing || pending == null) return
   writing = true
   const data = pending
+  const generation = writeGeneration
+  inFlight = data
   pending = null
   try {
-    await writeSafe(data)
-    await backup(data)
+    if (await writeSafe(data, generation)) await backup(data)
   } catch (err) {
     console.error("falha ao salvar", err)
-    if (pending == null) pending = data // tenta de novo na próxima
+    if (generation === writeGeneration && pending == null) pending = data // tenta de novo na próxima
   }
   writing = false
+  inFlight = null
   if (pending != null) setTimeout(flush, 200)
 }
 ipcMain.on("store:set", (_e, data) => {
@@ -275,13 +283,17 @@ ipcMain.on("store:set", (_e, data) => {
   flush()
 })
 function flushSync() {
-  if (pending == null) return
+  const data = pending ?? inFlight
+  if (data == null) return
   try {
     // arquivo temporário próprio: não briga com uma gravação normal que esteja em andamento
     const tmp = dataFile + ".exit.tmp"
-    fs.writeFileSync(tmp, pending, "utf8")
+    const fd = fs.openSync(tmp, "w")
+    try { fs.writeFileSync(fd, data, "utf8"); fs.fsyncSync(fd) } finally { fs.closeSync(fd) }
     try { fs.renameSync(tmp, dataFile) } catch { fs.copyFileSync(tmp, dataFile); try { fs.unlinkSync(tmp) } catch {} }
+    writeGeneration++
     pending = null
+    inFlight = null
   } catch (err) { console.error("falha ao salvar ao sair", err) }
 }
 app.on("before-quit", flushSync)
