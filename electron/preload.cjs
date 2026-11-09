@@ -49,6 +49,12 @@ contextBridge.exposeInMainWorld("agenda", {
     detectApps: () => ipcRenderer.invoke("apps:detect"),
     onSummon: on("app:summon"),
   },
+  update: {
+    get: () => ipcRenderer.invoke("update:get"),
+    check: () => ipcRenderer.invoke("update:check"),
+    install: () => ipcRenderer.invoke("update:install"),
+    onState: on("update:state"),
+  },
   bar: {
     get: () => ipcRenderer.invoke("bar:get"),
     set: (p) => ipcRenderer.invoke("bar:set", p),

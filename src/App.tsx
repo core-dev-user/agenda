@@ -28,6 +28,7 @@ import { FocusBar, useFocusActive } from "@/components/FocusBar"
 import { DEFAULT_FOCUS } from "@/lib/store"
 import { useUiMode } from "@/lib/uimode"
 import { Pet, PET_DEFAULT } from "@/pet/Pet"
+import { UpdatePrompt } from "@/components/Updates"
 import { PawPrint } from "lucide-react"
 
 /** salvamento automático extra: regrava a cada 20 s e garante a gravação ao fechar a janela */
@@ -177,6 +178,7 @@ export default function App() {
       <Overlays />
       <AnimatePresence>{showSplash && <Splash />}</AnimatePresence>
       <Toast />
+      <UpdatePrompt />
       <CursorLayer />
     </div>
   )

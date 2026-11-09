@@ -18,6 +18,7 @@ import { AppIcon, ICON_STYLES, sectionColor } from "@/components/AppIcon"
 import { SECTIONS } from "@/components/sections-meta"
 import { TemplatesTab } from "./Templates"
 import { PetTab } from "@/pet/PetSettings"
+import { UpdatesSection } from "@/components/Updates"
 import { IntegrationsTab, ModeTab, RoutineTab, SystemExtra } from "./SettingsExtra"
 
 const TABS = [
@@ -572,6 +573,7 @@ function System() {
         {!isDesktop && <div className="text-xs text-fg-muted">Disponível no app desktop.</div>}
         <button className="btn mt-2" onClick={() => bridge.win.fullscreen(true)}>Entrar em tela cheia</button>
       </Section>
+      <UpdatesSection />
       <SystemExtra />
       <Section title="Backup" desc="Exporta hábitos, estudos, serviços, listas, widgets e configurações (as imagens ficam na pasta do app).">
         <div className="flex gap-2">

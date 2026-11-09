@@ -1,0 +1,35 @@
+# Lança uma versão do Agenda: roda quando uma etiqueta "vX.Y.Z" chega no GitHub (npm run release).
+# Gera o instalador num Windows do GitHub e publica a Release com o Agenda-Setup-X.Y.Z.exe e o latest.yml,
+# que é o que os Agendas instalados consultam para se atualizar sozinhos.
+name: Lançar versão
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Ícone e build
+        run: |
+          npm run icon
+          npm run build
+
+      - name: Gerar o instalador e publicar a Release
+        run: npx electron-builder --win nsis --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

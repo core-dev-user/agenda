@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useState } from "react"
+import { UpdatePrompt } from "@/components/Updates"
 import { AnimatePresence, motion } from "framer-motion"
 import { Copy, Minus, Search, Square, X } from "lucide-react"
 import { useStore } from "@/lib/store"
@@ -112,6 +113,7 @@ export default function AppShell() {
       <CommandPalette />
       <Assistant />
       <Toast />
+      <UpdatePrompt />
     </div>
   )
 }

@@ -49,6 +49,13 @@ export interface AgendaBridge {
     detectApps(): Promise<{ apps: PcApp[]; monitors: number }>
     onSummon(cb: () => void): Unsub
   }
+  /** atualização automática (só no app instalado) */
+  update?: {
+    get(): Promise<UpdateState>
+    check(): Promise<UpdateState>
+    install(): Promise<boolean>
+    onState(cb: (s: UpdateState) => void): () => void
+  }
   bar: {
     get(): Promise<BarConfig>
     set(p: Partial<Pick<BarConfig, "on" | "height" | "position">>): Promise<BarConfig>
@@ -217,6 +224,17 @@ export interface IfoodOrder { name: string; status: string; price: string; when:
 
 export interface SportTeam { id?: string; name: string; short: string; logo?: string; flag?: string; score?: string; win?: boolean }
 /** time favorito escolhido no widget (id/league só no futebol — ESPN) */
+export interface UpdateState {
+  status: "idle" | "checking" | "none" | "downloading" | "ready" | "error"
+  /** versão nova encontrada */
+  version: string
+  percent: number
+  error: string
+  /** versão instalada agora */
+  current: string
+  /** false rodando pelo código (sem instalador) */
+  enabled: boolean
+}
 export interface FavTeam { id?: string; name: string; short?: string; logo?: string; flag?: string; league?: string }
 export interface SportMatch {
   id: string
