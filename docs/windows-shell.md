@@ -29,7 +29,7 @@ A implementação substitui a barra **do monitor principal**. As barras secundá
 
 ## Verificar
 
-- `npm test`: persistência, timers, protocolo nativo, comandos fora de ordem, timeouts, agrupamento de eventos, ativação/erro/recuperação da barra com dependências simuladas.
+- `npm test`: persistência, timers, protocolo nativo, comandos fora de ordem, timeouts, agrupamento de eventos, ativação/erro/recuperação da barra com dependências simuladas. Inclui desligar/religar durante a abertura e encerrar com uma gravação em disco em andamento.
 - `npm run build`: TypeScript e bundle de produção.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File tests/windows-native.ps1`: compila C# no Windows e exercita inicialização, heartbeat, listagem real de janelas, rejeição de HWND inválido, encerramento por EOF e processo de recuperação. Não assume a barra do computador usado no teste.
 - O workflow `Windows shell checks` executa essas verificações no Windows.
