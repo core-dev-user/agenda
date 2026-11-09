@@ -94,9 +94,14 @@ export interface Settings {
 }
 
 export type SportKind = "football" | "cs2" | "valorant"
-export type PetColor = "orange" | "gray" | "black" | "white" | "siamese" | "tabby" | "calico"
+/** pelagem (gato: orange, gray, black, white, siamese, tabby, calico · cabra: white, brown, black, spotted, alpine) */
+export type PetColor = string
 export interface PetPrefs {
   on: boolean
+  /** qual bichinho */
+  species?: "cat" | "goat"
+  /** última pelagem usada em cada bicho */
+  coatBy?: Record<string, string>
   color: PetColor
   /** tamanho de cada pixel na tela (2–6) */
   scale: number

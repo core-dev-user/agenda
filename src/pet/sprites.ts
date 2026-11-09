@@ -5,14 +5,14 @@
  * Tudo olhando para a direita; para a esquerda o desenho é espelhado na hora de pintar.
  */
 
-export const GW = 32
-export const GH = 24
+import { B, E, G, GH, GW, Grid, K, L, LID, O, P, S, T, X, type Pal } from "./grid"
+import { drawGoat, GOAT_COATS } from "./goat"
+export { GH, GW }
 
-// índices da paleta
-const E = 0, O = 1, B = 2, S = 3, L = 4, P = 5, K = 6, G = 7, T = 8, X = 9, LID = 10
-export type Pal = Record<number, string>
+export type Species = "cat" | "goat"
+export interface Coat { label: string; pal: Pal; stripes?: boolean; points?: boolean; patches?: boolean }
 
-export const COATS: Record<string, { label: string; pal: Pal; stripes?: boolean; points?: boolean; patches?: boolean }> = {
+export const COATS: Record<string, Coat> = {
   orange: { label: "Laranja", pal: { [O]: "#2a1d2b", [B]: "#f2a65a", [S]: "#cf7a36", [L]: "#ffe2b8", [P]: "#ff8fa3", [K]: "#2a1d2b", [G]: "#ffffff", [T]: "#d97a2b", [X]: "#cf7a36" }, stripes: true },
   gray: { label: "Cinza", pal: { [O]: "#262331", [B]: "#a3abbd", [S]: "#7b8296", [L]: "#eef0f5", [P]: "#ff9db0", [K]: "#262331", [G]: "#ffffff", [T]: "#868da1", [X]: "#7b8296" } },
   black: { label: "Pretinho", pal: { [O]: "#110d16", [B]: "#3b3445", [S]: "#2a2433", [L]: "#544a60", [P]: "#ff8fa3", [K]: "#d8f06a", [G]: "#ffffff", [T]: "#332c3c", [X]: "#2a2433", [LID]: "#a99cc0" } },
@@ -20,55 +20,6 @@ export const COATS: Record<string, { label: string; pal: Pal; stripes?: boolean;
   siamese: { label: "Siamês", pal: { [O]: "#2b1f24", [B]: "#f3e6cf", [S]: "#dcc9a8", [L]: "#fff6e6", [P]: "#e88f9b", [K]: "#3d7fd9", [G]: "#ffffff", [T]: "#f3e6cf", [X]: "#6b4a3a" }, points: true },
   tabby: { label: "Rajado", pal: { [O]: "#2a2019", [B]: "#c2a37e", [S]: "#9c7f5c", [L]: "#f1e2cb", [P]: "#ff9a9a", [K]: "#2a2019", [G]: "#ffffff", [T]: "#6f5641", [X]: "#9c7f5c" }, stripes: true },
   calico: { label: "Tricolor", pal: { [O]: "#2a1d2b", [B]: "#fbf6f0", [S]: "#e4d9cf", [L]: "#ffffff", [P]: "#ff9db0", [K]: "#2a1d2b", [G]: "#ffffff", [T]: "#f0a050", [X]: "#3b3240" }, patches: true },
-}
-
-/* ---------------------------------------------------- grade e formas ---------------------------------------------------- */
-
-class Grid {
-  d = new Uint8Array(GW * GH)
-  /** pixels que formam a silhueta (contam para o contorno) */
-  set(x: number, y: number, c: number) {
-    x = Math.round(x); y = Math.round(y)
-    if (x < 0 || y < 0 || x >= GW || y >= GH) return
-    this.d[y * GW + x] = c
-  }
-  get(x: number, y: number) { return x < 0 || y < 0 || x >= GW || y >= GH ? E : this.d[y * GW + x] }
-  /** pinta só onde já tem gato (detalhes por dentro) */
-  paint(x: number, y: number, c: number) { if (this.get(Math.round(x), Math.round(y)) !== E) this.set(x, y, c) }
-  rect(x: number, y: number, w: number, h: number, c: number) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j, c) }
-  /** elipse (opcionalmente girada, em radianos) */
-  oval(cx: number, cy: number, rx: number, ry: number, c: number, ang = 0) {
-    const ca = Math.cos(ang), sa = Math.sin(ang)
-    const R = Math.ceil(Math.max(rx, ry)) + 1
-    for (let y = Math.floor(cy - R); y <= cy + R; y++)
-      for (let x = Math.floor(cx - R); x <= cx + R; x++) {
-        const dx = x + 0.5 - cx, dy = y + 0.5 - cy
-        const u = dx * ca + dy * sa, v = -dx * sa + dy * ca
-        if ((u / rx) ** 2 + (v / ry) ** 2 <= 1) this.set(x, y, c)
-      }
-  }
-  /** traço grosso (pincel quadrado de `w` pixels) por uma curva de Bézier quadrática */
-  curve(x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, w: number, c: number, cTip?: number) {
-    const n = 40
-    for (let i = 0; i <= n; i++) {
-      const t = i / n, a = (1 - t) ** 2, b = 2 * (1 - t) * t, d = t * t
-      const x = a * x0 + b * cx + d * x1, y = a * y0 + b * cy + d * y1
-      const ww = i > n * 0.8 && w > 1 ? w - 0.5 : w
-      const col = cTip != null && t > 0.78 ? cTip : c
-      for (let j = 0; j < ww; j++) for (let k = 0; k < ww; k++) this.set(Math.floor(x - ww / 2 + 0.5) + j, Math.floor(y - ww / 2 + 0.5) + k, col)
-    }
-  }
-  line(x0: number, y0: number, x1: number, y1: number, w: number, c: number) { this.curve(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2, x1, y1, w, c) }
-  /** contorno de 1 pixel em volta de tudo */
-  outline() {
-    const src = this.d.slice()
-    for (let y = 0; y < GH; y++)
-      for (let x = 0; x < GW; x++) {
-        if (src[y * GW + x] !== E) continue
-        const n = (xx: number, yy: number) => xx >= 0 && yy >= 0 && xx < GW && yy < GH && src[yy * GW + xx] !== E && src[yy * GW + xx] !== O
-        if (n(x - 1, y) || n(x + 1, y) || n(x, y - 1) || n(x, y + 1)) this.d[y * GW + x] = O
-      }
-  }
 }
 
 /* ---------------------------------------------------- partes do gato ---------------------------------------------------- */
@@ -247,14 +198,23 @@ export function draw(p: Pose, look: Look): Uint8Array {
 
 /* ---------------------------------------------------- quadros em cache ---------------------------------------------------- */
 
+export const SPECIES: Record<Species, { label: string; coats: Record<string, Coat>; name: string }> = {
+  cat: { label: "Gatinho", coats: COATS, name: "Gatinho" },
+  goat: { label: "Cabrinha", coats: GOAT_COATS, name: "Cabrinha" },
+}
+export const coatOf = (species: Species, coat: string) => {
+  const all = SPECIES[species]?.coats ?? COATS
+  return all[coat] ?? Object.values(all)[0]
+}
+
 const cache = new Map<string, HTMLCanvasElement>()
-export function frame(p: Pose, coat: string): HTMLCanvasElement {
-  const key = coat + JSON.stringify(p)
+export function frame(p: Pose, coat: string, species: Species = "cat"): HTMLCanvasElement {
+  const key = species + coat + JSON.stringify(p)
   let c = cache.get(key)
   if (c) return c
   if (cache.size > 900) cache.clear()
-  const def = COATS[coat] ?? COATS.orange
-  const d = draw(p, def)
+  const def = coatOf(species, coat)
+  const d = species === "goat" ? drawGoat(p, def) : draw(p, def)
   c = document.createElement("canvas")
   c.width = GW; c.height = GH
   const ctx = c.getContext("2d")!

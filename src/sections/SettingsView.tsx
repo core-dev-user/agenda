@@ -30,7 +30,7 @@ const TABS = [
   { id: "wallpaper", label: "Papel de parede", e: Image, c: "#3ccfcf" },
   { id: "fx", label: "Sakura e efeitos", e: Flower2, c: "#ff6fa8" },
   { id: "widgets", label: "Widgets", e: LayoutGrid, c: "#ffb36e" },
-  { id: "pet", label: "Gatinho", e: PawPrint, c: "#f2a65a" },
+  { id: "pet", label: "Bichinho", e: PawPrint, c: "#f2a65a" },
   { id: "routine", label: "Rotina e avisos", e: Bell, c: "#ff6b6b" },
   { id: "integrations", label: "Integrações", e: Plug, c: "#5ee3a1" },
   { id: "system", label: "Sistema", e: HardDrive, c: "#8a8a9a" },

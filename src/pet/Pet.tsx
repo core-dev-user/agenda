@@ -11,9 +11,9 @@ import { useStore } from "@/lib/store"
 import { rafLoop } from "@/lib/perf"
 import { fontFamily } from "@/lib/fonts"
 import type { PetPrefs } from "@/lib/types"
-import { frame, GH, GW, type Pose } from "./sprites"
+import { frame, GH, GW, SPECIES, type Pose, type Species } from "./sprites"
 
-export const PET_DEFAULT: PetPrefs = { on: true, color: "orange", scale: 3, widgets: true, energy: 1 }
+export const PET_DEFAULT: PetPrefs = { on: true, species: "cat", color: "orange", scale: 3, widgets: true, energy: 1 }
 
 type Act = "idle" | "walk" | "sit" | "groom" | "sleep" | "stretch" | "crouch" | "air" | "land" | "drag"
 interface Plat { id: string; x1: number; x2: number; y: number; el?: Element }
@@ -51,6 +51,7 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
     const ctx = cv.getContext("2d")!
     const sc = () => Math.max(2, Math.min(6, P.current.scale || 3))
     const energy = () => Math.max(0.3, Math.min(1.6, P.current.energy || 1))
+    const species = (): Species => (P.current.species === "goat" ? "goat" : "cat")
 
     /* ---------------- plataformas: chão, barra de tarefas e o topo dos widgets ---------------- */
     let plats: Plat[] = []
@@ -95,6 +96,8 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
       el.animate([{ transform: "translate(-50%,0) scale(.6)", opacity: 0 }, { transform: `translate(-50%,${-rise * 0.3}px) scale(1)`, opacity: 1, offset: 0.2 }, { transform: `translate(calc(-50% + ${rise * 0.25}px),${-rise}px) scale(1)`, opacity: 0 }], { duration: ms, easing: "cubic-bezier(.2,.7,.3,1)" }).onfinish = () => el.remove()
     }
     const heart = () => puff("♥", "#ff7aa8", 0, -GH + 2, 5, 60, 1100)
+    // a cabrinha bale de vez em quando
+    const bleat = () => puff(Math.random() < 0.5 ? "Méé!" : "Mééé", "#fff4d6", st.dir * 9, -GH + 1, 2.6, 50, 1400)
 
     /* ---------------- decisões ---------------- */
     const nightOwl = () => { const h = new Date().getHours(); return h >= 23 || h < 6 }
@@ -158,7 +161,7 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
       const onWidget = !!st.plat?.id.startsWith("w:")
       const choice = pick<string>([
         ["walk", 40 * e],
-        ["jump", (onWidget ? 14 : 22) * e * e],
+        ["jump", (onWidget ? 14 : 22) * e * e * (species() === "goat" ? 1.7 : 1)],
         ["sit", from === "sit" ? 6 : 24],
         ["groom", from === "sit" || from === "groom" ? 14 : 4],
         ["sleep", (from === "sit" || from === "groom" ? 16 : 4) * sleepy / e],
@@ -169,7 +172,7 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
       else if (choice === "sit") setAct("sit", rnd(4, 14))
       else if (choice === "groom") setAct("groom", rnd(2.2, 4.5))
       else if (choice === "sleep") setAct("sleep", rnd(25, 80) * sleepy)
-      else setAct("idle", rnd(1, 3))
+      else { setAct("idle", rnd(1, 3)); if (species() === "goat" && Math.random() < 0.25) bleat() }
     }
 
     const launch = (j: JumpPlan) => {
@@ -215,7 +218,8 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
         return
       }
       // clique: muda o que está fazendo (anda → senta → dorme → anda)
-      heart()
+      if (species() === "goat" && Math.random() < 0.6) bleat()
+      else heart()
       st.happyUntil = performance.now() + 1300
       if (!st.plat) return
       const a = st.act
@@ -366,7 +370,7 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
         }
         case "sleep":
           pose = { k: "sleep", breath: q((Math.sin(st.tailT * 1.9) + 1) / 2, 3), tail: q(Math.sin(st.tailT * 0.4), 2) }
-          if (st.tailT > st.zAt) { st.zAt = st.tailT + 1.6; puff(Math.random() < 0.5 ? "z" : "Z", "#e8e4ff", st.dir * 6, -10, 3.2, 46, 2200) }
+          if (st.tailT > st.zAt) { st.zAt = st.tailT + 1.6; puff(Math.random() < 0.5 ? "z" : "Z", "#e8e4ff", st.dir * (species() === "goat" ? 8 : 6), -10, 3.2, 46, 2200) }
           break
         case "stretch":
           pose = { k: "stretch", amt: q(Math.min(1, Math.sin((st.t / st.dur) * Math.PI) * 1.3), 2) * 2, tail: tailWave(2) }
@@ -381,14 +385,14 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
       // ----- desenha (só quando o quadro muda) -----
       const dpr = devicePixelRatio || 1
       const W = GW * s, H = GH * s
-      const key = JSON.stringify(pose) + P.current.color + s + dpr
+      const key = JSON.stringify(pose) + species() + P.current.color + s + dpr
       if (key !== lastKey) {
         lastKey = key
         const pw = Math.round(W * dpr), ph = Math.round(H * dpr)
         if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; cv.style.width = W + "px"; cv.style.height = H + "px" }
         ctx.imageSmoothingEnabled = false
         ctx.clearRect(0, 0, pw, ph)
-        ctx.drawImage(frame(pose, P.current.color), 0, 0, pw, ph)
+        ctx.drawImage(frame(pose, P.current.color, species()), 0, 0, pw, ph)
       }
       const sx = 1 / Math.sqrt(Math.max(0.5, st.sq))
       const x = Math.round(st.x - W / 2), y = Math.round(st.y - H)
@@ -400,7 +404,8 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
       sh.style.height = 3 * s + "px"
       sh.style.opacity = grounded ? "1" : "0"
       // área de clique: só o corpo do gato
-      const hb = st.act === "sleep" ? { l: 5, t: 13, w: 22, h: 10 } : st.act === "sit" || st.act === "groom" ? { l: 7, t: 2, w: 17, h: 21 } : st.act === "drag" ? { l: 9, t: 0, w: 14, h: 23 } : { l: 5, t: 5, w: 24, h: 18 }
+      const goat = species() === "goat"
+      const hb = goat && (st.act === "sit" || st.act === "groom") ? { l: 4, t: 3, w: 24, h: 20 } : goat && st.act !== "sleep" && st.act !== "drag" ? { l: 4, t: 1, w: 27, h: 22 } : st.act === "sleep" ? { l: 5, t: 13, w: 22, h: 10 } : st.act === "sit" || st.act === "groom" ? { l: 7, t: 2, w: 17, h: 21 } : st.act === "drag" ? { l: 9, t: 0, w: 14, h: 23 } : { l: 5, t: 5, w: 24, h: 18 }
       const hl = st.dir > 0 ? hb.l : GW - hb.l - hb.w
       const css = `position:absolute;left:${hl * s}px;top:${hb.t * s}px;width:${hb.w * s}px;height:${hb.h * s}px;pointer-events:auto;cursor:${st.act === "drag" ? "grabbing" : "grab"}`
       if (css !== lastHit) { lastHit = css; hit.style.cssText = css }
@@ -421,7 +426,7 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
       <div ref={shadow} className="absolute top-0 left-0 rounded-[50%]" style={{ background: "radial-gradient(closest-side, rgb(0 0 0 / .32), transparent)", transition: "opacity .2s" }} />
       <div ref={wrap} className="absolute top-0 left-0" style={{ willChange: "transform" }}>
         <canvas ref={canvas} style={{ imageRendering: "pixelated", transformOrigin: "50% 100%", display: "block", filter: "drop-shadow(0 1px 0 rgb(0 0 0 / .18))" }} />
-        <div data-pet-hit title={`${prefs.name?.trim() || "Gatinho"} — clique para ele mudar (anda, senta, dorme) · segure para pegar no colo`} onContextMenu={(e) => e.stopPropagation()} />
+        <div data-pet-hit title={`${prefs.name?.trim() || SPECIES[prefs.species === "goat" ? "goat" : "cat"].name} — clique para ele mudar (anda, senta, dorme) · segure para pegar no colo`} onContextMenu={(e) => e.stopPropagation()} />
       </div>
       <div ref={fx} className="absolute inset-0" />
     </div>

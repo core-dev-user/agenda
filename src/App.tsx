@@ -327,7 +327,7 @@ function DesktopMenu({ at, close }: { at: { x: number; y: number }; close: () =>
         ))}
         <div className="my-1 h-px bg-line" />
         <button className={item} onClick={() => { setSettings({ widgetsLocked: !s.widgetsLocked }); close() }}>{s.widgetsLocked ? <><LockOpen size={15} className="text-fg-muted" /> Destravar widgets</> : <><Lock size={15} className="text-fg-muted" /> Travar widgets</>}</button>
-        <button className={item} onClick={() => { setSettings({ pet: { ...PET_DEFAULT, ...s.pet, on: !(s.pet?.on ?? PET_DEFAULT.on) } }); close() }}><PawPrint size={15} className="text-fg-muted" /> {(s.pet?.on ?? PET_DEFAULT.on) ? "Guardar o gatinho" : "Chamar o gatinho"}</button>
+        <button className={item} onClick={() => { setSettings({ pet: { ...PET_DEFAULT, ...s.pet, on: !(s.pet?.on ?? PET_DEFAULT.on) } }); close() }}><PawPrint size={15} className="text-fg-muted" /> {(s.pet?.on ?? PET_DEFAULT.on) ? "Guardar o bichinho" : "Chamar o bichinho"}</button>
         <button className={item} onClick={() => { open("gallery"); close() }}><Image size={15} className="text-fg-muted" /> Trocar papel de parede</button>
         <button className={cn(item)} onClick={() => { open("settings"); close() }}><Settings size={15} className="text-fg-muted" /> Configurações</button>
       </motion.div>
