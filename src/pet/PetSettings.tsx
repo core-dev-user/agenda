@@ -87,7 +87,8 @@ export function PetTab() {
         <Slider label="Tamanho" value={pet.scale} min={2} max={6} step={1} onChange={(v) => set({ scale: v })} format={(v) => ["", "", "Pequeno", "Normal", "Grande", "Bem grande", "Gigante"][v] ?? String(v)} />
         <Slider label="Energia" value={pet.energy} min={0.3} max={1.6} step={0.1} onChange={(v) => set({ energy: v })} format={(v) => (v < 0.6 ? "Preguiçoso" : v < 0.9 ? "Calmo" : v < 1.25 ? "Normal" : "Elétrico")} />
         <Switch label={`Deixar ${species === "goat" ? "ela" : "ele"} subir e andar em cima dos widgets`} checked={pet.widgets} onChange={(v) => set({ widgets: v })} />
-        <div className="pt-1 text-xs text-fg-muted">De madrugada {who} fica com mais sono. As animações param sozinhas quando o Agenda está minimizado ou um jogo está aberto.</div>
+        <Switch label={`Continuar andando com o Agenda em segundo plano (mesmo jogando)`} checked={pet.background !== false} onChange={(v) => set({ background: v })} />
+        <div className="pt-1 text-xs text-fg-muted">De madrugada {who} fica com mais sono. Com um jogo aberto, {species === "goat" ? "ela" : "ele"} continua andando, só que mais leve (30 quadros por segundo) para não pesar no jogo. Para só quando o Agenda está minimizado ou coberto por outras janelas.</div>
       </Card>
     </>
   )

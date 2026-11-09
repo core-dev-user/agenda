@@ -108,6 +108,8 @@ export interface PetPrefs {
   name?: string
   /** anda por cima dos widgets */
   widgets: boolean
+  /** continua andando com o Agenda em segundo plano / jogo aberto (padrão: sim) */
+  background?: boolean
   /** quanto se mexe (0.3 = preguiçoso, 1.6 = elétrico) */
   energy: number
 }

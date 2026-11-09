@@ -8,7 +8,7 @@
  */
 import { useEffect, useRef } from "react"
 import { useStore } from "@/lib/store"
-import { rafLoop } from "@/lib/perf"
+import { perfPaused } from "@/lib/perf"
 import { fontFamily } from "@/lib/fonts"
 import type { PetPrefs } from "@/lib/types"
 import { frame, GH, GW, SPECIES, type Pose, type Species } from "./sprites"
@@ -27,6 +27,24 @@ const pick = <T,>(items: [T, number][]): T => {
   return items[0][0]
 }
 const q = (v: number, steps: number) => Math.round(v * steps) / steps
+
+/**
+ * Laço de animação do bichinho. Diferente do resto do Agenda, ele continua andando quando o Agenda
+ * está em segundo plano ou com um jogo aberto (só fica mais leve: 30 quadros por segundo).
+ * Para de verdade só quando a janela não está visível, ou se a opção "continuar com jogo aberto" estiver desligada.
+ */
+function petLoop(step: () => void, keepGoing: () => boolean) {
+  let raf = 0, t = 0, dead = false, lastRun = 0
+  const run = (ts: number) => {
+    if (dead) return
+    const paused = perfPaused()
+    if (document.hidden || (paused && !keepGoing())) { t = window.setTimeout(() => (raf = requestAnimationFrame(run)), 500); return }
+    if (!paused || ts - lastRun >= 31) { lastRun = ts; step() }
+    raf = requestAnimationFrame(run)
+  }
+  raf = requestAnimationFrame(run)
+  return () => { dead = true; cancelAnimationFrame(raf); clearTimeout(t) }
+}
 
 /** pede ao gatinho para vir até o meio da tela (Configurações › Bichinho) */
 export const callPet = () => window.dispatchEvent(new CustomEvent("agenda:pet", { detail: "call" }))
@@ -245,7 +263,7 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
     let lastKey = ""
     let lastHit = ""
     let scanAt = 0
-    const stop = rafLoop(() => {
+    const stop = petLoop(() => {
       const now = performance.now()
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
@@ -409,7 +427,7 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
       const hl = st.dir > 0 ? hb.l : GW - hb.l - hb.w
       const css = `position:absolute;left:${hl * s}px;top:${hb.t * s}px;width:${hb.w * s}px;height:${hb.h * s}px;pointer-events:auto;cursor:${st.act === "drag" ? "grabbing" : "grab"}`
       if (css !== lastHit) { lastHit = css; hit.style.cssText = css }
-    })
+    }, () => P.current.background !== false)
 
     return () => {
       stop()
