@@ -60,7 +60,7 @@ function skyline(items: Item[], width: number) {
 }
 
 const TOPIC: Record<string, number> = {
-  clock: 0, calendar: 1, agenda: 1, tasks: 2, note: 2, stopwatch: 3, weather: 4, news: 5, finance: 6,
+  clock: 0, calendar: 1, agenda: 1, tasks: 2, note: 2, stopwatch: 3, countdown: 3, weather: 4, news: 5, finance: 6,
   music: 10, pcmusic: 10, musicclip: 11, lyrics: 12, musicstats: 13,
   football: 20, cs2: 21, valorant: 21, valagent: 22, gaming: 23,
   discord: 30, whatsapp: 31, ifood: 32, sysmon: 40, photo: 50, shortcut: 60,

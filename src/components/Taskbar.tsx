@@ -106,6 +106,7 @@ export function Taskbar() {
         style={{ perspective: 600 }}
       >
         <div
+          data-pet-plat={tb.position === "bottom" && !hidden ? "" : undefined}
           className={cn(
             "surface flex items-center gap-1.5 px-2",
             vertical ? "flex-col py-2" : "flex-row",

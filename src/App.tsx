@@ -27,6 +27,8 @@ import { Assistant, openAssistant, useAssistant } from "@/components/Assistant"
 import { FocusBar, useFocusActive } from "@/components/FocusBar"
 import { DEFAULT_FOCUS } from "@/lib/store"
 import { useUiMode } from "@/lib/uimode"
+import { Pet, PET_DEFAULT } from "@/pet/Pet"
+import { PawPrint } from "lucide-react"
 
 /** salvamento automático extra: regrava a cada 20 s e garante a gravação ao fechar a janela */
 export function useAutosave() {
@@ -162,6 +164,7 @@ export default function App() {
       >
         <div className="absolute inset-0" data-desktop onPointerDown={() => setCtx(null)}>
           <AnimatePresence>{widgets.map((w) => <WidgetFrame key={w.id} w={w} />)}</AnimatePresence>
+          {!showSplash && <Pet />}
         </div>
         <AnimatePresence>{windows.map((w) => <AppWindow key={w.id} win={w} />)}</AnimatePresence>
         {!mainBar && <Taskbar />}
@@ -324,6 +327,7 @@ function DesktopMenu({ at, close }: { at: { x: number; y: number }; close: () =>
         ))}
         <div className="my-1 h-px bg-line" />
         <button className={item} onClick={() => { setSettings({ widgetsLocked: !s.widgetsLocked }); close() }}>{s.widgetsLocked ? <><LockOpen size={15} className="text-fg-muted" /> Destravar widgets</> : <><Lock size={15} className="text-fg-muted" /> Travar widgets</>}</button>
+        <button className={item} onClick={() => { setSettings({ pet: { ...PET_DEFAULT, ...s.pet, on: !(s.pet?.on ?? PET_DEFAULT.on) } }); close() }}><PawPrint size={15} className="text-fg-muted" /> {(s.pet?.on ?? PET_DEFAULT.on) ? "Guardar o gatinho" : "Chamar o gatinho"}</button>
         <button className={item} onClick={() => { open("gallery"); close() }}><Image size={15} className="text-fg-muted" /> Trocar papel de parede</button>
         <button className={cn(item)} onClick={() => { open("settings"); close() }}><Settings size={15} className="text-fg-muted" /> Configurações</button>
       </motion.div>

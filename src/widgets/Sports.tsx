@@ -173,9 +173,10 @@ export function SportsWidget({ w }: { w: Widget }) {
   const sport = w.type as Sport
   const meta = META[sport]
   const leagues: string[] = w.config.leagues?.length ? w.config.leagues : DEFAULT_LEAGUES
-  const globalFavs = useStore((x) => x.settings.favTeams)
+  // favoritos gerais SÓ deste esporte (o Corinthians não aparece no widget de CS2)
+  const globalFavs = useStore((x) => x.settings.favBySport?.[sport])
   const own = widgetFavs(w)
-  // sem times escolhidos no widget: usa os favoritos gerais (Configurações › Rotina e avisos)
+  // sem times escolhidos no widget: usa os favoritos gerais do esporte (Configurações › Rotina e avisos)
   const fav = useMemo<FavTeam[]>(() => (own.length ? own : (globalFavs ?? []).map((name) => ({ name }))), [JSON.stringify(own), (globalFavs ?? []).join(",")])
   const favKey = fav.map((f) => f.id || f.name).join(",")
   const onlyFav = !!w.config.onlyFav && fav.length > 0

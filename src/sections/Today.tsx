@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
+import { matchHasFav } from "@/lib/favs"
+import type { SportKind } from "@/lib/types"
 import { Glyph } from "@/components/Glyph"
 import { motion } from "framer-motion"
 import { Check, Lock, Play, Plus, Briefcase, CalendarDays, GraduationCap, ListChecks, Sprout, Star, Trophy, Wallet } from "lucide-react"
@@ -198,18 +200,20 @@ function ServicesToday({ today }: { today: string }) {
 }
 
 function GamesToday() {
-  const favs = (useStore((x) => x.settings.favTeams) ?? []).map((f) => f.toLowerCase())
-  const [list, setList] = useState<SportMatch[] | null>(null)
+  const byS = useStore((x) => x.settings.favBySport)
+  const [list, setList] = useState<(SportMatch & { sport: SportKind })[] | null>(null)
   useEffect(() => {
+    const tag = (sport: SportKind) => (ms: SportMatch[]) => ms.map((m) => ({ ...m, sport }))
     Promise.all([
-      bridge.sports.get("football", { leagues: ["bra.1", "conmebol.libertadores", "uefa.champions", "uefa.europa", "eng.1", "esp.1", "eng.3", "bra.copa_do_brazil"] }).catch(() => []),
-      bridge.sports.get("cs2").catch(() => []),
-      bridge.sports.get("valorant").catch(() => []),
+      bridge.sports.get("football", { leagues: ["bra.1", "conmebol.libertadores", "uefa.champions", "uefa.europa", "eng.1", "esp.1", "eng.3", "bra.copa_do_brazil"] }).then(tag("football")).catch(() => []),
+      bridge.sports.get("cs2").then(tag("cs2")).catch(() => []),
+      bridge.sports.get("valorant").then(tag("valorant")).catch(() => []),
     ]).then((ls) => setList(ls.flat()))
   }, [])
   const day = new Date()
-  const isFav = (m: SportMatch) => favs.some((f) => [m.a.name, m.b.name, m.a.short, m.b.short].some((n) => (n || "").toLowerCase().includes(f)))
-  const games = useMemo(() => (list ?? []).filter((m) => m.state === "live" || sameDay(m.start, day)).sort((a, b) => Number(isFav(b)) - Number(isFav(a)) || Number(b.state === "live") - Number(a.state === "live") || a.start - b.start).slice(0, 8), [list, favs.join()])
+  // cada jogo só olha os favoritos do esporte dele
+  const isFav = (m: SportMatch & { sport: SportKind }) => matchHasFav(m, byS?.[m.sport] ?? [])
+  const games = useMemo(() => (list ?? []).filter((m) => m.state === "live" || sameDay(m.start, day)).sort((a, b) => Number(isFav(b)) - Number(isFav(a)) || Number(b.state === "live") - Number(a.state === "live") || a.start - b.start).slice(0, 8), [list, JSON.stringify(byS ?? {})])
   return (
     <Card>
       <Title><Trophy size={15} className="text-fg-muted" /> Jogos de hoje</Title>

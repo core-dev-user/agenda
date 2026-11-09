@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef } from "react"
 import { useStore } from "./store"
+import { favsForSport, matchHasFav, migrateFavTeams } from "./favs"
 import { bridge, type SportMatch } from "./bridge"
 import { notify, focusActive, focusPrefs, notifyPrefs } from "./notify"
 import { eventsFrom, feedUrl } from "./ical"
@@ -89,22 +90,20 @@ export function useBackground() {
   const games = useRef<Map<string, SportMatch> | null>(null)
   useEffect(() => {
     const tick = async () => {
+      // cada esporte só com os favoritos dele (gerais + escolhidos nos widgets daquele esporte)
+      const favs = { football: favsForSport("football"), cs2: favsForSport("cs2"), valorant: favsForSport("valorant") }
+      if (!(favs.football.length + favs.cs2.length + favs.valorant.length) || !notifyPrefs().on.sports) return
       const s = useStore.getState()
-      // favoritos gerais + os times escolhidos nos widgets de futebol / CS2 / Valorant
-      const fromWidgets = s.widgets.filter((w) => w.type === "football" || w.type === "cs2" || w.type === "valorant")
-        .flatMap((w) => (Array.isArray(w.config.favs) ? w.config.favs.map((f: { name: string }) => f.name) : String(w.config.teams ?? "").split(",")))
-      const favs = [...new Set([...(s.settings.favTeams ?? []), ...fromWidgets].map((f) => String(f).trim().toLowerCase()).filter(Boolean))]
-      if (!favs.length || !notifyPrefs().on.sports) return
       const leagues = new Set<string>(["bra.1", "conmebol.libertadores", "uefa.champions", "uefa.europa", "eng.1", "esp.1", "eng.3", "bra.copa_do_brazil"])
       for (const w of s.widgets) if (w.type === "football") for (const l of w.config.leagues ?? []) leagues.add(l)
-      const lists = await Promise.all([
-        bridge.sports.get("football", { leagues: [...leagues] }).catch(() => []),
-        bridge.sports.get("cs2").catch(() => []),
-        bridge.sports.get("valorant").catch(() => []),
+      const [fb, cs, val] = await Promise.all([
+        favs.football.length ? bridge.sports.get("football", { leagues: [...leagues] }).catch(() => []) : [],
+        favs.cs2.length ? bridge.sports.get("cs2").catch(() => []) : [],
+        favs.valorant.length ? bridge.sports.get("valorant").catch(() => []) : [],
       ])
-      const fav = (m: SportMatch) => favs.some((f) => [m.a.name, m.a.short, m.b.name, m.b.short].some((n) => (n || "").toLowerCase().includes(f)))
+      const hits = [...fb.filter((m) => matchHasFav(m, favs.football)), ...cs.filter((m) => matchHasFav(m, favs.cs2)), ...val.filter((m) => matchHasFav(m, favs.valorant))]
       const now = new Map<string, SportMatch>()
-      for (const m of lists.flat()) if (fav(m)) now.set(m.id, m)
+      for (const m of hits) now.set(m.id, m)
       const prev = games.current
       if (prev) {
         for (const [id, m] of now) {
@@ -119,6 +118,8 @@ export function useBackground() {
     }
     const id = setInterval(tick, 90000)
     setTimeout(tick, 15000)
+    // favoritos antigos (uma lista só) → separados por esporte
+    setTimeout(() => migrateFavTeams().catch(() => {}), 5000)
     return () => clearInterval(id)
   }, [])
 

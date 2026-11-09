@@ -17,6 +17,7 @@ import { FEEDS } from "@/widgets/News"
 import { AppIcon, ICON_STYLES, sectionColor } from "@/components/AppIcon"
 import { SECTIONS } from "@/components/sections-meta"
 import { TemplatesTab } from "./Templates"
+import { PetTab } from "@/pet/PetSettings"
 import { IntegrationsTab, ModeTab, RoutineTab, SystemExtra } from "./SettingsExtra"
 
 const TABS = [
@@ -29,6 +30,7 @@ const TABS = [
   { id: "wallpaper", label: "Papel de parede", e: Image, c: "#3ccfcf" },
   { id: "fx", label: "Sakura e efeitos", e: Flower2, c: "#ff6fa8" },
   { id: "widgets", label: "Widgets", e: LayoutGrid, c: "#ffb36e" },
+  { id: "pet", label: "Gatinho", e: PawPrint, c: "#f2a65a" },
   { id: "routine", label: "Rotina e avisos", e: Bell, c: "#ff6b6b" },
   { id: "integrations", label: "Integrações", e: Plug, c: "#5ee3a1" },
   { id: "system", label: "Sistema", e: HardDrive, c: "#8a8a9a" },
@@ -66,6 +68,7 @@ export default function SettingsView() {
           {tab === "wallpaper" && <WallpaperTab />}
           {tab === "fx" && <Fx />}
           {tab === "widgets" && <WidgetsTab />}
+          {tab === "pet" && <PetTab />}
           {tab === "routine" && <RoutineTab />}
           {tab === "integrations" && <IntegrationsTab />}
           {tab === "system" && <System />}

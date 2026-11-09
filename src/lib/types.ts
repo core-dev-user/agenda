@@ -5,7 +5,7 @@ export type TaskbarPosition = "bottom" | "top" | "left" | "right"
 export type TaskbarStyle = "dock" | "bar" | "floating"
 export type SectionId = "today" | "habits" | "studies" | "services" | "finance" | "lists" | "music" | "games" | "discord" | "whatsapp" | "ifood" | "rooms" | "gallery" | "settings"
 export type IconStyle = "auto" | "logos" | "color" | "glass" | "metal" | "neon" | "outline" | "flat" | "pixel"
-export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp" | "finance" | "agenda" | "musicstats" | "gaming" | "musicclip" | "valagent" | "sysmon" | "pcmusic"
+export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp" | "finance" | "agenda" | "musicstats" | "gaming" | "musicclip" | "valagent" | "sysmon" | "pcmusic" | "countdown"
 
 export interface Settings {
   theme: ThemeId
@@ -68,8 +68,12 @@ export interface Settings {
   notify?: NotifyPrefs
   /** agendas do Google (ou outra) pelo endereço secreto iCal */
   calendars?: CalendarFeed[]
-  /** times/equipes favoritos (avisa quando o jogo começa, gols, fim) */
+  /** (antigo) times favoritos misturados de todos os esportes — migrado para `favBySport` */
   favTeams?: string[]
+  /** times favoritos de cada esporte (avisa quando o jogo começa, gols, fim) */
+  favBySport?: Partial<Record<SportKind, string[]>>
+  /** bichinho que anda pela tela */
+  pet?: PetPrefs
   focus?: FocusPrefs
   /** abrir a tela Hoje quando o Agenda abre */
   todayOnStart?: boolean
@@ -87,6 +91,20 @@ export interface Settings {
   savedRooms?: { code: string; name: string }[]
   /** assistente: IA local ligada (já baixada) e qual modelo */
   ai?: { on: boolean; model: "small" | "big" }
+}
+
+export type SportKind = "football" | "cs2" | "valorant"
+export type PetColor = "orange" | "gray" | "black" | "white" | "siamese" | "tabby" | "calico"
+export interface PetPrefs {
+  on: boolean
+  color: PetColor
+  /** tamanho de cada pixel na tela (2–6) */
+  scale: number
+  name?: string
+  /** anda por cima dos widgets */
+  widgets: boolean
+  /** quanto se mexe (0.3 = preguiçoso, 1.6 = elétrico) */
+  energy: number
 }
 
 export type NotifySource = "tasks" | "whatsapp" | "ifood" | "sports" | "budgets" | "services" | "calendar" | "focus" | "system"

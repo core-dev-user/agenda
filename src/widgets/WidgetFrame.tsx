@@ -1,7 +1,7 @@
 import { memo, useRef, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import {
-  CalendarClock, CalendarDays, ChartColumn, Clapperboard, Clock, CloudSun, Cpu, Crop, Crosshair, Gamepad2, GripHorizontal, Headphones, Image, ImagePlus, Images, Link,
+  CalendarClock, CalendarDays, Hourglass, ChartColumn, Clapperboard, Clock, CloudSun, Cpu, Crop, Crosshair, Gamepad2, GripHorizontal, Headphones, Image, ImagePlus, Images, Link,
   ClipboardPaste, Copy, ListChecks, MessageCircle, Mic, Moon, Move, Music, Sun, Newspaper, Settings2, StickyNote, Target, Timer, Trash2, Triangle, UtensilsCrossed, Volleyball, Wallet, Wand2, X,
   type LucideIcon,
 } from "lucide-react"
@@ -40,6 +40,7 @@ import { MusicClipWidget } from "./MusicClipWidget"
 import { ValAgentWidget, ValAgentSettings } from "./ValAgentWidget"
 import { SysMonWidget, SysMonSettings } from "./SysMonWidget"
 import { PcMusicWidget, PcMusicSettings } from "./PcMusicWidget"
+import { CountdownWidget, CountdownSettings } from "./Countdown"
 import { hoverClass, lookOfWidget, lookStyle, LookSettings } from "./widgetLook"
 import { GlyphTile } from "@/components/Glyph"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
@@ -71,6 +72,7 @@ export const WIDGET_META: Record<WidgetType, { label: string; icon: LucideIcon; 
   valagent: { label: "Valorant: agente (templates)", icon: Target, color: "#ff4655" },
   sysmon: { label: "Desempenho do PC (CPU, GPU, RAM)", icon: Cpu, color: "#3ccfcf" },
   pcmusic: { label: "Player do PC (Spotify, Deezer…)", icon: Headphones, color: "#1db954" },
+  countdown: { label: "Contagem regressiva (dias para…)", icon: Hourglass, color: "#ff8fb8" },
 }
 
 /** Tópicos do menu "Adicionar widget" (na ordem em que aparecem). */
@@ -88,7 +90,7 @@ export const WIDGET_CATS = [
 export type WidgetCat = (typeof WIDGET_CATS)[number]["id"]
 
 const CAT_OF: Record<Exclude<WidgetType, "shortcut">, WidgetCat> = {
-  clock: "rotina", stopwatch: "rotina", calendar: "rotina", agenda: "rotina", tasks: "rotina", note: "rotina", finance: "rotina",
+  clock: "rotina", stopwatch: "rotina", countdown: "rotina", calendar: "rotina", agenda: "rotina", tasks: "rotina", note: "rotina", finance: "rotina",
   weather: "info", news: "info",
   music: "musica", pcmusic: "musica", musicclip: "musica", lyrics: "musica", musicstats: "musica",
   football: "esportes",
@@ -243,6 +245,7 @@ export const WidgetFrame = memo(function WidgetFrame({ w }: { w: Widget }) {
     case "valagent": body = <ValAgentWidget w={W} />; break
     case "sysmon": body = <SysMonWidget w={W} />; break
     case "pcmusic": body = <PcMusicWidget w={W} />; break
+    case "countdown": body = <CountdownWidget w={W} />; break
   }
   if (resting) body = <RestingBody w={w} onWake={() => toggleRest(w.id)} />
   body = <ErrorBoundary label="widget" compact>{body}</ErrorBoundary>
@@ -251,6 +254,7 @@ export const WidgetFrame = memo(function WidgetFrame({ w }: { w: Widget }) {
   return (
     <>
       <motion.div
+        data-widget={w.id}
         className={cn("group absolute", hoverClass(look), !locked && "cursor-grab", dragging === "move" && "cursor-grabbing")}
         style={{
           left: cur.x, top: cur.y, width: cur.w, height: cur.h,
@@ -401,6 +405,7 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
         {w.type === "valagent" && <ValAgentSettings w={w} set={set} />}
         {w.type === "sysmon" && <SysMonSettings w={w} set={set} />}
         {w.type === "pcmusic" && <PcMusicSettings w={w} set={set} />}
+        {w.type === "countdown" && <CountdownSettings w={w} set={set} />}
         {w.type === "whatsapp" && (
           <Switch label="Mostrar só conversas com mensagens novas" checked={!!c.onlyUnread} onChange={(v) => set({ onlyUnread: v })} />
         )}

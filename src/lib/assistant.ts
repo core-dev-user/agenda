@@ -20,6 +20,7 @@ export type Action =
   | { acao: "responder"; texto: string }
 
 const W_WORDS: [WidgetType, string[]][] = [
+  ["countdown", ["contagem regressiva", "contagem", "quantos dias", "dias para", "aniversario", "faltam"]],
   ["pcmusic", ["spotify", "deezer", "apple music", "player do pc", "tidal", "amazon music"]],
   ["musicclip", ["clipe", "video da musica"]],
   ["musicstats", ["mais ouco", "estatistica", "mais escuto"]],
@@ -132,7 +133,7 @@ function callLlm<T>(msg: Record<string, any>, prog?: (pct: number, msg: string) 
 }
 export const preloadAi = (model: AiModel, prog?: (pct: number, msg: string) => void) => callLlm<{ device: string }>({ type: "load", model: AI_MODELS[model].id }, prog)
 
-const widgetList = () => (Object.keys({ clock: 1, stopwatch: 1, weather: 1, news: 1, photo: 1, calendar: 1, note: 1, music: 1, pcmusic: 1, cs2: 1, valorant: 1, football: 1, lyrics: 1, tasks: 1, discord: 1, ifood: 1, whatsapp: 1, finance: 1, agenda: 1, musicstats: 1, gaming: 1, musicclip: 1, valagent: 1, sysmon: 1 }) as WidgetType[])
+const widgetList = () => (Object.keys({ clock: 1, stopwatch: 1, weather: 1, news: 1, photo: 1, calendar: 1, note: 1, music: 1, pcmusic: 1, cs2: 1, valorant: 1, football: 1, lyrics: 1, tasks: 1, discord: 1, ifood: 1, whatsapp: 1, finance: 1, agenda: 1, musicstats: 1, gaming: 1, musicclip: 1, valagent: 1, sysmon: 1, countdown: 1 }) as WidgetType[])
 
 function systemPrompt() {
   const st = useStore.getState()

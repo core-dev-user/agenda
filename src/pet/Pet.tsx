@@ -1,0 +1,429 @@
+/**
+ * Bichinho da área de trabalho: um gatinho em pixel art que anda pelo chão (em cima da barra de tarefas),
+ * pula para cima dos widgets, senta, se lambe, dorme… Clique nele para mudar o que está fazendo
+ * (anda → senta → dorme → anda) e segure para pegar no colo e soltar em outro lugar.
+ *
+ * Tudo roda num laço de animação só (que dorme quando ninguém está vendo) e mexe direto no DOM,
+ * sem re-desenhar o React a cada quadro.
+ */
+import { useEffect, useRef } from "react"
+import { useStore } from "@/lib/store"
+import { rafLoop } from "@/lib/perf"
+import { fontFamily } from "@/lib/fonts"
+import type { PetPrefs } from "@/lib/types"
+import { frame, GH, GW, type Pose } from "./sprites"
+
+export const PET_DEFAULT: PetPrefs = { on: true, color: "orange", scale: 3, widgets: true, energy: 1 }
+
+type Act = "idle" | "walk" | "sit" | "groom" | "sleep" | "stretch" | "crouch" | "air" | "land" | "drag"
+interface Plat { id: string; x1: number; x2: number; y: number; el?: Element }
+interface JumpPlan { plat: Plat; x: number }
+
+const rnd = (a: number, b: number) => a + Math.random() * (b - a)
+const pick = <T,>(items: [T, number][]): T => {
+  const sum = items.reduce((s, [, w]) => s + w, 0)
+  let r = Math.random() * sum
+  for (const [v, w] of items) if ((r -= w) <= 0) return v
+  return items[0][0]
+}
+const q = (v: number, steps: number) => Math.round(v * steps) / steps
+
+/** pede ao gatinho para vir até o meio da tela (Configurações › Bichinho) */
+export const callPet = () => window.dispatchEvent(new CustomEvent("agenda:pet", { detail: "call" }))
+
+export function Pet() {
+  const prefs = useStore((s) => s.settings.pet) ?? PET_DEFAULT
+  if (!prefs.on) return null
+  return <Cat prefs={prefs} />
+}
+
+function Cat({ prefs }: { prefs: PetPrefs }) {
+  const wrap = useRef<HTMLDivElement>(null)
+  const canvas = useRef<HTMLCanvasElement>(null)
+  const shadow = useRef<HTMLDivElement>(null)
+  const fx = useRef<HTMLDivElement>(null)
+  // preferências lidas dentro do laço (sem reiniciar o gato quando muda a cor ou o tamanho)
+  const P = useRef(prefs)
+  P.current = prefs
+
+  useEffect(() => {
+    const cv = canvas.current!, wr = wrap.current!, sh = shadow.current!, fxl = fx.current!
+    const ctx = cv.getContext("2d")!
+    const sc = () => Math.max(2, Math.min(6, P.current.scale || 3))
+    const energy = () => Math.max(0.3, Math.min(1.6, P.current.energy || 1))
+
+    /* ---------------- plataformas: chão, barra de tarefas e o topo dos widgets ---------------- */
+    let plats: Plat[] = []
+    const floor = (): Plat => ({ id: "floor", x1: 0, x2: innerWidth, y: innerHeight - 1 })
+    const rectPlat = (id: string, el: Element): Plat | null => {
+      const r = el.getBoundingClientRect()
+      const s = sc()
+      if (r.width < 18 * s * 0.8 || r.height < 20 || r.top < GH * s + 8 || r.top > innerHeight - 12 || r.right < 0 || r.left > innerWidth) return null
+      return { id, x1: r.left + 4 * s, x2: r.right - 4 * s, y: Math.round(r.top) + 1, el }
+    }
+    const scan = () => {
+      const out: Plat[] = [floor()]
+      const tb = document.querySelector("[data-pet-plat]")
+      if (tb) { const p = rectPlat("taskbar", tb); if (p) out.push(p) }
+      if (P.current.widgets) document.querySelectorAll("[data-widget]").forEach((el) => { const p = rectPlat("w:" + (el as HTMLElement).dataset.widget, el); if (p) out.push(p) })
+      plats = out
+    }
+    /** posição atual da plataforma onde o gato está (o widget pode ter sido arrastado) */
+    const live = (p: Plat): Plat | null => (p.id === "floor" ? floor() : p.el && p.el.isConnected ? rectPlat(p.id, p.el) : null)
+
+    /* ---------------- estado ---------------- */
+    const s0 = sc()
+    const st = {
+      x: rnd(innerWidth * 0.2, innerWidth * 0.8), y: -GH * s0, vx: 0, vy: 0, dir: 1 as 1 | -1,
+      act: "air" as Act, t: 0, dur: 0, plat: null as Plat | null,
+      phase: 0, tailT: 0, blinkAt: 2, blinkUntil: 0, happyUntil: 0,
+      sq: 1, sqv: 0, targetX: 0, then: null as JumpPlan | null, run: false,
+      hold: 0, zAt: 0, groomPaw: 0, swing: 0,
+    }
+    scan()
+
+    const setAct = (a: Act, dur = 0) => { st.act = a; st.t = 0; st.dur = dur }
+    const squash = (v: number) => { st.sq = v; st.sqv = 0 }
+
+    /* ---------------- partículas (coração, zzz) ---------------- */
+    const puff = (text: string, color: string, dx: number, dy: number, size: number, rise: number, ms: number) => {
+      const s = sc()
+      const el = document.createElement("span")
+      el.textContent = text
+      el.style.cssText = `position:absolute;left:${st.x + dx * s}px;top:${st.y + dy * s}px;font-family:${fontFamily("press")};font-size:${size * s}px;color:${color};text-shadow:0 ${s / 2}px 0 rgb(0 0 0 / .35);pointer-events:none;image-rendering:pixelated;`
+      fxl.appendChild(el)
+      el.animate([{ transform: "translate(-50%,0) scale(.6)", opacity: 0 }, { transform: `translate(-50%,${-rise * 0.3}px) scale(1)`, opacity: 1, offset: 0.2 }, { transform: `translate(calc(-50% + ${rise * 0.25}px),${-rise}px) scale(1)`, opacity: 0 }], { duration: ms, easing: "cubic-bezier(.2,.7,.3,1)" }).onfinish = () => el.remove()
+    }
+    const heart = () => puff("♥", "#ff7aa8", 0, -GH + 2, 5, 60, 1100)
+
+    /* ---------------- decisões ---------------- */
+    const nightOwl = () => { const h = new Date().getHours(); return h >= 23 || h < 6 }
+
+    const planWalk = (run = false) => {
+      const p = st.plat!
+      const s = sc()
+      const m = 10 * s
+      if (p.x2 - p.x1 < 2 * m) { setAct("sit", rnd(4, 8)); return }
+      const reach = rnd(60, 340) * (s / 3)
+      let tx = st.x + (Math.random() < 0.5 ? -1 : 1) * reach
+      tx = Math.max(p.x1 + m, Math.min(p.x2 - m, tx))
+      if (Math.abs(tx - st.x) < 12) tx = st.x + (st.x > (p.x1 + p.x2) / 2 ? -1 : 1) * Math.min(80, (p.x2 - p.x1) / 3)
+      st.targetX = tx; st.run = run; st.then = null
+      setAct("walk")
+    }
+
+    /** escolhe um widget (ou o chão) para pular */
+    const planJump = (): boolean => {
+      const cur = st.plat
+      if (!cur) return false
+      scan()
+      const s = sc()
+      const maxUp = 105 * s, maxDx = 150 * s, m = 10 * s
+      const opts: [JumpPlan & { take: number }, number][] = []
+      for (const p of plats) {
+        if (p.id === cur.id || p.x2 - p.x1 < 2 * m) continue
+        const up = st.y - p.y
+        if (up > maxUp || (p.id === "floor" && cur.id === "floor")) continue
+        let lx: number, take: number
+        if (up < 0 && cur.id !== "floor") {
+          // descer: vai até uma beirada e pula para fora dela
+          const side = Math.random() < 0.5 ? -1 : 1
+          take = side > 0 ? cur.x2 - m : cur.x1 + m
+          lx = Math.max(p.x1 + m, Math.min(p.x2 - m, take + side * rnd(40, 110) * (s / 3)))
+          if (lx > cur.x1 - 4 * s && lx < cur.x2 + 4 * s) continue
+        } else {
+          // subir: chega no ponto do widget mais perto do gato, saindo um pouco antes
+          lx = Math.max(p.x1 + m, Math.min(p.x2 - m, st.x + rnd(-40, 40) * (s / 3)))
+          const side = lx >= st.x ? 1 : -1
+          take = Math.max(cur.x1 + m, Math.min(cur.x2 - m, lx - side * rnd(20, 50) * (s / 3)))
+        }
+        if (Math.abs(lx - take) > maxDx) continue
+        // prefere subir em widgets; o chão e a barra só de vez em quando
+        const w = p.id.startsWith("w:") ? (up > 0 ? 3 : 1.5) : p.id === "taskbar" ? 1.6 : 0.7
+        opts.push([{ plat: p, x: lx, take }, w / (1 + Math.abs(lx - st.x) / 400)])
+      }
+      if (!opts.length) return false
+      const j = pick(opts)
+      st.targetX = j.take; st.then = { plat: j.plat, x: j.x }; st.run = Math.abs(j.take - st.x) > 120
+      setAct("walk")
+      return true
+    }
+
+    const next = () => {
+      const e = energy()
+      st.hold = 0
+      const from = st.act
+      if (from === "sleep") { setAct("stretch", 1.3); return }
+      const sleepy = nightOwl() ? 3 : 1
+      const onWidget = !!st.plat?.id.startsWith("w:")
+      const choice = pick<string>([
+        ["walk", 40 * e],
+        ["jump", (onWidget ? 14 : 22) * e * e],
+        ["sit", from === "sit" ? 6 : 24],
+        ["groom", from === "sit" || from === "groom" ? 14 : 4],
+        ["sleep", (from === "sit" || from === "groom" ? 16 : 4) * sleepy / e],
+        ["idle", 10],
+      ])
+      if (choice === "walk") planWalk(Math.random() < 0.18 * e)
+      else if (choice === "jump") { if (!planJump()) planWalk() }
+      else if (choice === "sit") setAct("sit", rnd(4, 14))
+      else if (choice === "groom") setAct("groom", rnd(2.2, 4.5))
+      else if (choice === "sleep") setAct("sleep", rnd(25, 80) * sleepy)
+      else setAct("idle", rnd(1, 3))
+    }
+
+    const launch = (j: JumpPlan) => {
+      const s = sc()
+      const g = 900 * s
+      const dx = j.x - st.x, dy = j.plat.y - st.y
+      const T = Math.max(0.32 + Math.abs(dx) / (520 * s), Math.sqrt((2 * Math.max(0, -dy)) / g) * 1.28)
+      st.vx = dx / T
+      st.vy = dy / T - 0.5 * g * T
+      st.dir = dx >= 0 ? 1 : -1
+      st.plat = null
+      squash(1.18)
+      setAct("air")
+    }
+
+    /* ---------------- clique e arrastar ---------------- */
+    let press: { x: number; y: number; t: number; moved: boolean; lx: number; ly: number; lt: number; vx: number; vy: number } | null = null
+    const hit = wr.querySelector("[data-pet-hit]") as HTMLElement
+    const down = (e: PointerEvent) => {
+      if (e.button !== 0) return
+      e.preventDefault(); e.stopPropagation()
+      hit.setPointerCapture(e.pointerId)
+      press = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false, lx: e.clientX, ly: e.clientY, lt: performance.now(), vx: 0, vy: 0 }
+    }
+    const move = (e: PointerEvent) => {
+      if (!press) return
+      const now = performance.now()
+      if (!press.moved && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 5) { press.moved = true; st.plat = null; setAct("drag"); st.hold = 0 }
+      const dt = Math.max(1, now - press.lt) / 1000
+      press.vx = press.vx * 0.6 + ((e.clientX - press.lx) / dt) * 0.4
+      press.vy = press.vy * 0.6 + ((e.clientY - press.ly) / dt) * 0.4
+      press.lx = e.clientX; press.ly = e.clientY; press.lt = now
+      if (press.moved) { st.x = e.clientX; st.y = e.clientY + 17 * sc() }
+    }
+    const up = () => {
+      if (!press) return
+      const p = press
+      press = null
+      if (p.moved) {
+        // solta: cai com um pouco do embalo do mouse
+        st.vx = Math.max(-1400, Math.min(1400, p.vx * 0.6)); st.vy = Math.max(-1200, Math.min(900, p.vy * 0.5))
+        setAct("air")
+        return
+      }
+      // clique: muda o que está fazendo (anda → senta → dorme → anda)
+      heart()
+      st.happyUntil = performance.now() + 1300
+      if (!st.plat) return
+      const a = st.act
+      if (a === "sleep") { st.hold = 0; setAct("stretch", 1.3) }
+      else if (a === "sit" || a === "groom") { setAct("sleep", 120); st.hold = performance.now() + 110_000 }
+      else if (a === "walk" || a === "stretch" || a === "crouch") { setAct("sit", 25); st.hold = performance.now() + 22_000 }
+      else { st.hold = 0; planWalk(Math.random() < 0.3) }
+    }
+    hit.addEventListener("pointerdown", down)
+    hit.addEventListener("pointermove", move)
+    hit.addEventListener("pointerup", up)
+    hit.addEventListener("pointercancel", up)
+
+    const onCall = () => {
+      const s = sc()
+      st.x = innerWidth / 2; st.y = -GH * s; st.vx = 0; st.vy = 0; st.plat = null; st.hold = 0
+      setAct("air")
+    }
+    window.addEventListener("agenda:pet", onCall)
+
+    /* ---------------- laço ---------------- */
+    let last = performance.now()
+    let lastKey = ""
+    let lastHit = ""
+    let scanAt = 0
+    const stop = rafLoop(() => {
+      const now = performance.now()
+      const dt = Math.min(0.05, (now - last) / 1000)
+      last = now
+      const s = sc()
+      const g = 900 * s
+      st.t += dt
+      st.tailT += dt
+
+      if (now > scanAt) { scan(); scanAt = now + 700 }
+
+      // segue a plataforma (widget arrastado) ou cai se ela sumiu
+      if (st.plat && st.act !== "drag") {
+        const lp = live(st.plat)
+        if (!lp) { st.plat = null; st.vx = 0; st.vy = 0; setAct("air") }
+        else {
+          const dx = lp.x1 - st.plat.x1
+          if (Math.abs(dx) < 400) st.x += dx
+          st.y = lp.y
+          st.plat = lp
+          if (st.x < lp.x1 - 6 * s || st.x > lp.x2 + 6 * s) { st.plat = null; st.vy = 0; st.vx = st.dir * 40; setAct("air") }
+        }
+      }
+
+      switch (st.act) {
+        case "walk": {
+          const sp = (st.run ? 2.6 : 1) * (26 + 12 * energy()) * (s / 3)
+          const d = st.targetX - st.x
+          st.dir = d >= 0 ? 1 : -1
+          const stepX = Math.min(Math.abs(d), sp * dt)
+          st.x += st.dir * stepX
+          st.phase = (st.phase + stepX / ((st.run ? 17 : 11) * s)) % 1
+          if (Math.abs(d) < 1) {
+            if (st.then) {
+              st.dir = st.then.x >= st.x ? 1 : -1
+              setAct("crouch", 0.34)
+              squash(0.86)
+            } else next()
+          }
+          break
+        }
+        case "crouch":
+          if (st.t >= st.dur && st.then) { const j = st.then; st.then = null; launch(j) }
+          else if (st.t >= st.dur) next()
+          break
+        case "air": {
+          const py = st.y
+          st.vy += g * dt
+          st.x += st.vx * dt
+          st.y += st.vy * dt
+          if (st.vx) st.dir = st.vx > 0 ? 1 : -1
+          // bateu na beirada da tela: desliza
+          if (st.x < 10 * s) { st.x = 10 * s; st.vx = Math.abs(st.vx) * 0.3 }
+          if (st.x > innerWidth - 10 * s) { st.x = innerWidth - 10 * s; st.vx = -Math.abs(st.vx) * 0.3 }
+          if (st.vy > 0) {
+            // primeira plataforma que ele cruzou de cima para baixo
+            let best: Plat | null = null
+            for (const p of plats) {
+              const lp = p.id === "floor" ? floor() : p
+              if (py <= lp.y + 2 && st.y >= lp.y && st.x >= lp.x1 && st.x <= lp.x2 && (!best || lp.y < best.y)) best = lp
+            }
+            const fl = floor()
+            if (!best && st.y >= fl.y) best = fl
+            if (best) {
+              st.y = best.y; st.plat = best; st.vx = 0
+              squash(Math.max(0.72, 1 - st.vy / (g * 1.4)))
+              st.vy = 0
+              setAct("land", 0.22)
+            }
+          }
+          break
+        }
+        case "land":
+          if (st.t >= st.dur) {
+            // acabou de subir num widget: costuma sentar para olhar a vista
+            if (st.plat?.id.startsWith("w:") && Math.random() < 0.45) setAct("sit", rnd(5, 14))
+            else next()
+          }
+          break
+        case "drag":
+          st.swing += ((press ? Math.max(-1, Math.min(1, -press.vx / 500)) : 0) - st.swing) * Math.min(1, dt * 10)
+          break
+        default:
+          if (st.dur && st.t >= st.dur) {
+            if (st.hold > now) st.t = 0
+            else next()
+          }
+      }
+
+      // mola do esmaga-estica
+      st.sqv += (1 - st.sq) * 260 * dt
+      st.sqv *= Math.exp(-14 * dt)
+      st.sq += st.sqv * dt
+
+      // piscar
+      if (st.tailT > st.blinkAt) { st.blinkUntil = st.tailT + 0.13; st.blinkAt = st.tailT + rnd(2, 6) }
+      const blink = st.tailT < st.blinkUntil
+      const happy = now < st.happyUntil
+
+      // ----- escolhe o quadro -----
+      const tailWave = (sp: number) => q(Math.sin(st.tailT * sp), 4)
+      let pose: Pose
+      switch (st.act) {
+        case "walk":
+          pose = { k: "stand", phase: q(st.phase, 8) % 1, move: 1, tail: st.run ? q(Math.sin(st.tailT * 9) * 0.5, 4) : tailWave(4), eyes: happy ? "happy" : blink ? "blink" : "open", run: st.run }
+          break
+        case "crouch":
+          pose = { k: "stand", phase: 0, move: 0, tail: tailWave(14), eyes: "open", crouch: 2 }
+          break
+        case "land":
+          pose = { k: "stand", phase: 0, move: 0, tail: 0, eyes: "open", crouch: 1 }
+          break
+        case "air":
+          pose = st.vy < -80 ? { k: "jump", tail: tailWave(6) } : { k: "fall", tail: tailWave(8) }
+          break
+        case "sit":
+          pose = { k: "sit", tail: q(Math.sin(st.tailT * 1.7) * (Math.sin(st.tailT * 0.31) > 0 ? 1 : 0.35), 4), eyes: happy ? "happy" : blink ? "blink" : "open" }
+          break
+        case "groom": {
+          const lick = Math.sin(st.t * 7)
+          pose = { k: "sit", tail: tailWave(1.2), eyes: "closed", paw: lick > 0 ? 1 : 0.5 }
+          break
+        }
+        case "sleep":
+          pose = { k: "sleep", breath: q((Math.sin(st.tailT * 1.9) + 1) / 2, 3), tail: q(Math.sin(st.tailT * 0.4), 2) }
+          if (st.tailT > st.zAt) { st.zAt = st.tailT + 1.6; puff(Math.random() < 0.5 ? "z" : "Z", "#e8e4ff", st.dir * 6, -10, 3.2, 46, 2200) }
+          break
+        case "stretch":
+          pose = { k: "stretch", amt: q(Math.min(1, Math.sin((st.t / st.dur) * Math.PI) * 1.3), 2) * 2, tail: tailWave(2) }
+          break
+        case "drag":
+          pose = { k: "drag", swing: q(st.swing, 2) }
+          break
+        default:
+          pose = { k: "stand", phase: 0, move: 0, tail: tailWave(1.4), eyes: happy ? "happy" : blink ? "blink" : "open" }
+      }
+
+      // ----- desenha (só quando o quadro muda) -----
+      const dpr = devicePixelRatio || 1
+      const W = GW * s, H = GH * s
+      const key = JSON.stringify(pose) + P.current.color + s + dpr
+      if (key !== lastKey) {
+        lastKey = key
+        const pw = Math.round(W * dpr), ph = Math.round(H * dpr)
+        if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; cv.style.width = W + "px"; cv.style.height = H + "px" }
+        ctx.imageSmoothingEnabled = false
+        ctx.clearRect(0, 0, pw, ph)
+        ctx.drawImage(frame(pose, P.current.color), 0, 0, pw, ph)
+      }
+      const sx = 1 / Math.sqrt(Math.max(0.5, st.sq))
+      const x = Math.round(st.x - W / 2), y = Math.round(st.y - H)
+      wr.style.transform = `translate3d(${x}px,${y}px,0)`
+      cv.style.transform = `scale(${st.dir * sx},${st.sq})`
+      const grounded = !!st.plat && st.act !== "drag"
+      sh.style.transform = `translate3d(${Math.round(st.x - 9 * s)}px,${Math.round(st.y - 1.5 * s)}px,0)`
+      sh.style.width = 18 * s + "px"
+      sh.style.height = 3 * s + "px"
+      sh.style.opacity = grounded ? "1" : "0"
+      // área de clique: só o corpo do gato
+      const hb = st.act === "sleep" ? { l: 5, t: 13, w: 22, h: 10 } : st.act === "sit" || st.act === "groom" ? { l: 7, t: 2, w: 17, h: 21 } : st.act === "drag" ? { l: 9, t: 0, w: 14, h: 23 } : { l: 5, t: 5, w: 24, h: 18 }
+      const hl = st.dir > 0 ? hb.l : GW - hb.l - hb.w
+      const css = `position:absolute;left:${hl * s}px;top:${hb.t * s}px;width:${hb.w * s}px;height:${hb.h * s}px;pointer-events:auto;cursor:${st.act === "drag" ? "grabbing" : "grab"}`
+      if (css !== lastHit) { lastHit = css; hit.style.cssText = css }
+    })
+
+    return () => {
+      stop()
+      hit.removeEventListener("pointerdown", down)
+      hit.removeEventListener("pointermove", move)
+      hit.removeEventListener("pointerup", up)
+      hit.removeEventListener("pointercancel", up)
+      window.removeEventListener("agenda:pet", onCall)
+    }
+  }, [])
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" data-pet>
+      <div ref={shadow} className="absolute top-0 left-0 rounded-[50%]" style={{ background: "radial-gradient(closest-side, rgb(0 0 0 / .32), transparent)", transition: "opacity .2s" }} />
+      <div ref={wrap} className="absolute top-0 left-0" style={{ willChange: "transform" }}>
+        <canvas ref={canvas} style={{ imageRendering: "pixelated", transformOrigin: "50% 100%", display: "block", filter: "drop-shadow(0 1px 0 rgb(0 0 0 / .18))" }} />
+        <div data-pet-hit title={`${prefs.name?.trim() || "Gatinho"} — clique para ele mudar (anda, senta, dorme) · segure para pegar no colo`} onContextMenu={(e) => e.stopPropagation()} />
+      </div>
+      <div ref={fx} className="absolute inset-0" />
+    </div>
+  )
+}

@@ -8,7 +8,8 @@ import { SOURCE_META, notify } from "@/lib/notify"
 import { eventsFrom, feedUrl } from "@/lib/ical"
 import { Card, Switch } from "@/components/ui/controls"
 import { cn, uid } from "@/lib/utils"
-import type { NotifySource } from "@/lib/types"
+import type { NotifySource, SportKind } from "@/lib/types"
+import { SPORTS } from "@/lib/favs"
 
 function Section({ title, children, desc }: { title: string; desc?: ReactNode; children: ReactNode }) {
   return (
@@ -27,8 +28,6 @@ export function RoutineTab() {
   const np = { ...DEFAULT_NOTIFY, ...s.notify, on: { ...DEFAULT_NOTIFY.on, ...s.notify?.on }, toast: { ...DEFAULT_NOTIFY.toast, ...s.notify?.toast } }
   const fp = { ...DEFAULT_FOCUS, ...s.focus }
   const setN = (k: "on" | "toast", src: NotifySource, v: boolean) => set({ notify: { ...np, [k]: { ...np[k], [src]: v } } })
-  const [team, setTeam] = useState("")
-  const favs = s.favTeams ?? []
   return (
     <>
       <Section title="Avisos" desc="Tudo cai na central de avisos (o sininho na barra). Escolha também quais mostram o aviso do Windows.">
@@ -43,15 +42,9 @@ export function RoutineTab() {
         <div className="pt-1 text-xs text-fg-muted">O WhatsApp e o Discord também mostram os avisos deles no Windows. Por isso o do WhatsApp vem desligado aqui, para não aparecer duas vezes.</div>
       </Section>
 
-      <Section title="Times e equipes favoritos" desc="Avisa quando o jogo começa, quando o placar muda e no fim. Vale para futebol, CS2 e Valorant (ex.: Corinthians, Real Madrid, FURIA, LOUD).">
-        <div className="flex flex-wrap gap-1.5">
-          {favs.map((f) => (
-            <span key={f} className="flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-sm"><Star size={11} className="fill-current text-amber-300" /> {f}<button className="opacity-60 hover:opacity-100" onClick={() => set({ favTeams: favs.filter((x) => x !== f) })}><XCircle size={13} /></button></span>
-          ))}
-        </div>
-        <div className="flex gap-2 pt-1">
-          <input className="field" placeholder="Nome do time ou equipe" value={team} onChange={(e) => setTeam(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && team.trim()) { set({ favTeams: [...new Set([...favs, team.trim()])] }); setTeam("") } }} />
-          <button className="btn" onClick={() => { if (team.trim()) { set({ favTeams: [...new Set([...favs, team.trim()])] }); setTeam("") } }}><Plus size={14} /> Adicionar</button>
+      <Section title="Times favoritos" desc="Cada esporte tem a sua lista: o time do futebol não aparece no CS2 e vice-versa. Avisa quando o jogo começa, quando o placar muda e no fim, e o próximo jogo fica fixado no topo do widget daquele esporte.">
+        <div className="space-y-3">
+          {SPORTS.map((sp) => <FavSport key={sp.id} sport={sp.id} />)}
         </div>
       </Section>
 
@@ -71,6 +64,65 @@ export function RoutineTab() {
         <Switch label="Abrir a tela Hoje quando o Agenda abrir" checked={!!s.todayOnStart} onChange={(v) => set({ todayOnStart: v })} />
       </Section>
     </>
+  )
+}
+
+/** lista de favoritos de um esporte, com sugestões dos times conhecidos */
+function FavSport({ sport }: { sport: SportKind }) {
+  const meta = SPORTS.find((x) => x.id === sport)!
+  const byS = useStore((x) => x.settings.favBySport)
+  const set = useStore((x) => x.setSettings)
+  const favs = byS?.[sport] ?? []
+  const [team, setTeam] = useState("")
+  const [known, setKnown] = useState<string[]>([])
+  useEffect(() => {
+    let alive = true
+    bridge.sports.teams(sport, sport === "football" ? { leagues: ["bra.1", "bra.2", "conmebol.libertadores", "uefa.champions", "eng.1", "esp.1", "ita.1", "ger.1", "fra.1", "por.1", "arg.1"] } : {})
+      .then((t) => alive && setKnown([...new Set(t.map((x) => x.name))])).catch(() => {})
+    return () => { alive = false }
+  }, [sport])
+  const save = (next: string[]) => set((st) => ({ favBySport: { ...st.favBySport, [sport]: next } }))
+  const add = () => {
+    const v = team.trim()
+    if (!v) return
+    // usa o nome certinho da lista quando bate ("corinthians" → "Corinthians")
+    const nice = known.find((k) => k.toLowerCase() === v.toLowerCase()) ?? v
+    if (!favs.some((f) => f.toLowerCase() === nice.toLowerCase())) save([...favs, nice])
+    setTeam("")
+  }
+  // mover para outro esporte (útil depois da separação automática das listas antigas)
+  const moveTo = (f: string, to: SportKind) => set((st) => {
+    const cur = st.favBySport ?? {}
+    const dest = cur[to] ?? []
+    return { favBySport: { ...cur, [sport]: (cur[sport] ?? []).filter((x) => x !== f), [to]: dest.includes(f) ? dest : [...dest, f] } }
+  })
+  return (
+    <div className="rounded-xl border border-line p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: meta.color, boxShadow: `0 0 8px ${meta.color}` }} /> {meta.label}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {favs.length === 0 && <span className="text-xs text-fg-muted">Nenhum time ainda (ex.: {meta.example}).</span>}
+        {favs.map((f) => (
+          <span key={f} className="group flex items-center gap-1 rounded-full border border-line py-0.5 pr-1.5 pl-2.5 text-sm">
+            <Star size={11} className="fill-current" style={{ color: meta.color }} /> {f}
+            <span className="hidden items-center gap-0.5 group-hover:flex">
+              {SPORTS.filter((o) => o.id !== sport).map((o) => (
+                <button key={o.id} className="rounded-full px-1 text-[10px] text-fg-muted hover:text-fg" style={{ boxShadow: `inset 0 0 0 1px ${o.color}66` }} title={`Mover para ${o.label}`} onClick={() => moveTo(f, o.id)}>
+                  {o.id === "football" ? "fut" : o.id === "cs2" ? "cs2" : "val"}
+                </button>
+              ))}
+            </span>
+            <button className="opacity-60 hover:opacity-100" title="Tirar" onClick={() => save(favs.filter((x) => x !== f))}><XCircle size={13} /></button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-2 pt-2">
+        <input className="field flex-1 !py-1 text-sm" list={`fav-${sport}`} placeholder={`Time de ${meta.label.toLowerCase()}`} value={team} onChange={(e) => setTeam(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add() }} />
+        <datalist id={`fav-${sport}`}>{known.map((k) => <option key={k} value={k} />)}</datalist>
+        <button className="btn !py-1 text-sm" onClick={add}><Plus size={14} /> Adicionar</button>
+      </div>
+    </div>
   )
 }
 
