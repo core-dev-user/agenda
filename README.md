@@ -33,3 +33,7 @@ src/lib            estado (zustand), temas, fontes, tipos
 ## Testes de desempenho e persistência
 
 Execute `npm test` com Node 22.18+ ou Node 24. Os cenários e os limites desta primeira rodada estão em [docs/performance.md](docs/performance.md).
+
+## Usar como área de trabalho principal
+
+A integração nativa da barra e os passos para ativar/testar estão em [docs/windows-shell.md](docs/windows-shell.md).

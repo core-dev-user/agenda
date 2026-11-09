@@ -7,7 +7,7 @@ New-Item -ItemType Directory -Path $dir | Out-Null
 $dll = Join-Path $dir 'AgendaShell.dll'
 $journal = Join-Path $dir 'recovery-test.txt'
 $source = Join-Path $repo 'electron\native\AgendaShell.cs'
-Add-Type -Path $source -ReferencedAssemblies System.Windows.Forms,System.Drawing -OutputAssembly $dll
+Add-Type -Path $source -ReferencedAssemblies System.Windows.Forms,System.Drawing -OutputAssembly (Join-Path $dir 'compile-check.dll')
 $hostScript = Join-Path $repo 'electron\native\host.ps1'
 $info = New-Object Diagnostics.ProcessStartInfo
 $info.FileName = 'powershell.exe'
@@ -18,6 +18,7 @@ $info.RedirectStandardOutput = $true
 $info.RedirectStandardError = $true
 $info.CreateNoWindow = $true
 $child = [Diagnostics.Process]::Start($info)
+$guard = $null
 function Send-Command([int]$Id, [string]$Command) {
   $bytes = [Text.Encoding]::UTF8.GetBytes("$Id`t$Command`n")
   $child.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
@@ -38,6 +39,11 @@ function Read-Reply {
 }
 try {
   if (!(Read-Reply).ready) { throw 'Expected ready handshake' }
+  $watchdog = Join-Path $repo 'electron\native\watchdog.ps1'
+  $info.Arguments = '-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File "' + $watchdog + '" -OwnerPid ' + $PID + ' -HelperPid ' + $child.Id + ' -RecoveryFile "' + $journal + '" -AssemblyFile "' + $dll + '"'
+  $guard = [Diagnostics.Process]::Start($info)
+  $guardReady = $guard.StandardOutput.ReadLineAsync()
+  if (!$guardReady.Wait(10000) -or !(($guardReady.Result | ConvertFrom-Json).ready)) { throw 'Recovery process did not start' }
   Send-Command 1 'heartbeat'
   if ((Read-Reply 1).result -ne 'ok') { throw 'Heartbeat failed' }
   Send-Command 2 'list'
@@ -51,9 +57,11 @@ try {
   $child.StandardInput.Close()
   if (!$child.WaitForExit(10000)) { throw 'Helper did not stop on EOF' }
   if ($child.ExitCode -ne 0) { throw $child.StandardError.ReadToEnd() }
-  Write-Host 'PASS: Windows compilation, startup, heartbeat, snapshot, invalid HWND, restore, EOF.'
+  if (!$guard.WaitForExit(10000) -or $guard.ExitCode -ne 0) { throw 'Recovery process did not finish cleanly' }
+  Write-Host 'PASS: Windows compilation, startup, heartbeat, snapshot, invalid HWND, restore, EOF, independent watchdog.'
 } finally {
   if (!$child.HasExited) { $child.Kill(); $child.WaitForExit() }
   $child.Dispose()
+  if ($guard) { if (!$guard.HasExited) { $guard.Kill(); $guard.WaitForExit() }; $guard.Dispose() }
   Remove-Item -Recurse -Force $dir
 }
