@@ -13,7 +13,8 @@ $logicalCpu = [Environment]::ProcessorCount
 $cases = @(
  @{ id="idle"; total=0; ambient=$false; splash=$false; types=@(); note="no widgets; animations off" },
  @{ id="normal"; total=7; ambient=$true; splash=$true; types=@("clock","weather","calendar","tasks","note","pcmusic","sysmon"); note="7 mixed widgets including Spotify and system monitor" },
- @{ id="busy"; total=22; ambient=$true; splash=$true; types=@("clock","weather","calendar","tasks","note","pcmusic","sysmon","countdown","finance","agenda","photo","stopwatch","clock","tasks","clock","countdown","calendar","note","tasks","musicstats","clock","note"); note="22 synthetic widgets, mixed display+refresh" }
+ @{ id="busy"; total=22; ambient=$true; splash=$true; types=@("clock","weather","calendar","tasks","note","pcmusic","sysmon","countdown","finance","agenda","photo","stopwatch","clock","tasks","clock","countdown","calendar","note","tasks","musicstats","clock","note"); note="22 synthetic widgets, mixed display+refresh" },
+ @{ id="webapps"; total=7; ambient=$true; splash=$true; types=@("clock","discord","whatsapp","ifood","pcmusic","weather","sysmon"); note="Discord, WhatsApp and iFood embedded web sessions (signed-out fresh profiles)" }
 )
 function Create-Data($case, $profile) {
   New-Item -ItemType Directory -Force -Path (Join-Path $profile "userdata") | Out-Null
