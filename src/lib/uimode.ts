@@ -6,6 +6,6 @@ export const useUiMode = create<{ mode: UiMode | ""; monitors: number; mainBar: 
 
 export const MODE_INFO: Record<UiMode, { label: string; desc: string }> = {
   app: { label: "Aplicativo", desc: "Uma janela normal com as abas (Hoje, Hábitos, Finanças…). Abre e fecha como qualquer programa." },
-  desktop: { label: "Área de trabalho", desc: "O Agenda vira a sua área de trabalho: papel de parede vivo e widgets atrás das janelas. A barra do Windows continua." },
+  desktop: { label: "Área de trabalho", desc: "O Agenda vira a sua área de trabalho: papel de parede vivo e widgets atrás das janelas. Dá para trocar a barra do Windows, a tecla Windows e a pesquisa pelas do Agenda." },
   screen: { label: "Tela própria", desc: "Tela cheia com a barra do Agenda, como um sistema à parte. Ótimo para um segundo monitor." },
 }

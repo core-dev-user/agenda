@@ -1,6 +1,8 @@
-// Barra do Agenda como barra principal do Windows (só no modo "Área de trabalho").
-// Uma janela fina sempre por cima, na borda de baixo da tela: esconde a barra do Windows,
+// Barra do Agenda no lugar da barra do Windows (só no modo "Área de trabalho"), em TODOS os monitores.
+// Em cada monitor: uma janela fina sempre por cima na borda de baixo, que esconde a barra do Windows,
 // reserva o espaço dela (as janelas maximizadas param em cima da barra) e mostra os programas abertos.
+// Nos monitores onde o Agenda principal não está, um fundo do Agenda (papel de parede + relógio) cobre
+// a área de trabalho do Windows. A tecla Windows e Win+S abrem o Iniciar/pesquisa do Agenda (keys.cjs).
 const { app, BrowserWindow, screen, shell } = require("electron")
 const path = require("node:path")
 const fs = require("node:fs")
@@ -8,44 +10,55 @@ const fsp = require("node:fs/promises")
 const { execFile } = require("node:child_process")
 const winh = require("./winhelper.cjs")
 const modes = require("./mode.cjs")
+const keys = require("./keys.cjs")
+const games = require("./games.cjs")
 
 const cfgFile = () => path.join(app.getPath("userData"), "bar.json")
-let cfg = { on: false, height: 64, position: "bottom" }
+let cfg = { on: false, height: 64, position: "bottom", keys: true }
 try { cfg = { ...cfg, ...JSON.parse(fs.readFileSync(cfgFile(), "utf8")) } } catch {}
 const save = () => { try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null, 2)) } catch {} }
 
 const isDev = !!process.env.AGENDA_DEV
-// a barra do Windows fica no monitor principal: só substitui quando o Agenda está nele
-const active = () => cfg.on && modes.mode() === "desktop" && modes.isPrimary() && process.platform === "win32" && !process.env.AGENDA_SHOT
+const active = () => cfg.on && modes.mode() === "desktop" && process.platform === "win32" && !process.env.AGENDA_SHOT
 
-/** @type {BrowserWindow | null} */
-let bar = null
+/** barras (uma por monitor) e fundos dos outros monitores, pela id do monitor */
+const bars = new Map()
+const desks = new Map()
 let getMain = () => null
-let menu = null // janela do menu aberto (Iniciar, programas…)
+let menu = null // janela do menu aberto (Iniciar, relógio…)
 let lastSync = null
 let lastFg = ""
 let poll = null
-let barHidden = false
+const hiddenOn = new Set() // monitores com jogo/vídeo em tela cheia: a barra some
 
-function rects() {
-  const d = screen.getPrimaryDisplay()
+function rects(d) {
   const b = d.bounds
   const H = Math.max(40, Math.min(120, Math.round(cfg.height)))
   const top = cfg.position === "top"
   const barRect = { x: b.x, y: top ? b.y : b.y + b.height - H, width: b.width, height: H }
   const work = { x: b.x, y: top ? b.y + H : b.y, width: b.width, height: b.height - H }
-  return { d, H, top, barRect, work }
+  return { H, top, barRect, work }
+}
+const primaryBar = () => bars.get(screen.getPrimaryDisplay().id) || [...bars.values()][0] || null
+/** monitor de uma barra ou de um fundo */
+const displayOfWin = (w) => {
+  for (const map of [bars, desks]) for (const [id, x] of map) if (x === w) return screen.getAllDisplays().find((d) => d.id === id) || null
+  return null
 }
 
-/** reserva a área da barra (em pixels reais) e reposiciona */
+/** reserva a área da barra em cada monitor (em pixels reais) e reposiciona tudo */
 function layout() {
-  if (!bar || bar.isDestroyed()) return
-  const { barRect, work } = rects()
-  bar.setBounds(barRect)
-  const p = screen.dipToScreenRect(null, work)
-  winh.call(`work ${p.x} ${p.y} ${p.x + p.width} ${p.y + p.height}`)
+  for (const d of screen.getAllDisplays()) {
+    const { barRect, work } = rects(d)
+    const b = bars.get(d.id)
+    if (b && !b.isDestroyed()) b.setBounds(barRect)
+    const p = screen.dipToScreenRect(null, work)
+    winh.call(`work ${p.x} ${p.y} ${p.x + p.width} ${p.y + p.height}`)
+    const k = desks.get(d.id)
+    if (k && !k.isDestroyed()) k.setBounds(work)
+  }
   // a área de trabalho do Agenda acompanha a área livre nova
-  setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(work) }, 150)
+  setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(rects(modes.target()).work) }, 150)
 }
 
 /* ---------------- ícones dos programas ---------------- */
@@ -62,7 +75,7 @@ async function iconOf(file) {
 const nice = (exe) => path.basename(exe || "", ".exe").replace(/[-_.]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 
 async function tick() {
-  if (!bar || bar.isDestroyed()) return
+  if (!bars.size) return
   const raw = await winh.call("list")
   if (!raw) return
   let j
@@ -75,76 +88,140 @@ async function tick() {
   }
   if (wins.some((w) => w.h === j.fg)) lastFg = j.fg
   else if (j.fg !== "0" && !j.full) lastFg = ""
-  // jogo ou vídeo em tela cheia: a barra some (como a do Windows)
-  const hide = !!j.full && !menu
-  if (hide !== barHidden) { barHidden = hide; hide ? bar.hide() : bar.showInactive() }
-  if (!bar.isDestroyed()) bar.webContents.send("bar:wins", { wins, fg: lastFg })
+  // jogo ou vídeo em tela cheia: a barra daquele monitor some (como a do Windows)
+  const fullId = j.full && !menu ? screen.getDisplayNearestPoint(screen.screenToDipPoint({ x: j.fl + 1, y: j.ft + 1 })).id : null
+  for (const [id, b] of bars) {
+    if (b.isDestroyed()) continue
+    const hide = id === fullId
+    if (hide !== hiddenOn.has(id)) { if (hide) { hiddenOn.add(id); b.hide() } else { hiddenOn.delete(id); b.showInactive() } }
+    b.webContents.send("bar:wins", { wins, fg: lastFg })
+  }
 }
 
-function create() {
-  if (bar || !active()) return
-  const { barRect } = rects()
-  bar = new BrowserWindow({
+const page = (win, q) => {
+  if (isDev) win.loadURL("http://localhost:5173/taskbar.html?" + new URLSearchParams(q))
+  else win.loadFile(path.join(__dirname, "..", "dist", "taskbar.html"), { query: q })
+}
+const prefs = () => ({ preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false })
+
+function makeBar(d) {
+  const { barRect } = rects(d)
+  const b = new BrowserWindow({
     ...barRect,
     frame: false, transparent: false, backgroundMaterial: "acrylic", resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
     skipTaskbar: true, alwaysOnTop: true, focusable: false, hasShadow: false, show: false, roundedCorners: false,
-    backgroundColor: "#00000000", title: "Agenda — barra",
-    webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false },
+    backgroundColor: "#00000000", title: "Agenda — barra", webPreferences: prefs(),
   })
-  bar.setAlwaysOnTop(true, "pop-up-menu")
-  if (isDev) bar.loadURL("http://localhost:5173/taskbar.html")
-  else bar.loadFile(path.join(__dirname, "..", "dist", "taskbar.html"))
-  bar.once("ready-to-show", () => bar && bar.showInactive())
-  bar.on("closed", () => { bar = null })
+  b.setAlwaysOnTop(true, "pop-up-menu")
+  page(b, { view: "bar" })
+  b.once("ready-to-show", () => { if (!b.isDestroyed() && !hiddenOn.has(d.id)) b.showInactive() })
+  b.on("closed", () => { if (bars.get(d.id) === b) bars.delete(d.id) })
+  bars.set(d.id, b)
+}
+
+/** fundo do Agenda nos monitores sem o Agenda principal: fica atrás de tudo, como a área de trabalho */
+function makeDesk(d) {
+  const { work } = rects(d)
+  const k = new BrowserWindow({
+    ...work,
+    frame: false, resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
+    skipTaskbar: true, hasShadow: false, show: false, roundedCorners: false, backgroundColor: "#000000",
+    title: "Agenda — fundo", webPreferences: prefs(),
+  })
+  page(k, { view: "desk" })
+  const h = winh.hwndOf(k)
+  const sink = () => { if (!k.isDestroyed()) winh.call("bottom " + h) }
+  k.once("ready-to-show", () => { winh.call("own " + h); k.showInactive(); sink() })
+  k.on("focus", () => setTimeout(sink, 0))
+  k.on("closed", () => { if (desks.get(d.id) === k) desks.delete(d.id) })
+  desks.set(d.id, k)
+}
+
+function create() {
+  if (bars.size || !active()) return
+  const main = modes.target().id
+  for (const d of screen.getAllDisplays()) {
+    makeBar(d)
+    if (d.id !== main) makeDesk(d)
+  }
   winh.call("hidetb")
   cfg.hidTaskbar = true; save()
   layout()
   poll = setInterval(tick, 1000)
-  for (const ev of ["display-metrics-changed", "display-added", "display-removed"]) screen.on(ev, onDisplay)
+  for (const ev of ["display-added", "display-removed"]) screen.on(ev, rebuild)
+  screen.on("display-metrics-changed", onMetrics)
+  syncKeys()
 }
-function onDisplay() { if (bar) layout() }
+let rebuildT = null
+function rebuild() {
+  clearTimeout(rebuildT)
+  rebuildT = setTimeout(() => { teardown(false); create() }, 800)
+}
+function onMetrics() { if (bars.size) layout() }
 
+/* ---------------- menus em cima da barra ---------------- */
 let menuKind = ""
 let menuClosedAt = 0
+let lastMenuKind = ""
 function closeMenu() {
   if (menu && !menu.isDestroyed()) menu.destroy()
   menu = null
   menuKind = ""
   menuClosedAt = Date.now()
-  if (bar && !bar.isDestroyed()) bar.webContents.send("bar:menuState", "")
+  for (const b of bars.values()) if (!b.isDestroyed()) b.webContents.send("bar:menuState", "")
 }
-function openMenu(kind, anchorX, w, h) {
-  // clicar de novo no mesmo botão fecha (o clique que tirou o foco já fechou: não reabre)
-  if (menuKind === kind || (!menu && Date.now() - menuClosedAt < 250 && lastMenuKind === kind)) { closeMenu(); return }
+/** kind: "start" | "clock"; fromKey: aberto pelo teclado (Win+S nunca fecha um menu já aberto) */
+function openMenu(kind, anchorX, w, h, barWin, fromKey) {
+  const again = menuKind === kind || (!menu && Date.now() - menuClosedAt < 250 && lastMenuKind === kind)
+  if (again && fromKey !== "search") { closeMenu(); return }
+  if (again && menu) { menu.focus(); return }
   closeMenu()
-  if (!bar) return
-  const { barRect, top, d } = rects()
+  const d = (barWin && !barWin.isDestroyed() && displayOfWin(barWin)) || screen.getPrimaryDisplay()
+  const b = bars.get(d.id) || primaryBar()
+  const { barRect, top } = rects(d)
   const room = top ? d.bounds.y + d.bounds.height - (barRect.y + barRect.height) - 16 : barRect.y - d.bounds.y - 16
   const W = Math.max(280, Math.min(900, Math.round(w) || 560))
   const H = Math.max(200, Math.min(room, Math.round(h) || 600))
-  const x = Math.max(barRect.x + 8, Math.min(barRect.x + barRect.width - W - 8, Math.round(barRect.x + anchorX - W / 2)))
+  const ax = anchorX == null ? barRect.width / 2 : anchorX
+  const x = Math.max(barRect.x + 8, Math.min(barRect.x + barRect.width - W - 8, Math.round(barRect.x + ax - W / 2)))
   const y = top ? barRect.y + barRect.height + 8 : barRect.y - H - 8
-  menu = new BrowserWindow({
+  const m = new BrowserWindow({
     x, y, width: W, height: H,
     frame: false, transparent: false, backgroundMaterial: "acrylic", resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
-    skipTaskbar: true, alwaysOnTop: true, show: false, roundedCorners: true, backgroundColor: "#00000000", title: "Agenda — menu",
-    webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false },
+    skipTaskbar: true, alwaysOnTop: true, show: false, roundedCorners: true, backgroundColor: "#00000000", title: "Agenda — menu", webPreferences: prefs(),
   })
-  menu.setAlwaysOnTop(true, "pop-up-menu")
-  const q = { view: "menu", kind: String(kind) }
-  if (isDev) menu.loadURL("http://localhost:5173/taskbar.html?" + new URLSearchParams(q))
-  else menu.loadFile(path.join(__dirname, "..", "dist", "taskbar.html"), { query: q })
-  menu.once("ready-to-show", () => { if (menu) { menu.show(); menu.focus() } })
-  menu.on("blur", () => { lastMenuKind = menuKind; closeMenu() })
+  m.setAlwaysOnTop(true, "pop-up-menu")
+  page(m, { view: "menu", kind: String(kind) })
+  m.once("ready-to-show", () => {
+    if (m.isDestroyed()) return
+    m.show(); m.focus()
+    // aberto pela tecla Windows: o Windows não deixa outro programa tomar o foco sozinho — o ajudante força
+    winh.call("activate " + winh.hwndOf(m))
+  })
+  m.on("blur", () => { if (menu === m) { lastMenuKind = menuKind; closeMenu() } })
+  menu = m
   menuKind = kind
-  bar.webContents.send("bar:menuState", kind)
+  for (const bw of bars.values()) if (!bw.isDestroyed()) bw.webContents.send("bar:menuState", bw === b ? kind : "")
 }
-let lastMenuKind = ""
-function destroy() {
+
+/* ---------------- tecla Windows ---------------- */
+function syncKeys() { keys.enable(!!bars.size && cfg.keys !== false && !games.playing()) }
+keys.onKey((ev) => {
+  if (!bars.size) return
+  openMenu("start", null, 640, 660, primaryBar(), ev)
+})
+games.onPlaying(() => syncKeys())
+
+function teardown(restore = true) {
   if (poll) { clearInterval(poll); poll = null }
-  for (const ev of ["display-metrics-changed", "display-added", "display-removed"]) screen.removeListener(ev, onDisplay)
-  if (bar && !bar.isDestroyed()) bar.destroy()
-  bar = null
+  for (const ev of ["display-added", "display-removed"]) screen.removeListener(ev, rebuild)
+  screen.removeListener("display-metrics-changed", onMetrics)
+  closeMenu()
+  for (const b of bars.values()) if (!b.isDestroyed()) b.destroy()
+  for (const k of desks.values()) if (!k.isDestroyed()) k.destroy()
+  bars.clear(); desks.clear(); hiddenOn.clear()
+  keys.enable(false)
+  if (!restore) return
   winh.call("restore")
   cfg.hidTaskbar = false; save()
   setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(modes.workArea()) }, 300)
@@ -179,6 +256,8 @@ async function startApps() {
   return appsCache
 }
 
+const state = () => ({ on: cfg.on, height: cfg.height, position: cfg.position, keys: cfg.keys !== false, available: modes.mode() === "desktop", active: bars.size > 0 })
+
 function register(ipcMain, mainGetter) {
   getMain = mainGetter
   app.whenReady().then(() => {
@@ -186,26 +265,31 @@ function register(ipcMain, mainGetter) {
     if (cfg.hidTaskbar && !active()) { winh.call("restore"); cfg.hidTaskbar = false; save() }
     setTimeout(create, 1200)
   })
-  app.on("before-quit", () => { if (bar) destroy() })
+  app.on("before-quit", () => { if (bars.size) teardown() })
 
-  ipcMain.handle("bar:get", () => ({ on: cfg.on, height: cfg.height, position: cfg.position, available: modes.mode() === "desktop" && modes.isPrimary(), active: !!bar }))
+  ipcMain.handle("bar:get", () => state())
   ipcMain.handle("bar:set", (_e, p) => {
     const q = p || {}
     if (typeof q.on === "boolean") cfg.on = q.on
+    if (typeof q.keys === "boolean") cfg.keys = q.keys
     if (typeof q.height === "number") cfg.height = q.height
     if (q.position === "top" || q.position === "bottom") cfg.position = q.position
     save()
-    if (active()) { if (!bar) create(); else layout() }
-    else if (bar) destroy()
-    return { on: cfg.on, height: cfg.height, position: cfg.position, available: modes.mode() === "desktop" && modes.isPrimary(), active: !!bar }
+    if (active()) { if (!bars.size) create(); else { layout(); syncKeys() } }
+    else if (bars.size) teardown()
+    return state()
   })
-  // a janela principal manda tema, fixados e avisos; a barra recebe
-  ipcMain.on("bar:sync", (_e, data) => { lastSync = data; if (bar && !bar.isDestroyed()) bar.webContents.send("bar:sync", data) })
+  // a janela principal manda tema, fixados, papel de parede e avisos; barras e fundos recebem
+  ipcMain.on("bar:sync", (_e, data) => {
+    lastSync = data
+    for (const w of [...bars.values(), ...desks.values()]) if (!w.isDestroyed()) w.webContents.send("bar:sync", data)
+    if (menu && !menu.isDestroyed()) menu.webContents.send("bar:sync", data)
+  })
   ipcMain.handle("bar:hello", () => lastSync)
   // pedidos da barra para a janela principal (abrir aba, busca, fixar…)
   ipcMain.on("bar:main", (_e, msg) => { const m = getMain(); if (m && !m.isDestroyed()) m.webContents.send("bar:main", msg) })
-  // menus (Iniciar, avisos…): janelinha acrílica em cima da barra, fecha ao clicar fora
-  ipcMain.handle("bar:menu", (_e, kind, anchorX, w, h) => openMenu(kind, anchorX, w, h))
+  // menus (Iniciar, relógio…): janelinha acrílica em cima da barra que pediu, fecha ao clicar fora
+  ipcMain.handle("bar:menu", (e, kind, anchorX, w, h) => openMenu(kind, anchorX, w, h, BrowserWindow.fromWebContents(e.sender)))
   ipcMain.handle("bar:closeMenu", () => closeMenu())
   ipcMain.handle("bar:click", (_e, h, wasMin) => {
     if (h === lastFg && !wasMin) return winh.call("minimize " + h)
@@ -218,6 +302,7 @@ function register(ipcMain, mainGetter) {
   ipcMain.handle("bar:apps", () => startApps())
   ipcMain.handle("bar:icon", (_e, file) => iconOf(String(file || "")))
   ipcMain.handle("bar:launch", (_e, file) => { if (typeof file === "string" && file) return shell.openPath(file) })
+  ipcMain.handle("bar:web", (_e, q) => { if (typeof q === "string" && q.trim()) shell.openExternal("https://www.google.com/search?q=" + encodeURIComponent(q.trim())) })
   ipcMain.handle("bar:power", (_e, kind) => {
     const run = (cmd, args) => execFile(cmd, args, { windowsHide: true }, () => {})
     if (kind === "lock") run("rundll32.exe", ["user32.dll,LockWorkStation"])
@@ -230,4 +315,4 @@ function register(ipcMain, mainGetter) {
   })
 }
 
-module.exports = { register, isActive: () => !!bar }
+module.exports = { register, isActive: () => bars.size > 0 }

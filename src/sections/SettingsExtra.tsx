@@ -313,13 +313,10 @@ export function ModeTab() {
         </div>
       </Section>
 
-      <Section title="Monitor" desc={mode === "app" ? "Em qual monitor a janela abre." : mode === "desktop" ? "Em qual monitor o Agenda vira a área de trabalho (os outros continuam com o papel de parede do Windows)." : "Em qual monitor fica a tela própria do Agenda — por exemplo, o segundo monitor."}>
+      <Section title="Monitor" desc={mode === "app" ? "Em qual monitor a janela abre." : mode === "desktop" ? "Em qual monitor ficam os widgets do Agenda. Com a barra do Agenda ligada, os outros monitores ganham o papel de parede e o relógio do Agenda." : "Em qual monitor fica a tela própria do Agenda — por exemplo, o segundo monitor."}>
         {!shows && <div className="flex items-center gap-2 py-2 text-sm text-fg-muted"><Loader2 size={14} className="animate-spin" /> Procurando monitores…</div>}
         {shows && shows.length <= 1 && <div className="py-1 text-sm text-fg-muted">Só um monitor ligado agora. Se ligar outro, ele aparece aqui.</div>}
         {shows && shows.length > 1 && <MonitorMap list={shows} value={disp} onPick={setDisp} />}
-        {mode === "desktop" && chosen && !chosen.primary && (
-          <div className="mt-2 text-xs" style={{ color: "#ffd36e" }}>A barra do Agenda só pode substituir a do Windows no monitor principal.</div>
-        )}
       </Section>
 
       <div className="flex items-center justify-end gap-3">
@@ -329,7 +326,7 @@ export function ModeTab() {
         </button>
       </div>
 
-      {cur === "desktop" && chosen?.primary && (
+      {cur === "desktop" && (
         <Section title="Barra de tarefas">
           <MainBarSwitch />
         </Section>
@@ -375,14 +372,26 @@ function MonitorMap({ list, value, onPick }: { list: DisplayInfo[]; value: numbe
 
 function MainBarSwitch() {
   const on = useUiMode((s) => s.mainBar)
+  const [keys, setKeys] = useState(true)
+  useEffect(() => { bridge.bar.get().then((c) => setKeys(c.keys)) }, [])
   return (
     <div className="mt-3 border-t border-line pt-3">
       <Switch
-        label="Usar a barra do Agenda como barra principal do Windows"
+        label="Substituir a barra do Windows pela do Agenda (em todos os monitores)"
         checked={on}
         onChange={async (v) => { bridge.store.flush?.(); await bridge.bar.set({ on: v }); location.reload() }}
       />
-      <div className="text-xs text-fg-muted">Esconde a barra do Windows e põe a do Agenda no lugar: Iniciar, programas abertos e fixados, relógio. Se o Agenda fechar, a barra do Windows volta sozinha. A seta perto do relógio mostra os ícones da bandeja do Windows.</div>
+      <div className="text-xs text-fg-muted">Esconde a barra do Windows e põe a do Agenda no lugar em cada monitor: Iniciar, programas abertos e fixados, relógio. Nos outros monitores, o papel de parede do Agenda cobre a área de trabalho do Windows. Se o Agenda fechar, a barra do Windows volta sozinha. A seta perto do relógio mostra os ícones da bandeja do Windows.</div>
+      {on && (
+        <>
+          <Switch
+            label="Tecla Windows abre o Iniciar do Agenda, e Win+S a pesquisa"
+            checked={keys}
+            onChange={async (v) => setKeys((await bridge.bar.set({ keys: v })).keys)}
+          />
+          <div className="text-xs text-fg-muted">Os outros atalhos (Win+E, Win+D, Win+Shift+S…) continuam iguais. Com um jogo aberto, a tecla Windows volta a abrir o Iniciar do Windows (o Agenda não mexe no teclado durante o jogo).</div>
+        </>
+      )}
     </div>
   )
 }

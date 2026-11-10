@@ -70,35 +70,46 @@ public static class AgWin {
   public static void Own(string h) { SetWindowLongPtr(H(h), -8, FindWindow("Progman", null)); }
   public static void Bottom(string h) { SetWindowPos(H(h), new IntPtr(1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); }
 
-  // ---- barra do Windows e área livre da tela ----
+  // ---- barra do Windows e área livre da tela (em todos os monitores) ----
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr p, IntPtr after, string c, string n);
+  [DllImport("user32.dll")] static extern IntPtr MonitorFromRect(ref RECT r, uint f);
   static bool tbHidden = false;
-  static bool haveOrig = false;
-  static RECT orig;
-  static RECT want;
-  static bool haveWant = false;
-  static void Tray(bool show) {
+  // área livre original de cada monitor (para devolver) e a que o Agenda quer
+  static Dictionary<long, RECT> origs = new Dictionary<long, RECT>();
+  static Dictionary<long, RECT> wants = new Dictionary<long, RECT>();
+  static List<IntPtr> Trays() {
+    var l = new List<IntPtr>();
     foreach (var c in new[] { "Shell_TrayWnd", "Shell_SecondaryTrayWnd" }) {
-      IntPtr t = FindWindow(c, null);
-      if (t != IntPtr.Zero) ShowWindow(t, show ? 5 : 0);
+      IntPtr t = IntPtr.Zero;
+      while ((t = FindWindowEx(IntPtr.Zero, t, c, null)) != IntPtr.Zero) l.Add(t);
     }
+    return l;
   }
-  public static void HideTaskbar() {
-    if (!haveOrig) { SystemParametersInfo(0x30, 0, ref orig, 0); haveOrig = true; }
-    tbHidden = true; Tray(false);
-  }
+  static void Tray(bool show) { foreach (var t in Trays()) ShowWindow(t, show ? 5 : 0); }
+  static RECT WorkOf(IntPtr mon) { var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO)); GetMonitorInfo(mon, ref mi); return mi.rcWork; }
+  public static void HideTaskbar() { tbHidden = true; Tray(false); }
   public static void SetWork(int l, int t, int r, int b) {
-    want.L = l; want.T = t; want.R = r; want.B = b; haveWant = true;
-    SystemParametersInfo(0x2F, 0, ref want, 2);
+    var w = new RECT(); w.L = l; w.T = t; w.R = r; w.B = b;
+    IntPtr mon = MonitorFromRect(ref w, 2);
+    long k = mon.ToInt64();
+    if (!origs.ContainsKey(k)) origs[k] = WorkOf(mon);
+    wants[k] = w;
+    SystemParametersInfo(0x2F, 0, ref w, 2);
   }
   public static void Restore() {
-    tbHidden = false; haveWant = false;
+    tbHidden = false;
+    wants.Clear();
     Tray(true);
-    if (haveOrig) SystemParametersInfo(0x2F, 0, ref orig, 2);
+    foreach (var o in origs.Values) { RECT r = o; SystemParametersInfo(0x2F, 0, ref r, 2); }
+    origs.Clear();
   }
   /** o Explorer às vezes mostra a barra de novo ou devolve a área: reaplica */
   static void Heal() {
-    if (tbHidden) { IntPtr t = FindWindow("Shell_TrayWnd", null); if (t != IntPtr.Zero && IsWindowVisible(t)) Tray(false); }
-    if (haveWant) { RECT cur = new RECT(); SystemParametersInfo(0x30, 0, ref cur, 0); if (cur.L != want.L || cur.T != want.T || cur.R != want.R || cur.B != want.B) SystemParametersInfo(0x2F, 0, ref want, 2); }
+    if (tbHidden) foreach (var t in Trays()) if (IsWindowVisible(t)) ShowWindow(t, 0);
+    foreach (var kv in wants) {
+      RECT cur = WorkOf(new IntPtr(kv.Key)); RECT w = kv.Value;
+      if (cur.L != w.L || cur.T != w.T || cur.R != w.R || cur.B != w.B) SystemParametersInfo(0x2F, 0, ref w, 2);
+    }
   }
   public static void PeekTray(bool show) { Tray(show); tbHidden = !show; }
 
@@ -108,16 +119,20 @@ public static class AgWin {
     var sb = new StringBuilder();
     IntPtr fg = GetForegroundWindow();
     bool full = false;
+    int fl = 0, ft = 0; // canto do monitor onde está a janela em tela cheia
     if (fg != IntPtr.Zero) {
       string c = Cls(fg);
       if (c != "Progman" && c != "WorkerW" && c != "Shell_TrayWnd") {
         RECT r; GetWindowRect(fg, out r);
         var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
-        if (GetMonitorInfo(MonitorFromWindow(fg, 2), ref mi))
+        if (GetMonitorInfo(MonitorFromWindow(fg, 2), ref mi)) {
           full = r.L <= mi.rcMonitor.L && r.T <= mi.rcMonitor.T && r.R >= mi.rcMonitor.R && r.B >= mi.rcMonitor.B;
+          fl = mi.rcMonitor.L; ft = mi.rcMonitor.T;
+        }
       }
     }
-    sb.Append("{\"fg\":\"").Append(fg.ToInt64()).Append("\",\"full\":").Append(full ? "true" : "false").Append(",\"wins\":[");
+    sb.Append("{\"fg\":\"").Append(fg.ToInt64()).Append("\",\"full\":").Append(full ? "true" : "false")
+      .Append(",\"fl\":").Append(fl).Append(",\"ft\":").Append(ft).Append(",\"wins\":[");
     bool first = true;
     EnumWindows((h, l) => {
       if (!IsWindowVisible(h) || GetWindow(h, 4) != IntPtr.Zero) return true;

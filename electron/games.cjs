@@ -163,10 +163,12 @@ function scan() {
     const key = list.map((g) => g.id + "@" + g.start).join("|")
     lastList = list
     try { require("./gamestats.cjs").onPlaying(list) } catch (e) { console.error(e) }
-    if (key !== last) { last = key; push() }
+    if (key !== last) { last = key; push(); for (const f of watchers) { try { f(list.length > 0) } catch {} } }
   })
 }
 
+/** quem quer saber quando um jogo abre/fecha (ex.: o atalho da tecla Windows desliga com jogo aberto) */
+const watchers = []
 function push() {
   const w = getMain()
   if (w && !w.isDestroyed()) w.webContents.send("games:state", { playing: lastList, at: Date.now() })
@@ -189,4 +191,4 @@ function register(ipcMain, mainGetter) {
   })
 }
 
-module.exports = { register }
+module.exports = { register, playing: () => lastList.length > 0, onPlaying: (f) => watchers.push(f) }

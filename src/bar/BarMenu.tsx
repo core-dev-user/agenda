@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { ChevronLeft, ChevronRight, Lock, Moon, Pin, Power, RotateCcw, Search, Settings } from "lucide-react"
+import { ChevronLeft, ChevronRight, Globe, Lock, Moon, Pin, Power, RotateCcw, Search, Settings } from "lucide-react"
 import { bridge, type BarMenu } from "@/lib/bridge"
 import { SECTIONS } from "@/components/sections-meta"
 import { GlyphTile } from "@/components/Glyph"
@@ -26,6 +26,7 @@ function StartMenu() {
   const sections = query ? SECTIONS.filter((s) => norm(s.label).includes(query)) : SECTIONS
   const pinned = new Set((sync?.pins ?? []).map((p) => exeKey(p.path)))
   const launch = (p: string) => { bridge.bar.launch(p); done() }
+  const web = () => { bridge.bar.web(q); done() }
   const power = (k: "lock" | "sleep" | "restart" | "shutdown") => {
     if ((k === "restart" || k === "shutdown") && confirm !== k) return setConfirm(k)
     bridge.bar.power(k); done()
@@ -34,7 +35,7 @@ function StartMenu() {
   return (
     <div className="flex h-full flex-col p-4" onKeyDown={(e) => {
       if (e.key === "Escape") done()
-      if (e.key === "Enter") { if (sections[0] && query) { bridge.bar.toMain({ type: "open", id: sections[0].id }); done() } else if (list[0]) launch(list[0].path) }
+      if (e.key === "Enter" && query) { if (sections[0]) { bridge.bar.toMain({ type: "open", id: sections[0].id }); done() } else if (list[0]) launch(list[0].path); else web() }
     }}>
       <label className="flex h-10 shrink-0 items-center gap-2 rounded-full border border-line bg-[color-mix(in_srgb,var(--fg)_6%,transparent)] px-4">
         <Search size={15} className="text-fg-muted" />
@@ -71,7 +72,13 @@ function StartMenu() {
             </button>
           ))}
         </div>
-        {!list.length && <div className="py-6 text-center text-sm text-fg-muted">{apps.length ? "Nada encontrado." : "Carregando…"}</div>}
+        {!list.length && !query && <div className="py-6 text-center text-sm text-fg-muted">Carregando…</div>}
+        {query && (
+          <button className="bar-btn mt-1 w-full !justify-start gap-2.5 px-2 py-2 text-left text-sm" onClick={web}>
+            <span className="flex size-7 items-center justify-center"><Globe size={17} className="text-fg-muted" /></span>
+            <span className="min-w-0 flex-1 truncate">Pesquisar <b>{q.trim()}</b> na web</span>
+          </button>
+        )}
       </div>
 
       <div className="mt-3 flex shrink-0 items-center gap-1 border-t border-line pt-3">

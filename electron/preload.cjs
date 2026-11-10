@@ -72,6 +72,7 @@ contextBridge.exposeInMainWorld("agenda", {
     icon: (file) => ipcRenderer.invoke("bar:icon", file),
     launch: (file) => ipcRenderer.invoke("bar:launch", file),
     power: (kind) => ipcRenderer.invoke("bar:power", kind),
+    web: (q) => ipcRenderer.invoke("bar:web", q),
     onWins: on("bar:wins"),
     onSync: on("bar:sync"),
     onMain: on("bar:main"),

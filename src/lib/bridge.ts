@@ -58,7 +58,7 @@ export interface AgendaBridge {
   }
   bar: {
     get(): Promise<BarConfig>
-    set(p: Partial<Pick<BarConfig, "on" | "height" | "position">>): Promise<BarConfig>
+    set(p: Partial<Pick<BarConfig, "on" | "height" | "position" | "keys">>): Promise<BarConfig>
     sync(data: BarSync): void
     hello(): Promise<BarSync | null>
     toMain(msg: BarToMain): void
@@ -74,6 +74,8 @@ export interface AgendaBridge {
     icon(file: string): Promise<string>
     launch(file: string): Promise<string>
     power(kind: "lock" | "sleep" | "restart" | "shutdown" | "settings" | "volume" | "network"): Promise<void>
+    /** pesquisa no navegador */
+    web(q: string): Promise<void>
     onWins(cb: (d: { wins: PcWindow[]; fg: string }) => void): Unsub
     onSync(cb: (d: BarSync) => void): Unsub
     onMain(cb: (m: BarToMain) => void): Unsub
@@ -171,7 +173,7 @@ export interface RunningGame { id: string; name: string; color: string; start: n
 export interface ValAgentNow { id: string; locked: boolean; state: string }
 export interface GamesState { playing: RunningGame[]; at: number }
 
-export interface BarConfig { on: boolean; height: number; position: "bottom" | "top"; available: boolean; active: boolean }
+export interface BarConfig { on: boolean; height: number; position: "bottom" | "top"; keys: boolean; available: boolean; active: boolean }
 export interface PcWindow { h: string; title: string; exe: string; name: string; min: boolean; icon: string }
 export interface PinnedApp { path: string; name: string }
 /** o que a janela principal manda para a barra: aparência, fixados e avisos */
@@ -185,6 +187,8 @@ export interface BarSync {
   pins: PinnedApp[]
   unread: number
   sections: { id: string; label: string; color: string }[]
+  /** papel de parede (para o fundo dos outros monitores) */
+  wall?: { bg: string; filter?: string }
 }
 export type BarToMain =
   | { type: "open"; id: string }
@@ -305,8 +309,8 @@ const browserFallback: AgendaBridge = {
   pcmedia: { sub: async () => null, unsub: async () => {}, cmd: async () => {}, onState: noop },
   share: { sources: async () => [], pick: async () => {}, audioStart: async () => ({ ok: false, excluded: "agenda" }), audioStop: async () => {}, onAudio: noop, onAudioEnd: noop },
   bar: (() => {
-    const c: BarConfig = { on: false, height: 64, position: "bottom", available: false, active: false }
-    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, onWins: noop, onSync: noop, onMain: noop }
+    const c: BarConfig = { on: false, height: 64, position: "bottom", keys: true, available: false, active: false }
+    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, web: async () => { window.open("https://www.google.com/search") }, onWins: noop, onSync: noop, onMain: noop }
   })(),
   finance: {
     status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { ChevronRight, Image, Lock, LockOpen, Settings } from "lucide-react"
 import { useStore } from "@/lib/store"
-import { bridge } from "@/lib/bridge"
+import { bridge, mediaUrl } from "@/lib/bridge"
 import type { MediaItem } from "@/lib/types"
 import { importDropped, pasteImages } from "@/components/MediaPicker"
 import { fontFamily } from "@/lib/fonts"
@@ -12,7 +12,7 @@ import type { BarSync } from "@/lib/bridge"
 import { SECTIONS } from "@/components/sections-meta"
 import { Splash } from "@/components/Splash"
 import { AutoStylePrompt } from "@/components/AutoStylePrompt"
-import { Wallpaper, Overlays } from "@/components/Wallpaper"
+import { Wallpaper, Overlays, GRADIENTS } from "@/components/Wallpaper"
 import { CursorLayer } from "@/components/CursorLayer"
 import { Taskbar } from "@/components/Taskbar"
 import { AppWindow, preloadSections } from "@/components/AppWindow"
@@ -76,6 +76,7 @@ function useMainBar() {
         style: s.settings.taskbar.style, showLabels: s.settings.taskbar.showLabels,
         pins: s.settings.pcPins ?? [], unread: s.notifications.filter((n) => !n.read).length,
         sections: SECTIONS.map((x) => ({ id: x.id, label: x.label, color: x.color })),
+        wall: wallCss(s.settings.wallpaper),
       }
       const j = JSON.stringify(data)
       if (j !== last) { last = j; bridge.bar.sync(data) }
@@ -93,6 +94,16 @@ function useMainBar() {
     })
     return () => { clearTimeout(t); off(); off2() }
   }, [])
+}
+
+/** papel de parede como CSS (o fundo dos outros monitores desenha igual) */
+function wallCss(wp: ReturnType<typeof useStore.getState>["settings"]["wallpaper"]) {
+  const bg =
+    wp.type === "image" && wp.image ? `center / cover no-repeat url("${mediaUrl(wp.image)}")`
+    : wp.type === "color" ? wp.color
+    : (GRADIENTS[wp.gradient] ?? GRADIENTS.dusk).css
+  const filter = [wp.blur ? `blur(${wp.blur}px)` : "", wp.dim ? `brightness(${1 - wp.dim})` : ""].filter(Boolean).join(" ")
+  return { bg, filter: filter || undefined }
 }
 
 export function useThemeVars() {

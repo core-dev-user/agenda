@@ -136,4 +136,4 @@ function register(ipcMain, getWin, onQuit) {
   ipcMain.handle("apps:detect", () => detectApps())
 }
 
-module.exports = { mode, windowOptions, attach, register, isPrimary, workArea }
+module.exports = { mode, windowOptions, attach, register, isPrimary, workArea, target }
