@@ -236,7 +236,7 @@ export default function App() {
       {/* papel de parede desenhado em cada monitor (não esticado entre eles) */}
       {screens.map((sc) => (
         <div key={sc.id} className="absolute overflow-hidden" style={sc.full ? { left: sc.full.x, top: sc.full.y, width: sc.full.w, height: sc.full.h } : { left: sc.x, top: sc.y, width: sc.w, height: sc.h }}>
-          <Wallpaper />
+          <Wallpaper screenId={screens.length > 1 ? sc.id : undefined} />
         </div>
       ))}
       <motion.div

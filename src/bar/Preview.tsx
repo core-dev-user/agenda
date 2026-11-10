@@ -11,7 +11,11 @@ import { useBarSync } from "./sync"
 export function Preview() {
   useBarSync()
   const [tiles, setTiles] = useState<PreviewTile[]>([])
-  useEffect(() => bridge.bar.onPreview((d) => setTiles(d.tiles)), [])
+  useEffect(() => bridge.bar.onPreview((d) => {
+    setTiles(d.tiles)
+    // depois de desenhar (dois quadros): avisa para mostrar a janela e as miniaturas juntas
+    requestAnimationFrame(() => requestAnimationFrame(() => bridge.bar.previewReady(d.seq)))
+  }), [])
   return (
     <div
       className="bar-bg fixed inset-0 text-fg"

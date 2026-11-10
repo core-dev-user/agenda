@@ -57,6 +57,8 @@ export interface Settings {
     fg?: string
     fgFor?: string
   }
+  /** papel de parede próprio de cada monitor (id do monitor → o que muda em relação ao de todos) */
+  wallpaperBy?: Record<string, Partial<Settings["wallpaper"]>>
   /** relógio grande no papel de parede, estilo tela de bloqueio do iPhone */
   lockClock?: LockClock
   sakura: { ambient: boolean; density: number; splash: boolean; splashSeconds: number }

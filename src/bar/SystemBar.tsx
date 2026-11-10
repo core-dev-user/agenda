@@ -48,6 +48,8 @@ export function SystemBar() {
   const auto = t.autoHide || (t.smartHide !== false && max)
   const dockRef = useRef<HTMLDivElement>(null)
   const previewTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const previewLeftAt = useRef(0)
+  const previewShownAt = useRef(0)
   useEffect(() => bridge.bar.onWins((d) => { setWins(d.wins); setFg(d.fg) }), [])
   useEffect(() => bridge.bar.onMenuState(setMenu), [])
   useEffect(() => { const id = setInterval(() => setNow(new Date()), 5000); return () => clearInterval(id) }, [])
@@ -146,7 +148,13 @@ export function SystemBar() {
           )}
           style={vertical ? { width: size + 16 } : { height: size + 16 }}
         >
-          <Btn {...btn} label="Iniciar" active={menu === "start"} onClick={(el) => openMenu("start", el, 640, 660)}>
+          {/* Iniciar do Windows (igual ao de uma barra normal) e o Iniciar do Agenda */}
+          {shows("winstart") && (
+            <Btn {...btn} label="Iniciar do Windows" onClick={() => bridge.bar.winStart()}>
+              <WinLogo size={Math.round(size * 0.5)} />
+            </Btn>
+          )}
+          <Btn {...btn} label="Iniciar do Agenda" active={menu === "start"} onClick={(el) => openMenu("start", el, 640, 660)}>
             <Logo size={Math.round(size * 0.78)} />
           </Btn>
           <Divider vertical={vertical} />
@@ -175,13 +183,16 @@ export function SystemBar() {
                 count={g.wins.length}
                 onClick={() => clickApp(g)}
                 onHover={g.wins.length ? (el, on) => {
-                  // prévia das janelas abertas (como no Windows), depois de um instante parado em cima
+                  // prévia das janelas abertas (como no Windows): um instante parado em cima abre;
+                  // passando de um programa para outro com a prévia aberta, troca na hora
                   clearTimeout(previewTimer.current)
-                  if (!on) { bridge.bar.previewLeave(); return }
+                  if (!on) { previewLeftAt.current = Date.now(); bridge.bar.previewLeave(); return }
+                  const quick = previewShownAt.current > 0 && previewShownAt.current <= previewLeftAt.current && Date.now() - previewLeftAt.current < 350
                   previewTimer.current = setTimeout(() => {
+                    previewShownAt.current = Date.now()
                     const r = el.getBoundingClientRect()
                     bridge.bar.preview(g.wins.map((w) => ({ h: w.h, title: w.title, icon: w.icon || g.icon, min: w.min })), vertical ? r.top + r.height / 2 : r.left + r.width / 2)
-                  }, 350)
+                  }, quick ? 0 : 200)
                 } : undefined}
                 onRight={() => pin(g)}
                 onMiddle={() => bridge.bar.launch(g.exe)}
@@ -241,6 +252,21 @@ export function SystemBar() {
       </motion.div>
 
     </div>
+  )
+}
+
+/** logo do Windows (quatro quadrados, azul do Windows 11) */
+function WinLogo({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-label="Windows">
+      <defs>
+        <linearGradient id="winlogo" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#4cc2ff" />
+          <stop offset="1" stopColor="#0f6cdb" />
+        </linearGradient>
+      </defs>
+      <path fill="url(#winlogo)" d="M1 1h10.5v10.5H1zM12.5 1H23v10.5H12.5zM1 12.5h10.5V23H1zM12.5 12.5H23V23H12.5z" />
+    </svg>
   )
 }
 

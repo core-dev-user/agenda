@@ -1,3 +1,4 @@
+import { useScreenList } from "@/lib/screens"
 import { useUiMode } from "@/lib/uimode"
 import { useEffect, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
@@ -318,6 +319,7 @@ function TaskbarTab() {
   const p = (patch: Partial<Settings["taskbar"]>) => set({ taskbar: { ...tb, ...patch } })
   return (
     <>
+    <PcBarChoice />
     <IconsSection />
     <Section title="Barra de tarefas">
       <div className="flex flex-wrap gap-4 py-2">
@@ -343,6 +345,27 @@ function TaskbarTab() {
   )
 }
 
+/** qual barra o PC usa: a do próprio Windows ou a do Agenda (só no modo área de trabalho) */
+function PcBarChoice() {
+  const mode = useUiMode((x) => x.mode)
+  const on = useUiMode((x) => x.mainBar)
+  if (mode !== "desktop") return null
+  return (
+    <Section title="Barra de tarefas do PC" desc="A barra de baixo do computador, em todos os monitores.">
+      <Segmented
+        value={on ? "agenda" : "windows"}
+        onChange={async (v) => { bridge.store.flush?.(); await bridge.bar.set({ on: v === "agenda" }); location.reload() }}
+        options={[{ value: "windows", label: "Do Windows (a normal)" }, { value: "agenda", label: "Do Agenda (personalizada)" }]}
+      />
+      <div className="mt-1.5 text-xs text-fg-muted">
+        {on
+          ? "A barra do Agenda está no lugar da do Windows, com o jeito escolhido aqui embaixo. Ela tem o botão do Windows para abrir o Iniciar normal."
+          : "O Windows continua com a barra dele. As opções aqui embaixo valem para a barra de dentro do Agenda."}
+      </div>
+    </Section>
+  )
+}
+
 /** interruptor pequeno (cabe na linha de cada app) */
 function MiniSwitch({ on, onChange, title }: { on: boolean; onChange: (v: boolean) => void; title?: string }) {
   return (
@@ -360,6 +383,7 @@ function MiniSwitch({ on, onChange, title }: { on: boolean; onChange: (v: boolea
 
 /** o que aparece na barra: abas do Agenda, botões e programas do Windows — cada um liga/desliga */
 const BAR_BUTTONS: { id: string; label: string; pcOnly?: boolean }[] = [
+  { id: "winstart", label: "Botão do Windows (abre o Iniciar do Windows)", pcOnly: true },
   { id: "widgets", label: "Adicionar widget" },
   { id: "lock", label: "Travar widgets" },
   { id: "bell", label: "Avisos" },
@@ -409,13 +433,41 @@ function BarItemsSection() {
 function WallpaperTab() {
   const [s, set] = useS()
   const media = useStore((x) => x.media)
-  const wp = s.wallpaper
-  const p = (patch: Partial<Settings["wallpaper"]>) => set({ wallpaper: { ...wp, ...patch } })
+  // com dois ou mais monitores: escolher qual está editando (cada um pode ter o seu)
+  const screens = useScreenList()
+  const multi = screens.length > 1 && screens[0].id !== 0
+  const [target, setTarget] = useState<number | null>(null)
+  const by = s.wallpaperBy ?? {}
+  const own = target != null ? by[String(target)] : undefined
+  const wp = own ? { ...s.wallpaper, ...own } : s.wallpaper
+  const p = (patch: Partial<Settings["wallpaper"]>) =>
+    target == null
+      ? set({ wallpaper: { ...s.wallpaper, ...patch } })
+      : set({ wallpaperBy: { ...by, [String(target)]: { ...(by[String(target)] ?? {}), ...patch } } })
+  const sameAsAll = (id: number) => { const n = { ...by }; delete n[String(id)]; set({ wallpaperBy: n }) }
   const [pick, setPick] = useState(false)
   const [living, setLiving] = useState(false)
   const current = media.find((x) => x.file === wp.image) ?? null
   return (
     <>
+      {multi && (
+        <Section title="Monitor" desc="Cada monitor pode ter o seu papel de parede. Escolha qual está mudando.">
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setTarget(null)} className={cn("rounded-xl border px-3 py-2 text-sm", target == null ? "border-brand bg-brand/15" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]")}>Todos os monitores</button>
+            {screens.map((sc, i) => (
+              <button key={sc.id} onClick={() => setTarget(sc.id)} className={cn("flex items-center gap-2 rounded-xl border px-3 py-2 text-sm", target === sc.id ? "border-brand bg-brand/15" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]")}>
+                Monitor {i + 1}{sc.primary ? " (principal)" : i === 0 ? " (esquerda)" : ""}
+                {by[String(sc.id)] && <span className="rounded-full bg-brand/25 px-1.5 text-[10px]">próprio</span>}
+              </button>
+            ))}
+          </div>
+          {target != null && (
+            <div className="mt-2 flex items-center gap-3 text-xs text-fg-muted">
+              {own ? <>Este monitor tem papel de parede próprio. <button className="underline hover:text-fg" onClick={() => sameAsAll(target)}>Usar o mesmo de todos</button></> : "Mudando qualquer coisa aqui, este monitor passa a ter o papel de parede dele."}
+            </div>
+          )}
+        </Section>
+      )}
       <Section title="Fundo">
         <Segmented value={wp.type} onChange={(v) => p({ type: v })} options={[{ value: "gradient", label: "Degradê" }, { value: "image", label: "Imagem" }, { value: "color", label: "Cor sólida" }, { value: "video", label: "Vídeo ou GIF" }]} />
         <div className="pt-3">

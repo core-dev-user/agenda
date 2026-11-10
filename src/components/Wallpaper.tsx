@@ -25,9 +25,11 @@ export const GRADIENTS: Record<string, { label: string; css: string }> = {
   matcha: { label: "Matcha", css: "radial-gradient(1000px 700px at 20% 15%, #d9f2a6aa, transparent 60%), linear-gradient(160deg, #23301a, #3c4f26 55%, #19220f)" },
 }
 
-export function Wallpaper() {
+/** screenId: monitor (cada um pode ter um papel de parede próprio) */
+export function Wallpaper({ screenId }: { screenId?: number }) {
   const s = useSettings()
-  const wp = s.wallpaper
+  const own = screenId != null ? s.wallpaperBy?.[String(screenId)] : undefined
+  const wp = own ? { ...s.wallpaper, ...own } : s.wallpaper
   const layer = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

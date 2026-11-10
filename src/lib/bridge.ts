@@ -75,7 +75,9 @@ export interface AgendaBridge {
     /** página da prévia: mouse em cima dela (não fecha) */
     previewHover(on: boolean): void
     previewHide(): void
-    onPreview(cb: (d: { tiles: PreviewTile[] }) => void): Unsub
+    onPreview(cb: (d: { tiles: PreviewTile[]; seq: number }) => void): Unsub
+    /** a página da prévia terminou de desenhar: a janela e as miniaturas aparecem juntas */
+    previewReady(seq: number): void
     /** abre um menu acima da barra (x = centro do botão, em px da barra) */
     menu(kind: BarMenu, anchorX: number, w: number, h: number): Promise<void>
     closeMenu(): Promise<void>
@@ -83,6 +85,8 @@ export interface AgendaBridge {
     click(h: string, wasMin: boolean): Promise<string>
     win(cmd: "activate" | "minimize" | "close", h: string): Promise<string>
     desktop(): Promise<string>
+    /** abre o Iniciar do próprio Windows */
+    winStart(): Promise<string>
     peek(on: boolean): Promise<string>
     apps(): Promise<{ name: string; path: string }[]>
     icon(file: string): Promise<string>
@@ -339,7 +343,7 @@ const browserFallback: AgendaBridge = {
   share: { sources: async () => [], pick: async () => {}, audioStart: async () => ({ ok: false, excluded: "agenda" }), audioStop: async () => {}, onAudio: noop, onAudioEnd: noop },
   bar: (() => {
     const c: BarConfig = { on: false, height: 64, position: "bottom", keys: true, available: false, active: false }
-    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, hit() {}, preview() {}, previewLeave() {}, previewHover() {}, previewHide() {}, onPreview: noop, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, web: async () => { window.open("https://www.google.com/search") }, onWins: noop, onMax: noop, onSync: noop, onMain: noop }
+    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, hit() {}, preview() {}, previewLeave() {}, previewHover() {}, previewHide() {}, previewReady() {}, onPreview: noop, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", winStart: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, web: async () => { window.open("https://www.google.com/search") }, onWins: noop, onMax: noop, onSync: noop, onMain: noop }
   })(),
   finance: {
     status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),

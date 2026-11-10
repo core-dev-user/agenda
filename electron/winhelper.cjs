@@ -307,7 +307,7 @@ public static class AgWin {
     try { uiRoot.Invoke(a); } catch { }
   }
   /** mostra a miniatura da janela src no retângulo (pixels da tela) */
-  public static void PeekShow(string src, int x, int y, int w, int h) {
+  public static void PeekShow(string src, int x, int y, int w, int h, bool fade) {
     Ui(() => {
       var f = new Peek();
       f.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
@@ -318,9 +318,21 @@ public static class AgWin {
       f.Bounds = new System.Drawing.Rectangle(x, y, w, h);
       f.Show();
       f.Bounds = new System.Drawing.Rectangle(x, y, w, h);
-      SetLayeredWindowAttributes(f.Handle, 0xFE01FF, 255, 0x1 | 0x2);
+      SetLayeredWindowAttributes(f.Handle, 0xFE01FF, (byte)(fade ? 0 : 255), 0x1 | 0x2);
       peeks.Add(f);
       Thumb(f.Handle.ToInt64().ToString(), src, 0, 0, w, h);
+      if (fade) {
+        // aparece junto com a prévia, num esmaecer curto (~110 ms)
+        int a = 0;
+        var tm = new System.Windows.Forms.Timer(); tm.Interval = 15;
+        tm.Tick += (o, e) => {
+          a = Math.Min(255, a + 38);
+          if (f.IsDisposed) { tm.Stop(); tm.Dispose(); return; }
+          SetLayeredWindowAttributes(f.Handle, 0xFE01FF, (byte)a, 0x1 | 0x2);
+          if (a >= 255) { tm.Stop(); tm.Dispose(); }
+        };
+        tm.Start();
+      }
     });
   }
   public static void PeekHide() {
@@ -330,6 +342,9 @@ public static class AgWin {
       peeks.Clear();
     });
   }
+
+  /** abre o Iniciar do Windows (a tecla Windows "apertada" por programa; o atalho do Agenda deixa essa passar) */
+  public static void WinStart() { keybd_event(0x5B, 0, 1, UIntPtr.Zero); keybd_event(0x5B, 0, 1 | 2, UIntPtr.Zero); }
 
   public static void Minimize(string s) { ShowWindow(H(s), 6); }
   public static void Close(string s) { PostMessage(H(s), 0x0010, IntPtr.Zero, IntPtr.Zero); }
@@ -366,8 +381,9 @@ while ($true) {
     'close'    { [AgWin]::Close($a[1]) }
     'thumb'    { [AgWin]::Thumb($a[1], $a[2], [int]$a[3], [int]$a[4], [int]$a[5], [int]$a[6]) }
     'unthumb'  { [AgWin]::UnThumb() }
-    'pshow'    { [AgWin]::PeekShow($a[1], [int]$a[2], [int]$a[3], [int]$a[4], [int]$a[5]) }
+    'pshow'    { [AgWin]::PeekShow($a[1], [int]$a[2], [int]$a[3], [int]$a[4], [int]$a[5], ($a[6] -eq '1')) }
     'phide'    { [AgWin]::PeekHide() }
+    'winstart' { [AgWin]::WinStart() }
     'icon'     { $out = [AgWin]::Icon($l.Substring(5).Trim(), 48); if (-not $out) { $out = 'none' } }
     'desktop'  { (New-Object -ComObject Shell.Application).ToggleDesktop() }
   }

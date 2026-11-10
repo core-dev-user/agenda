@@ -244,6 +244,8 @@ function create() {
   // a barra do Windows leva um instante para se esconder: registra de novo depois, já sem ela ocupando espaço
   setTimeout(() => { for (const b of bars.values()) b.__appbar = ""; layout() }, 2500)
   poll = setInterval(tick, 1000)
+  // deixa a prévia pronta (janela carregada e o ajudante das miniaturas aberto): aparece sem esperar na 1ª vez
+  setTimeout(() => { previewWin(); winh.call("phide") }, 3000)
   for (const ev of ["display-added", "display-removed"]) screen.on(ev, rebuild)
   screen.on("display-metrics-changed", onMetrics)
   syncKeys()
@@ -334,6 +336,7 @@ function hidePreview() {
   clearTimeout(previewT); previewT = null
   if (!previewKey) return
   previewKey = ""
+  previewGo = null
   winh.call("phide")
   if (preview && !preview.isDestroyed()) preview.hide()
 }
@@ -361,19 +364,38 @@ function showPreview(barWin, items, anchor) {
   w.setBounds({ x, y, width: W, height: H })
   // retângulo de cada miniatura (o mesmo que a página desenha)
   const tiles = list.map((it, i) => ({ ...it, x: PAD + i * TILE_W, y: PAD, w: TILE_W, head: HEAD, thumb: { x: PAD + i * TILE_W + 8, y: PAD + HEAD, w: TILE_W - 16, h: THUMB_H - 8 } }))
-  w.webContents.send("preview:data", { tiles })
-  const go = () => {
-    if (previewKey !== key || w.isDestroyed()) return
-    w.showInactive()
+  // a página desenha os quadros e avisa (preview:ready); só então a janela e as miniaturas aparecem — juntas
+  const seq = ++previewSeq
+  const wasOpen = w.isVisible()
+  previewGo = (got) => {
+    if (got !== seq || previewKey !== key || w.isDestroyed()) return
+    previewGo = null
     winh.call("phide")
+    const fade = !wasOpen // trocando de um programa para outro com a prévia aberta: troca na hora
+    if (fade) { w.setOpacity(0); fadeIn(w) }
+    w.showInactive()
     for (const t of tiles) {
       // retângulo da miniatura na tela, em pixels reais
       const p = screen.dipToScreenRect(null, { x: x + t.thumb.x, y: y + t.thumb.y, width: t.thumb.w, height: t.thumb.h })
-      winh.call(`pshow ${t.h} ${p.x} ${p.y} ${p.width} ${p.height}`)
+      winh.call(`pshow ${t.h} ${p.x} ${p.y} ${p.width} ${p.height} ${fade ? 1 : 0}`)
     }
   }
-  if (w.webContents.isLoading()) w.webContents.once("did-finish-load", () => { w.webContents.send("preview:data", { tiles }); go() })
-  else go()
+  const send = () => w.webContents.send("preview:data", { tiles, seq })
+  if (w.webContents.isLoading()) w.webContents.once("did-finish-load", send)
+  else send()
+}
+let previewSeq = 0
+let previewGo = null
+let fadeT = null
+function fadeIn(w) {
+  clearInterval(fadeT)
+  let o = 0
+  fadeT = setInterval(() => {
+    o = Math.min(1, o + 0.15)
+    if (w.isDestroyed()) return clearInterval(fadeT)
+    w.setOpacity(o)
+    if (o >= 1) clearInterval(fadeT)
+  }, 15)
 }
 /** saiu do botão: espera um pouco (pode estar indo para a prévia) */
 function leavePreview() {
@@ -495,6 +517,7 @@ function register(ipcMain, mainGetter) {
   ipcMain.on("bar:previewLeave", () => leavePreview())
   ipcMain.on("preview:hover", (_e, on) => { previewHover = !!on; if (on) clearTimeout(previewT); else leavePreview() })
   ipcMain.on("preview:hide", () => hidePreview())
+  ipcMain.on("preview:ready", (_e, seq) => { if (previewGo) previewGo(seq) })
   ipcMain.handle("bar:click", (_e, h, wasMin) => {
     hidePreview()
     if (h === lastFg && !wasMin) return winh.call("minimize " + h)
@@ -503,6 +526,7 @@ function register(ipcMain, mainGetter) {
   })
   ipcMain.handle("bar:win", (_e, cmd, h) => { if (["activate", "minimize", "close"].includes(cmd) && /^\d+$/.test(String(h))) return winh.call(cmd + " " + h) })
   ipcMain.handle("bar:desktop", () => winh.call("desktop"))
+  ipcMain.handle("bar:winstart", () => { closeMenu(); hidePreview(); return winh.call("winstart") })
   ipcMain.handle("bar:peek", (_e, on) => winh.call("peek " + (on ? 1 : 0)))
   ipcMain.handle("bar:apps", () => startApps())
   ipcMain.handle("bar:icon", (_e, file) => iconOf(String(file || "")))
