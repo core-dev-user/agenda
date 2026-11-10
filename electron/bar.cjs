@@ -32,10 +32,12 @@ let poll = null
 const hiddenOn = new Set() // monitores com jogo/vídeo em tela cheia: a barra some
 
 /** jeito da barra: vem de Configurações › Barra de tarefas do Agenda (guardado aqui para já abrir certo) */
-const TB = { position: "bottom", style: "dock", size: 56, autoHide: false, magnify: true, showLabels: false }
+const TB = { position: "bottom", style: "dock", size: 56, autoHide: false, magnify: true, showLabels: false, smartHide: true }
 const tb = () => ({ ...TB, ...(cfg.tb || {}) })
 /** a janela transparente (dock/pílula) ou acrílica (barra) muda o tipo da janela: precisa recriar */
-const clear = (t) => t.style !== "bar" || t.autoHide // janela transparente (dock, pílula ou barra que se esconde)
+const clear = (t) => t.style !== "bar" || t.autoHide || t.smartHide !== false // janela transparente (dock, pílula ou barra que se esconde)
+/** monitores com uma janela maximizada (ex.: Chrome): a barra se esconde e a janela usa a tela inteira */
+const maxOn = new Set()
 const kindOf = (t) => (clear(t) ? "clear" : "glass") + ":" + (t.position === "left" || t.position === "right" ? "v" : "h")
 
 function rects(d) {
@@ -45,7 +47,7 @@ function rects(d) {
   const isDock = t.style !== "bar"
   // espessura que a barra ocupa de verdade (reservada para as janelas não ficarem embaixo)
   const band = size + 16 + (isDock ? 12 : 0)
-  const reserve = t.autoHide ? 0 : band
+  const reserve = t.autoHide || maxOn.has(d.id) ? 0 : band
   // espaço extra (transparente, deixa o clique passar) para a lupa e as legendas da dock
   const T = band + (isDock ? Math.round(size * 0.35) + 44 : 0)
   const pos = t.position
@@ -146,6 +148,17 @@ async function tick() {
   let j
   try { j = JSON.parse(raw) } catch { return }
   const own = process.execPath.toLowerCase()
+  // janelas maximizadas por monitor (esconder a barra e deixar a janela ocupar a tela toda)
+  const maxNow = new Set()
+  if (tb().smartHide !== false) for (const w of j.wins) {
+    if (!w.z || (w.exe || "").toLowerCase() === own) continue
+    maxNow.add(screen.getDisplayNearestPoint(screen.screenToDipPoint({ x: w.z[0] + 1, y: w.z[1] + 1 })).id)
+  }
+  if ([...maxNow].sort().join() !== [...maxOn].sort().join()) {
+    maxOn.clear(); for (const id of maxNow) maxOn.add(id)
+    for (const [id, b] of bars) if (!b.isDestroyed()) b.webContents.send("bar:max", maxOn.has(id))
+    layout()
+  }
   const wins = []
   for (const w of j.wins) {
     if ((w.exe || "").toLowerCase() === own) continue
@@ -192,6 +205,7 @@ function makeBar(d) {
   b.__dock = dock
   page(b, { view: "bar" })
   b.once("ready-to-show", () => { if (!b.isDestroyed() && !hiddenOn.has(d.id)) b.showInactive() })
+  b.webContents.on("did-finish-load", () => { if (!b.isDestroyed()) b.webContents.send("bar:max", maxOn.has(d.id)) })
   b.on("closed", () => { if (bars.get(d.id) === b) bars.delete(d.id) })
   bars.set(d.id, b)
 }

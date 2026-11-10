@@ -17,6 +17,7 @@ public static class AgWin {
   [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
   [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+  [DllImport("user32.dll")] static extern bool IsZoomed(IntPtr h);
   [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint c);
   [DllImport("user32.dll", EntryPoint="GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr h, int i);
   [DllImport("user32.dll", EntryPoint="SetWindowLongPtrW")] static extern IntPtr SetWindowLongPtr(IntPtr h, int i, IntPtr v);
@@ -172,21 +173,23 @@ public static class AgWin {
     Heal();
     var sb = new StringBuilder();
     IntPtr fg = GetForegroundWindow();
-    bool full = false;
-    int fl = 0, ft = 0; // canto do monitor onde está a janela em tela cheia
+    bool full = false, zoomed = false;
+    int fl = 0, ft = 0; // canto do monitor da janela da frente
     if (fg != IntPtr.Zero) {
       string c = Cls(fg);
       if (c != "Progman" && c != "WorkerW" && c != "Shell_TrayWnd") {
         RECT r; GetWindowRect(fg, out r);
         var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
         if (GetMonitorInfo(MonitorFromWindow(fg, 2), ref mi)) {
-          full = r.L <= mi.rcMonitor.L && r.T <= mi.rcMonitor.T && r.R >= mi.rcMonitor.R && r.B >= mi.rcMonitor.B;
+          // maximizada (ex.: Chrome) não é tela cheia: as bordas dela também passam da tela
+          zoomed = IsZoomed(fg);
+          full = !zoomed && r.L <= mi.rcMonitor.L && r.T <= mi.rcMonitor.T && r.R >= mi.rcMonitor.R && r.B >= mi.rcMonitor.B;
           fl = mi.rcMonitor.L; ft = mi.rcMonitor.T;
         }
       }
     }
     sb.Append("{\"fg\":\"").Append(fg.ToInt64()).Append("\",\"full\":").Append(full ? "true" : "false")
-      .Append(",\"fl\":").Append(fl).Append(",\"ft\":").Append(ft).Append(",\"wins\":[");
+      .Append(",\"fz\":").Append(zoomed ? "true" : "false").Append(",\"fl\":").Append(fl).Append(",\"ft\":").Append(ft).Append(",\"wins\":[");
     bool first = true;
     EnumWindows((h, l) => {
       if (!IsWindowVisible(h) || GetWindow(h, 4) != IntPtr.Zero) return true;
@@ -203,7 +206,13 @@ public static class AgWin {
       if (!first) sb.Append(',');
       first = false;
       sb.Append("{\"h\":\"").Append(h.ToInt64()).Append("\",\"t\":\"").Append(Esc(t.ToString())).Append("\",\"pid\":").Append(pid)
-        .Append(",\"exe\":\"").Append(Esc(Exe(pid))).Append("\",\"min\":").Append(IsIconic(h) ? "true" : "false").Append('}');
+        .Append(",\"exe\":\"").Append(Esc(Exe(pid))).Append("\",\"min\":").Append(IsIconic(h) ? "true" : "false");
+      // maximizada e em qual monitor (a barra se esconde no monitor que tem janela maximizada)
+      if (IsZoomed(h) && !IsIconic(h)) {
+        var wm = new MONITORINFO(); wm.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+        if (GetMonitorInfo(MonitorFromWindow(h, 2), ref wm)) sb.Append(",\"z\":[").Append(wm.rcMonitor.L).Append(',').Append(wm.rcMonitor.T).Append(']');
+      }
+      sb.Append('}');
       return true;
     }, IntPtr.Zero);
     sb.Append("]}");

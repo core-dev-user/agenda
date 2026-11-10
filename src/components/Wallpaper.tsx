@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react"
 import { useSettings } from "@/lib/store"
 import { mediaUrl } from "@/lib/bridge"
+import { perfPaused } from "@/lib/perf"
 import { LockClock, LOCK_DEFAULT } from "./LockClock"
 import { SakuraCanvas } from "./SakuraCanvas"
 
@@ -66,17 +67,36 @@ export function Wallpaper() {
   const fg = lock?.depth && wp.type === "image" && wp.fg && wp.fgFor === wp.image ? wp.fg : null
   const filter = [wp.blur ? `blur(${wp.blur}px)` : "", wp.dim ? `brightness(${1 - wp.dim})` : ""].filter(Boolean).join(" ") || undefined
 
+  const anim = wp.type === "video" && wp.video ? wp.video : null
   return (
     <div className="absolute inset-0 overflow-hidden">
       {/* camadas que se movem juntas (parallax): fundo → relógio → assunto na frente */}
       <div ref={layer} className="absolute -inset-4 will-change-transform" style={{ transform: "scale(1.05)" }}>
-        <div className="absolute inset-0" style={{ ...bg, filter }} />
+        {anim ? <AnimWall file={anim} filter={filter} /> : <div className="absolute inset-0" style={{ ...bg, filter }} />}
         {lock && <LockClock c={lock} />}
         {fg && <div className="absolute inset-0" style={{ backgroundImage: `url("${mediaUrl(fg)}")`, backgroundSize: "cover", backgroundPosition: "center", filter }} />}
       </div>
       {s.sakura.ambient && !s.perfLite && <SakuraCanvas density={s.sakura.density} />}
     </div>
   )
+}
+
+/** papel de parede animado: vídeo (sem som, repetindo) ou GIF. O vídeo pausa durante jogos e com o Agenda escondido. */
+function AnimWall({ file, filter }: { file: string; filter?: string }) {
+  const ref = useRef<HTMLVideoElement>(null)
+  const isGif = /\.gif$/i.test(file)
+  useEffect(() => {
+    if (isGif) return
+    const v = ref.current
+    if (!v) return
+    const sync = () => { if (perfPaused() || document.hidden) v.pause(); else v.play().catch(() => {}) }
+    const id = setInterval(sync, 1500)
+    document.addEventListener("visibilitychange", sync)
+    sync()
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", sync) }
+  }, [file, isGif])
+  if (isGif) return <img src={mediaUrl(file)} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" style={{ filter }} />
+  return <video ref={ref} src={mediaUrl(file)} autoPlay loop muted playsInline disablePictureInPicture className="absolute inset-0 h-full w-full object-cover" style={{ filter }} />
 }
 
 export function Overlays() {

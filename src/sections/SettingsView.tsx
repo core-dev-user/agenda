@@ -288,12 +288,17 @@ function IconsSection() {
           <Segmented value={s.iconShape} onChange={(v) => set({ iconShape: v })} options={[{ value: "squircle", label: "Arredondado" }, { value: "circle", label: "Círculo" }, { value: "square", label: "Quadrado" }]} />
         </div>
       </div>
-      <div className="pt-3 text-sm">Cor de cada app</div>
+      <div className="pt-3 text-sm">Cada app: cor e se aparece na barra de tarefas</div>
       <div className="grid grid-cols-2 gap-2 pt-1">
         {SECTIONS.map((sec) => (
-          <div key={sec.id} className="flex items-center gap-3 rounded-xl border border-line p-2">
+          <div key={sec.id} className={cn("flex items-center gap-3 rounded-xl border border-line p-2 transition-opacity", s.taskbar.hide?.includes(sec.id) && "opacity-60")}>
             <AppIcon id={sec.id} size={30} />
             <span className="flex-1 text-sm">{sec.label}</span>
+            <MiniSwitch
+              on={!s.taskbar.hide?.includes(sec.id)}
+              title={s.taskbar.hide?.includes(sec.id) ? "Fora da barra de tarefas (clique para mostrar)" : "Na barra de tarefas (clique para tirar)"}
+              onChange={(v) => { const h = new Set(s.taskbar.hide ?? []); if (v) h.delete(sec.id); else h.add(sec.id); set({ taskbar: { ...s.taskbar, hide: [...h] } }) }}
+            />
             <label className="clickable relative h-7 w-7 cursor-pointer overflow-hidden rounded-full border border-line" style={{ background: sectionColor(s, sec.id) }} title="Escolher cor">
               <input type="color" className="absolute inset-0 opacity-0" value={sectionColor(s, sec.id)} onChange={(e) => set({ iconColors: { ...s.iconColors, [sec.id]: e.target.value } })} />
             </label>
@@ -327,6 +332,7 @@ function TaskbarTab() {
           options={[{ value: "show", label: "Sempre visível" }, { value: "hide", label: "Escondida — aparece ao passar o mouse na borda" }]}
         />
         {tb.autoHide && <div className="mt-1.5 text-xs text-fg-muted">Leve o mouse até a borda da tela (onde está a linha brilhante) para a barra subir. Ela se esconde sozinha quando o mouse sai.</div>}
+        {!tb.autoHide && <Switch label="Esconder a barra do PC quando um programa estiver maximizado (ele usa a tela toda; a barra volta ao encostar o mouse na borda)" checked={tb.smartHide !== false} onChange={(v) => p({ smartHide: v })} />}
       </div>
       <Slider label="Tamanho dos ícones" value={tb.size} min={36} max={84} onChange={(v) => p({ size: v })} format={(v) => v + "px"} />
       <Switch label="Ampliar ícones ao passar o mouse (efeito Mac)" checked={tb.magnify} onChange={(v) => p({ magnify: v })} />
@@ -337,6 +343,21 @@ function TaskbarTab() {
   )
 }
 
+/** interruptor pequeno (cabe na linha de cada app) */
+function MiniSwitch({ on, onChange, title }: { on: boolean; onChange: (v: boolean) => void; title?: string }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={on}
+      title={title}
+      onClick={() => onChange(!on)}
+      className={cn("relative h-5 w-9 shrink-0 rounded-full transition-colors", on ? "bg-brand" : "bg-[color-mix(in_srgb,var(--fg)_18%,transparent)]")}
+    >
+      <span className={cn("absolute top-0.5 size-4 rounded-full bg-white shadow transition-all", on ? "left-[18px]" : "left-0.5")} />
+    </button>
+  )
+}
+
 /** o que aparece na barra: abas do Agenda, botões e programas do Windows — cada um liga/desliga */
 const BAR_BUTTONS: { id: string; label: string; pcOnly?: boolean }[] = [
   { id: "widgets", label: "Adicionar widget" },
@@ -344,7 +365,7 @@ const BAR_BUTTONS: { id: string; label: string; pcOnly?: boolean }[] = [
   { id: "bell", label: "Avisos" },
   { id: "clock", label: "Relógio" },
   { id: "tray", label: "Ícones do Windows (perto do relógio)", pcOnly: true },
-  { id: "corner", label: "Canto que mostra a área de trabalho (mouse no canto da barra e clicar)", pcOnly: true },
+  { id: "corner", label: "Botão na ponta da barra que mostra a área de trabalho", pcOnly: true },
 ]
 function BarItemsSection() {
   const [s, set] = useS()
@@ -359,16 +380,8 @@ function BarItemsSection() {
   const pins = s.pcPins ?? []
   return (
     <Section title="O que aparece na barra" desc="Ligue ou desligue cada item. Vale para a barra do Agenda e, com ela no lugar da barra do Windows, para a barra do PC.">
-      <div className="mb-1 text-sm">Abas do Agenda</div>
-      <div className="grid grid-cols-2 gap-1.5">
-        {SECTIONS.map((sec) => (
-          <div key={sec.id} className="flex items-center gap-2.5 rounded-xl border border-line px-2 py-1">
-            <AppIcon id={sec.id} size={26} />
-            <div className="min-w-0 flex-1"><Switch label={sec.label} checked={!hide.has(sec.id)} onChange={(v) => toggle(sec.id, v)} /></div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 mb-1 text-sm">Botões</div>
+      <div className="mb-1 text-xs text-fg-muted">As abas do Agenda ligam e desligam lá em cima, junto da cor de cada app.</div>
+      <div className="mt-2 mb-1 text-sm">Botões</div>
       {BAR_BUTTONS.filter((b) => !b.pcOnly || pcBar).map((b) => (
         <Switch key={b.id} label={b.label} checked={!hide.has(b.id)} onChange={(v) => toggle(b.id, v)} />
       ))}
@@ -404,7 +417,7 @@ function WallpaperTab() {
   return (
     <>
       <Section title="Fundo">
-        <Segmented value={wp.type} onChange={(v) => p({ type: v })} options={[{ value: "gradient", label: "Degradê" }, { value: "image", label: "Imagem" }, { value: "color", label: "Cor sólida" }]} />
+        <Segmented value={wp.type} onChange={(v) => p({ type: v })} options={[{ value: "gradient", label: "Degradê" }, { value: "image", label: "Imagem" }, { value: "color", label: "Cor sólida" }, { value: "video", label: "Vídeo ou GIF" }]} />
         <div className="pt-3">
           {wp.type === "gradient" && (
             <div className="grid grid-cols-3 gap-3">
@@ -428,6 +441,19 @@ function WallpaperTab() {
               </div>
               <LivingStudio m={living ? current : null} onClose={() => setLiving(false)} />
               <MediaPicker open={pick} onClose={() => setPick(false)} onPick={([id]) => { const m = media.find((x) => x.id === id); if (m) p({ image: m.file }) }} />
+            </div>
+          )}
+          {wp.type === "video" && (
+            <div className="flex items-center gap-4">
+              {wp.video
+                ? /\.gif$/i.test(wp.video)
+                  ? <img src={mediaUrl(wp.video)} className="h-28 w-48 rounded-xl object-cover" />
+                  : <video src={mediaUrl(wp.video)} autoPlay loop muted playsInline className="h-28 w-48 rounded-xl object-cover" />
+                : <div className="flex h-28 w-48 items-center justify-center rounded-xl border border-dashed border-line text-sm text-fg-muted">Nenhum</div>}
+              <div className="flex flex-col gap-2">
+                <ThemedButton size="sm" onClick={async () => { const r = await bridge.media.wallAnim(); if (r) p({ video: r.file, type: "video" }) }}>Escolher vídeo ou GIF</ThemedButton>
+                <span className="max-w-[260px] text-xs text-fg-muted">MP4, WebM, MOV ou GIF. O vídeo fica sem som, repete sozinho e pausa durante jogos para não pesar.</span>
+              </div>
             </div>
           )}
           {wp.type === "color" && <ColorPicker value={wp.color} onChange={(v) => p({ color: v })} swatches={["#1a1020", "#0b0710", "#008080", "#202830", "#2b1055", "#f6e8ee", "#000000"]} />}

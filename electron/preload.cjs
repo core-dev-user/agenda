@@ -78,6 +78,7 @@ contextBridge.exposeInMainWorld("agenda", {
     power: (kind) => ipcRenderer.invoke("bar:power", kind),
     web: (q) => ipcRenderer.invoke("bar:web", q),
     onWins: on("bar:wins"),
+    onMax: on("bar:max"),
     onSync: on("bar:sync"),
     onMain: on("bar:main"),
   },
@@ -109,6 +110,7 @@ contextBridge.exposeInMainWorld("agenda", {
   },
   media: {
     import: () => ipcRenderer.invoke("media:import"),
+    wallAnim: () => ipcRenderer.invoke("media:wallAnim"),
     remove: (file) => ipcRenderer.invoke("media:delete", file),
     open: (file) => ipcRenderer.invoke("media:open", file),
     attach: (kind) => ipcRenderer.invoke("media:attach", kind),

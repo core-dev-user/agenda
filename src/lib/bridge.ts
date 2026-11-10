@@ -84,6 +84,8 @@ export interface AgendaBridge {
     /** pesquisa no navegador */
     web(q: string): Promise<void>
     onWins(cb: (d: { wins: PcWindow[]; fg: string }) => void): Unsub
+    /** este monitor tem uma janela maximizada: a barra se esconde até o mouse encostar na borda */
+    onMax(cb: (on: boolean) => void): Unsub
     onSync(cb: (d: BarSync) => void): Unsub
     onMain(cb: (m: BarToMain) => void): Unsub
   }
@@ -106,6 +108,8 @@ export interface AgendaBridge {
   }
   media: {
     import(): Promise<{ file: string; name: string; width: number; height: number; animated?: boolean }[]>
+    /** escolhe um vídeo ou GIF para o papel de parede (copia para a pasta do app) */
+    wallAnim(): Promise<{ file: string; name: string } | null>
     saveAnimation(p: { width: number; height: number; frames: Uint8Array; delay: number; name: string; loopName?: string }): Promise<{ file: string; name: string; width: number; height: number; animated?: boolean }>
     remove(file: string): Promise<void>
     /** abre no programa padrão do Windows */
@@ -197,7 +201,7 @@ export interface BarSync {
   /** papel de parede (para o fundo dos outros monitores) */
   wall?: { bg: string; filter?: string }
   /** a barra de tarefas do Agenda (Configurações › Barra de tarefas) */
-  tb?: { position: "bottom" | "top" | "left" | "right"; style: "dock" | "bar" | "floating"; size: number; autoHide: boolean; magnify: boolean; showLabels: boolean; hide?: string[]; pcOpen?: boolean }
+  tb?: { position: "bottom" | "top" | "left" | "right"; style: "dock" | "bar" | "floating"; size: number; autoHide: boolean; magnify: boolean; showLabels: boolean; hide?: string[]; pcOpen?: boolean; smartHide?: boolean }
   locked?: boolean
   icons?: { iconStyle: string; theme: string; iconShape?: string; iconColors?: Record<string, string> }
   /** abas do Agenda abertas (para o pontinho e o destaque na barra) */
@@ -326,7 +330,7 @@ const browserFallback: AgendaBridge = {
   share: { sources: async () => [], pick: async () => {}, audioStart: async () => ({ ok: false, excluded: "agenda" }), audioStop: async () => {}, onAudio: noop, onAudioEnd: noop },
   bar: (() => {
     const c: BarConfig = { on: false, height: 64, position: "bottom", keys: true, available: false, active: false }
-    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, hit() {}, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, web: async () => { window.open("https://www.google.com/search") }, onWins: noop, onSync: noop, onMain: noop }
+    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, hit() {}, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, web: async () => { window.open("https://www.google.com/search") }, onWins: noop, onMax: noop, onSync: noop, onMain: noop }
   })(),
   finance: {
     status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),
@@ -337,6 +341,7 @@ const browserFallback: AgendaBridge = {
   },
   media: {
     import: async () => [],
+    wallAnim: async () => null,
     paste: async () => [],
     importFiles: async () => [],
     edit: async () => { throw new Error("Disponível apenas no app desktop") },

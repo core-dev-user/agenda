@@ -42,6 +42,10 @@ export function SystemBar() {
   const [vw, setVw] = useState({ w: innerWidth, h: innerHeight })
   const [mouse, setMouse] = useState<number | null>(null)
   const [hidden, setHidden] = useState(false)
+  const [max, setMax] = useState(false)
+  useEffect(() => bridge.bar.onMax(setMax), [])
+  // esconde sozinha: sempre (ocultar automaticamente) ou enquanto tem janela maximizada neste monitor
+  const auto = t.autoHide || (t.smartHide !== false && max)
   const dockRef = useRef<HTMLDivElement>(null)
   useEffect(() => bridge.bar.onWins((d) => { setWins(d.wins); setFg(d.fg) }), [])
   useEffect(() => bridge.bar.onMenuState(setMenu), [])
@@ -50,7 +54,7 @@ export function SystemBar() {
 
   // ocultar sozinha: some longe do mouse e volta quando ele encosta na borda da tela
   useEffect(() => {
-    if (!t.autoHide) { setHidden(false); return }
+    if (!auto) { setHidden(false); return }
     if (!menu) setHidden(true)
     let timer: ReturnType<typeof setTimeout> | null = null
     const cancel = () => { if (timer) clearTimeout(timer); timer = null }
@@ -64,7 +68,7 @@ export function SystemBar() {
     window.addEventListener("pointermove", mv)
     document.addEventListener("pointerleave", out)
     return () => { cancel(); window.removeEventListener("pointermove", mv); document.removeEventListener("pointerleave", out) }
-  }, [t.autoHide, pos, t.size, menu])
+  }, [auto, pos, t.size, menu])
 
   // programas do Windows: fixados primeiro (na ordem), depois os abertos — janelas do mesmo programa juntas
   const pins = sync?.pins ?? []
@@ -114,11 +118,9 @@ export function SystemBar() {
 
   const btn = { size, vertical, pos, isDock, magnify }
   const hideOffset = { bottom: { y: size + 40 }, top: { y: -(size + 40) }, left: { x: -(size + 40) }, right: { x: size + 40 } }[pos]
-  const align = { bottom: "items-end justify-center", top: "items-start justify-center", left: "items-center justify-start", right: "items-center justify-end" }[pos]
+  // a barra fica sempre no meio da borda (flex-col: justify = vertical, items = horizontal)
+  const align = { bottom: "justify-end items-center", top: "justify-start items-center", left: "justify-start items-center", right: "justify-end items-center" }[pos]
   const time = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-  // espessura da barra encostada na borda (igual ao espaço que ela reserva) e o canto "mostrar área de trabalho"
-  const band = t.size + 16 + (isDock ? 12 : 0)
-  const corner = { bottom: "right-0 bottom-0", top: "right-0 top-0", left: "left-0 bottom-0", right: "right-0 bottom-0" }[pos]
 
   return (
     <div className={cn("fixed inset-0 flex", vertical ? "flex-row" : "flex-col", align)} onContextMenu={(e) => e.preventDefault()}>
@@ -215,22 +217,19 @@ export function SystemBar() {
             <span className="text-[13px] font-semibold">{time}</span>
             {!isDock && !vertical && <span className="text-[11px] text-fg-muted">{now.toLocaleDateString("pt-BR")}</span>}
           </button>}
+          {/* ponta da barra (como no Windows): clicar mostra a área de trabalho; clicar de novo traz as janelas de volta */}
+          {shows("corner") && (
+            <button
+              className={cn("group flex shrink-0 items-center justify-center rounded-md", vertical ? "h-3 w-full" : "h-[calc(100%-10px)] w-3")}
+              title="Mostrar a área de trabalho"
+              onClick={() => bridge.bar.desktop()}
+            >
+              <span className={cn("rounded-full bg-[color-mix(in_srgb,var(--fg)_22%,transparent)] transition-colors group-hover:bg-[color-mix(in_srgb,var(--fg)_55%,transparent)]", vertical ? "h-[3px] w-1/2" : "h-1/2 w-[3px]")} />
+            </button>
+          )}
         </div>
       </motion.div>
 
-      {/* canto da tela (como no Windows): levar o mouse até o canto e clicar mostra a área de trabalho; clicar de novo traz as janelas de volta */}
-      {shows("corner") && (
-        <button
-          className={cn("group absolute flex items-center justify-center", corner)}
-          style={vertical ? { width: band, height: 14 } : { width: 14, height: band }}
-          title="Mostrar a área de trabalho"
-          onPointerEnter={() => bridge.bar.hit(true)}
-          onPointerLeave={() => bridge.bar.hit(false)}
-          onClick={() => bridge.bar.desktop()}
-        >
-          <span className={cn("rounded-full bg-[color-mix(in_srgb,var(--fg)_0%,transparent)] transition-colors group-hover:bg-[color-mix(in_srgb,var(--fg)_35%,transparent)]", vertical ? "h-1 w-2/3" : "h-2/3 w-1")} />
-        </button>
-      )}
     </div>
   )
 }

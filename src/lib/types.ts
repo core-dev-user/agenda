@@ -40,10 +40,14 @@ export interface Settings {
     hide?: string[]
     /** mostrar os programas do Windows abertos (os fixados aparecem sempre) */
     pcOpen?: boolean
+    /** barra do PC: esconde quando o monitor tem uma janela maximizada (a janela usa a tela toda) */
+    smartHide?: boolean
   }
   wallpaper: {
-    type: "gradient" | "image" | "color"
+    type: "gradient" | "image" | "color" | "video"
     gradient: string
+    /** papel de parede animado: vídeo (mp4/webm/mov) ou GIF */
+    video?: string | null
     color: string
     image: string | null
     blur: number
