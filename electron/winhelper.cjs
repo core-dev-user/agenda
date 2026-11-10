@@ -73,8 +73,18 @@ public static class AgWin {
   // ---- barra do Windows e área livre da tela (em todos os monitores) ----
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr p, IntPtr after, string c, string n);
   [DllImport("user32.dll")] static extern IntPtr MonitorFromRect(ref RECT r, uint f);
+  [DllImport("user32.dll")] static extern bool SetLayeredWindowAttributes(IntPtr h, uint key, byte a, uint f);
+  [DllImport("user32.dll")] static extern IntPtr SendMessageTimeout(IntPtr h, uint m, IntPtr w, IntPtr l, uint f, uint ms, out IntPtr r);
+  [StructLayout(LayoutKind.Sequential)] struct ABD { public int cb; public IntPtr h; public uint cbm; public uint edge; public RECT rc; public IntPtr lp; }
+  [DllImport("shell32.dll")] static extern IntPtr SHAppBarMessage(uint m, ref ABD d);
+  static int AbState() { var d = new ABD(); d.cb = Marshal.SizeOf(d); return SHAppBarMessage(4, ref d).ToInt32(); }
+  static void AbSet(int st) { var d = new ABD(); d.cb = Marshal.SizeOf(d); d.lp = new IntPtr(st); SHAppBarMessage(10, ref d); }
+
+  // A barra do Windows não é escondida (o Explorer mostra de novo na hora): fica em "ocultar automaticamente"
+  // (não reserva espaço) e invisível + sem receber cliques. Tudo volta como era no Restore.
   static bool tbHidden = false;
-  // área livre original de cada monitor (para devolver) e a que o Agenda quer
+  static int abOrig = -1;
+  static Dictionary<long, long> exOrig = new Dictionary<long, long>();
   static Dictionary<long, RECT> origs = new Dictionary<long, RECT>();
   static Dictionary<long, RECT> wants = new Dictionary<long, RECT>();
   static List<IntPtr> Trays() {
@@ -85,33 +95,77 @@ public static class AgWin {
     }
     return l;
   }
-  static void Tray(bool show) { foreach (var t in Trays()) ShowWindow(t, show ? 5 : 0); }
+  static void Ghost(IntPtr t, bool on) {
+    long k = t.ToInt64();
+    long ex = GetWindowLongPtr(t, -20).ToInt64();
+    if (on) {
+      if ((ex & 0x80020) == 0x80020) return;
+      if (!exOrig.ContainsKey(k)) exOrig[k] = ex;
+      SetWindowLongPtr(t, -20, new IntPtr(ex | 0x80000 | 0x20));
+      SetLayeredWindowAttributes(t, 0, 0, 2);
+    } else {
+      long o;
+      // Agenda fechou à força numa vez anterior: tira o "invisível" mesmo sem saber o estilo de antes
+      if (!exOrig.TryGetValue(k, out o)) { if ((ex & 0x80020) != 0x80020) return; o = ex & ~0x80020L; }
+      SetLayeredWindowAttributes(t, 0, 255, 2);
+      SetWindowLongPtr(t, -20, new IntPtr(o));
+      exOrig.Remove(k);
+    }
+  }
+  static void Tray(bool show) {
+    if (!show && abOrig < 0) abOrig = AbState();
+    if (abOrig >= 0) AbSet(show ? abOrig : (abOrig | 1));
+    foreach (var t in Trays()) Ghost(t, !show);
+    if (show) abOrig = -1;
+  }
   static RECT WorkOf(IntPtr mon) { var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO)); GetMonitorInfo(mon, ref mi); return mi.rcWork; }
-  public static void HideTaskbar() { tbHidden = true; Tray(false); }
+  /** grava a área livre sem esperar programas travados (um jogo pode não responder ao aviso) */
+  static void Work(ref RECT w) {
+    SystemParametersInfo(0x2F, 0, ref w, 0);
+    IntPtr r; SendMessageTimeout(new IntPtr(0xffff), 0x1A, new IntPtr(0x2F), IntPtr.Zero, 0x0002, 200, out r);
+  }
+  /** devolve o estado original da barra do Windows (o Agenda guarda, caso feche à força) */
+  public static string HideTaskbar() { tbHidden = true; Tray(false); return abOrig.ToString(); }
   public static void SetWork(int l, int t, int r, int b) {
     var w = new RECT(); w.L = l; w.T = t; w.R = r; w.B = b;
     IntPtr mon = MonitorFromRect(ref w, 2);
     long k = mon.ToInt64();
     if (!origs.ContainsKey(k)) origs[k] = WorkOf(mon);
     wants[k] = w;
-    SystemParametersInfo(0x2F, 0, ref w, 2);
+    Work(ref w);
   }
-  public static void Restore() {
+  // ---- barras do Agenda registradas como AppBar: o próprio Windows reserva o espaço delas ----
+  static HashSet<long> appbars = new HashSet<long>();
+  public static void AppBar(string hs, int l, int t, int r, int b, uint edge) {
+    IntPtr h = H(hs);
+    var d = new ABD(); d.cb = Marshal.SizeOf(d); d.h = h;
+    if (!appbars.Contains(h.ToInt64())) { d.cbm = 0x8000 + 77; SHAppBarMessage(0, ref d); appbars.Add(h.ToInt64()); }
+    d.edge = edge; d.rc.L = l; d.rc.T = t; d.rc.R = r; d.rc.B = b;
+    SHAppBarMessage(3, ref d); // ABM_SETPOS
+  }
+  public static void UnAppBar(string hs) {
+    IntPtr h = H(hs);
+    if (!appbars.Remove(h.ToInt64())) return;
+    var d = new ABD(); d.cb = Marshal.SizeOf(d); d.h = h; SHAppBarMessage(1, ref d);
+  }
+  public static void Restore(int fallback) {
+    foreach (var k in new List<long>(appbars)) UnAppBar(k.ToString());
+    if (abOrig < 0 && fallback >= 0) abOrig = fallback;
     tbHidden = false;
     wants.Clear();
     Tray(true);
-    foreach (var o in origs.Values) { RECT r = o; SystemParametersInfo(0x2F, 0, ref r, 2); }
+    foreach (var o in origs.Values) { RECT r = o; Work(ref r); }
     origs.Clear();
   }
-  /** o Explorer às vezes mostra a barra de novo ou devolve a área: reaplica */
+  /** o Explorer às vezes recria a barra ou devolve a área: reaplica */
   static void Heal() {
-    if (tbHidden) foreach (var t in Trays()) if (IsWindowVisible(t)) ShowWindow(t, 0);
+    if (tbHidden) foreach (var t in Trays()) Ghost(t, true);
     foreach (var kv in wants) {
       RECT cur = WorkOf(new IntPtr(kv.Key)); RECT w = kv.Value;
-      if (cur.L != w.L || cur.T != w.T || cur.R != w.R || cur.B != w.B) SystemParametersInfo(0x2F, 0, ref w, 2);
+      if (cur.L != w.L || cur.T != w.T || cur.R != w.R || cur.B != w.B) Work(ref w);
     }
   }
-  public static void PeekTray(bool show) { Tray(show); tbHidden = !show; }
+  public static void PeekTray(bool show) { if (show == !tbHidden) return; Tray(show); tbHidden = !show; }
 
   // ---- janelas abertas ----
   public static string List() {
@@ -186,9 +240,11 @@ while ($true) {
   switch ($a[0]) {
     'own'      { [AgWin]::Own($a[1]) }
     'bottom'   { [AgWin]::Bottom($a[1]) }
-    'hidetb'   { [AgWin]::HideTaskbar() }
+    'hidetb'   { $out = [AgWin]::HideTaskbar() }
     'work'     { [AgWin]::SetWork([int]$a[1], [int]$a[2], [int]$a[3], [int]$a[4]) }
-    'restore'  { [AgWin]::Restore() }
+    'restore'  { $st = -1; if ($a.Length -gt 1) { $st = [int]$a[1] }; [AgWin]::Restore($st) }
+    'appbar'   { [AgWin]::AppBar($a[1], [int]$a[2], [int]$a[3], [int]$a[4], [int]$a[5], [uint32]$a[6]) }
+    'unappbar' { [AgWin]::UnAppBar($a[1]) }
     'peek'     { [AgWin]::PeekTray($a[1] -eq '1') }
     'list'     { $out = [AgWin]::List() }
     'activate' { [AgWin]::Activate($a[1]) }
@@ -199,7 +255,7 @@ while ($true) {
   $out
 }
 # o Agenda fechou (ou travou): devolve a barra do Windows
-[AgWin]::Restore()
+[AgWin]::Restore(-1)
 `
 
 let proc = null

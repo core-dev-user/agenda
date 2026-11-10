@@ -49,11 +49,16 @@ const displayOfWin = (w) => {
 /** reserva a área da barra em cada monitor (em pixels reais) e reposiciona tudo */
 function layout() {
   for (const d of screen.getAllDisplays()) {
-    const { barRect, work } = rects(d)
+    const { barRect, work, top } = rects(d)
     const b = bars.get(d.id)
-    if (b && !b.isDestroyed()) b.setBounds(barRect)
-    const p = screen.dipToScreenRect(null, work)
-    winh.call(`work ${p.x} ${p.y} ${p.x + p.width} ${p.y + p.height}`)
+    if (b && !b.isDestroyed()) {
+      b.setBounds(barRect)
+      // registra a barra como AppBar: o Windows tira o espaço dela da área livre daquele monitor
+      // (só quando muda: cada registro faz o Windows avisar que a tela mudou, o que chama layout de novo)
+      const p = screen.dipToScreenRect(null, barRect)
+      const cmd = `appbar ${winh.hwndOf(b)} ${p.x} ${p.y} ${p.x + p.width} ${p.y + p.height} ${top ? 1 : 3}`
+      if (b.__appbar !== cmd) { b.__appbar = cmd; winh.call(cmd) }
+    }
     const k = desks.get(d.id)
     if (k && !k.isDestroyed()) k.setBounds(work)
   }
@@ -92,6 +97,9 @@ async function tick() {
   const fullId = j.full && !menu ? screen.getDisplayNearestPoint(screen.screenToDipPoint({ x: j.fl + 1, y: j.ft + 1 })).id : null
   for (const [id, b] of bars) {
     if (b.isDestroyed()) continue
+    // o Windows às vezes empurra a barra para dentro da área livre: devolve para a borda
+    const d = screen.getAllDisplays().find((x) => x.id === id)
+    if (d) { const want = rects(d).barRect, cur = b.getBounds(); if (cur.x !== want.x || cur.y !== want.y || cur.width !== want.width || cur.height !== want.height) b.setBounds(want) }
     const hide = id === fullId
     if (hide !== hiddenOn.has(id)) { if (hide) { hiddenOn.add(id); b.hide() } else { hiddenOn.delete(id); b.showInactive() } }
     b.webContents.send("bar:wins", { wins, fg: lastFg })
@@ -144,9 +152,11 @@ function create() {
     makeBar(d)
     if (d.id !== main) makeDesk(d)
   }
-  winh.call("hidetb")
+  winh.call("hidetb").then((st) => { if (/^\d+$/.test(st) && cfg.abState == null) { cfg.abState = Number(st); save() } })
   cfg.hidTaskbar = true; save()
   layout()
+  // a barra do Windows leva um instante para se esconder: registra de novo depois, já sem ela ocupando espaço
+  setTimeout(() => { for (const b of bars.values()) b.__appbar = ""; layout() }, 2500)
   poll = setInterval(tick, 1000)
   for (const ev of ["display-added", "display-removed"]) screen.on(ev, rebuild)
   screen.on("display-metrics-changed", onMetrics)
@@ -205,7 +215,7 @@ function openMenu(kind, anchorX, w, h, barWin, fromKey) {
 }
 
 /* ---------------- tecla Windows ---------------- */
-function syncKeys() { keys.enable(!!bars.size && cfg.keys !== false && !games.playing()) }
+function syncKeys() { keys.enable(!!bars.size && cfg.keys !== false && games.playing() === false) }
 keys.onKey((ev) => {
   if (!bars.size) return
   openMenu("start", null, 640, 660, primaryBar(), ev)
@@ -217,13 +227,13 @@ function teardown(restore = true) {
   for (const ev of ["display-added", "display-removed"]) screen.removeListener(ev, rebuild)
   screen.removeListener("display-metrics-changed", onMetrics)
   closeMenu()
-  for (const b of bars.values()) if (!b.isDestroyed()) b.destroy()
+  for (const b of bars.values()) if (!b.isDestroyed()) { winh.call("unappbar " + winh.hwndOf(b)); b.destroy() }
   for (const k of desks.values()) if (!k.isDestroyed()) k.destroy()
   bars.clear(); desks.clear(); hiddenOn.clear()
   keys.enable(false)
   if (!restore) return
-  winh.call("restore")
-  cfg.hidTaskbar = false; save()
+  winh.call("restore " + (cfg.abState ?? -1))
+  cfg.hidTaskbar = false; delete cfg.abState; save()
   setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(modes.workArea()) }, 300)
 }
 
@@ -262,7 +272,7 @@ function register(ipcMain, mainGetter) {
   getMain = mainGetter
   app.whenReady().then(() => {
     // a barra do Windows ficou escondida numa vez anterior (ajudante fechado à força): devolve
-    if (cfg.hidTaskbar && !active()) { winh.call("restore"); cfg.hidTaskbar = false; save() }
+    if (cfg.hidTaskbar && !active()) { winh.call("restore " + (cfg.abState ?? 0)); cfg.hidTaskbar = false; delete cfg.abState; save() }
     setTimeout(create, 1200)
   })
   app.on("before-quit", () => { if (bars.size) teardown() })

@@ -116,7 +116,8 @@ function artFor(g) {
 // pastas de lojas: o nome da pasta do jogo vira o nome do jogo
 const STORES = [/\\steamapps\\common\\([^\\]+)\\/i, /\\Epic Games\\([^\\]+)\\/i, /\\XboxGames\\([^\\]+)\\/i, /\\EA Games\\([^\\]+)\\/i, /\\Ubisoft Game Launcher\\games\\([^\\]+)\\/i, /\\GOG Galaxy\\Games\\([^\\]+)\\/i]
 // programas auxiliares que ficam dentro das pastas dos jogos (não são o jogo)
-const NOT_GAME = /crash|report|launcher|helper|setup|redist|unins|vcredist|dxsetup|easyanticheat|eac|battleye|beservice|update|patcher|service|overlay|webhelper|cefprocess|bootstrap|installer|prereq|riotclient|epicgames|steam\.exe|steamwebhelper|ubisoftconnect|eadesktop|origin|ealink|vanguard|vgc|vgtray/i
+// e programas que não são jogos mas vêm pela Steam (OBS, Wallpaper Engine, Soundpad…)
+const NOT_GAME = /crash|report|launcher|helper|setup|redist|unins|vcredist|dxsetup|easyanticheat|eac|battleye|beservice|update|patcher|service|overlay|webhelper|cefprocess|bootstrap|installer|prereq|riotclient|epicgames|steam\.exe|steamwebhelper|ubisoftconnect|eadesktop|origin|ealink|vanguard|vgc|vgtray|obs64|obs32|wallpaper32|wallpaper64|webwallpaper|soundpad|losslessscaling|vtube studio|steamvr|vrmonitor|vrserver/i
 
 let getMain = () => null
 let custom = [] // { exe, name }
@@ -162,13 +163,16 @@ function scan() {
     const list = [...found.values()].sort((a, b) => a.start - b.start)
     const key = list.map((g) => g.id + "@" + g.start).join("|")
     lastList = list
+    scanned = true
     try { require("./gamestats.cjs").onPlaying(list) } catch (e) { console.error(e) }
-    if (key !== last) { last = key; push(); for (const f of watchers) { try { f(list.length > 0) } catch {} } }
+    if (key !== last || !announced) { announced = true; last = key; push(); for (const f of watchers) { try { f(list.length > 0) } catch {} } }
   })
 }
 
 /** quem quer saber quando um jogo abre/fecha (ex.: o atalho da tecla Windows desliga com jogo aberto) */
 const watchers = []
+let scanned = false // primeira varredura feita (antes disso não se sabe se tem jogo aberto)
+let announced = false
 function push() {
   const w = getMain()
   if (w && !w.isDestroyed()) w.webContents.send("games:state", { playing: lastList, at: Date.now() })
@@ -191,4 +195,4 @@ function register(ipcMain, mainGetter) {
   })
 }
 
-module.exports = { register, playing: () => lastList.length > 0, onPlaying: (f) => watchers.push(f) }
+module.exports = { register, playing: () => (scanned ? lastList.length > 0 : null), onPlaying: (f) => watchers.push(f) }
