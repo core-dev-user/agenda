@@ -1,0 +1,1185 @@
+[
+  {
+    "name": "Chrome",
+    "glyph": "chrome",
+    "color": "#4285F4",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Firefox",
+    "glyph": "firefox-browser",
+    "color": "#FF7139",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Edge",
+    "glyph": "edge",
+    "color": "#0078D7",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Opera",
+    "glyph": "opera",
+    "color": "#FF1B2D",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Safari",
+    "glyph": "safari",
+    "color": "#2496ED",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Internet Explorer",
+    "glyph": "internet-explorer",
+    "color": "#0077B5",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Windows",
+    "glyph": "windows",
+    "color": "#00A4EF",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Apple",
+    "glyph": "apple",
+    "color": "#8A92A6",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Android",
+    "glyph": "android",
+    "color": "#3DDC84",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Linux",
+    "glyph": "linux",
+    "color": "#F6BD2B",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Ubuntu",
+    "glyph": "ubuntu",
+    "color": "#E95420",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Fedora",
+    "glyph": "fedora",
+    "color": "#294172",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Raspberry Pi",
+    "glyph": "raspberry-pi",
+    "color": "#C51A4A",
+    "category": "Sistemas_Navegadores",
+    "brand": true
+  },
+  {
+    "name": "Discord",
+    "glyph": "discord",
+    "color": "#5865F2",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "WhatsApp",
+    "glyph": "whatsapp",
+    "color": "#25D366",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Telegram",
+    "glyph": "telegram",
+    "color": "#2AABEE",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Signal",
+    "glyph": "signal-messenger",
+    "color": "#3A76F0",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Slack",
+    "glyph": "slack",
+    "color": "#4A154B",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Skype",
+    "glyph": "skype",
+    "color": "#00AFF0",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Instagram",
+    "glyph": "instagram",
+    "color": "#E4405F",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Facebook",
+    "glyph": "facebook-f",
+    "color": "#1877F2",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Messenger",
+    "glyph": "facebook-messenger",
+    "color": "#0084FF",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "X Twitter",
+    "glyph": "x-twitter",
+    "color": "#17191E",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Reddit",
+    "glyph": "reddit-alien",
+    "color": "#FF4500",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Snapchat",
+    "glyph": "snapchat",
+    "color": "#FFFC00",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "LinkedIn",
+    "glyph": "linkedin-in",
+    "color": "#0A66C2",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Pinterest",
+    "glyph": "pinterest-p",
+    "color": "#BD081C",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Threads",
+    "glyph": "threads",
+    "color": "#111111",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Mastodon",
+    "glyph": "mastodon",
+    "color": "#6364FF",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Bluesky",
+    "glyph": "bluesky",
+    "color": "#1185FE",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Tumblr",
+    "glyph": "tumblr",
+    "color": "#35465C",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "VK",
+    "glyph": "vk",
+    "color": "#0077FF",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "WeChat",
+    "glyph": "weixin",
+    "color": "#07C160",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "LINE",
+    "glyph": "line",
+    "color": "#06C755",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Viber",
+    "glyph": "viber",
+    "color": "#7360F2",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Weibo",
+    "glyph": "weibo",
+    "color": "#E6162D",
+    "category": "Comunicacao_Social",
+    "brand": true
+  },
+  {
+    "name": "Spotify",
+    "glyph": "spotify",
+    "color": "#1DB954",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "YouTube",
+    "glyph": "youtube",
+    "color": "#FF0033",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "YouTube Music",
+    "glyph": "youtube",
+    "color": "#D90039",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "Twitch",
+    "glyph": "twitch",
+    "color": "#9146FF",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "TikTok",
+    "glyph": "tiktok",
+    "color": "#101010",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "SoundCloud",
+    "glyph": "soundcloud",
+    "color": "#FF5500",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "Bandcamp",
+    "glyph": "bandcamp",
+    "color": "#629AA9",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "Vimeo",
+    "glyph": "vimeo-v",
+    "color": "#1AB7EA",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "Dailymotion",
+    "glyph": "dailymotion",
+    "color": "#2A9FFF",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "Deezer",
+    "glyph": "deezer",
+    "color": "#9B53E3",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "Audible",
+    "glyph": "audible",
+    "color": "#F6A623",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "iTunes",
+    "glyph": "itunes-note",
+    "color": "#FA5A74",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "Mixcloud",
+    "glyph": "mixcloud",
+    "color": "#FECB36",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "Last.fm",
+    "glyph": "lastfm",
+    "color": "#D51007",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "YouTube Studio",
+    "glyph": "youtube",
+    "color": "#E62E45",
+    "category": "Musica_Video_Streaming",
+    "brand": true
+  },
+  {
+    "name": "Google",
+    "glyph": "google",
+    "color": "#4285F4",
+    "category": "Produtividade_Trabalho",
+    "brand": true
+  },
+  {
+    "name": "Google Drive",
+    "glyph": "google-drive",
+    "color": "#34A853",
+    "category": "Produtividade_Trabalho",
+    "brand": true
+  },
+  {
+    "name": "Microsoft",
+    "glyph": "microsoft",
+    "color": "#5A6B86",
+    "category": "Produtividade_Trabalho",
+    "brand": true
+  },
+  {
+    "name": "Trello",
+    "glyph": "trello",
+    "color": "#0079BF",
+    "category": "Produtividade_Trabalho",
+    "brand": true
+  },
+  {
+    "name": "Evernote",
+    "glyph": "evernote",
+    "color": "#00A82D",
+    "category": "Produtividade_Trabalho",
+    "brand": true
+  },
+  {
+    "name": "Dropbox",
+    "glyph": "dropbox",
+    "color": "#0061FF",
+    "category": "Produtividade_Trabalho",
+    "brand": true
+  },
+  {
+    "name": "Atlassian",
+    "glyph": "atlassian",
+    "color": "#2684FF",
+    "category": "Produtividade_Trabalho",
+    "brand": true
+  },
+  {
+    "name": "Jira",
+    "glyph": "jira",
+    "color": "#0052CC",
+    "category": "Produtividade_Trabalho",
+    "brand": true
+  },
+  {
+    "name": "Confluence",
+    "glyph": "confluence",
+    "color": "#2684FF",
+    "category": "Produtividade_Trabalho",
+    "brand": true
+  },
+  {
+    "name": "WordPress",
+    "glyph": "wordpress",
+    "color": "#21759B",
+    "category": "Produtividade_Trabalho",
+    "brand": true
+  },
+  {
+    "name": "Figma",
+    "glyph": "figma",
+    "color": "#A259FF",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "Behance",
+    "glyph": "behance",
+    "color": "#1769FF",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "Dribbble",
+    "glyph": "dribbble",
+    "color": "#EA4C89",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "Sketch",
+    "glyph": "sketch",
+    "color": "#FDB300",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "InVision",
+    "glyph": "invision",
+    "color": "#FF3366",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "ArtStation",
+    "glyph": "artstation",
+    "color": "#13AFF0",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "DeviantArt",
+    "glyph": "deviantart",
+    "color": "#05CC47",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "Pixiv",
+    "glyph": "pixiv",
+    "color": "#0096FA",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "500px",
+    "glyph": "500px",
+    "color": "#111111",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "Unsplash",
+    "glyph": "unsplash",
+    "color": "#222222",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "Creative Commons",
+    "glyph": "creative-commons",
+    "color": "#444E65",
+    "category": "Design_Criacao",
+    "brand": true
+  },
+  {
+    "name": "GitHub",
+    "glyph": "github",
+    "color": "#30364D",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "GitLab",
+    "glyph": "gitlab",
+    "color": "#FC6D26",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Bitbucket",
+    "glyph": "bitbucket",
+    "color": "#0052CC",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Docker",
+    "glyph": "docker",
+    "color": "#2496ED",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "NPM",
+    "glyph": "npm",
+    "color": "#CB3837",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Node.js",
+    "glyph": "node-js",
+    "color": "#339933",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "React",
+    "glyph": "react",
+    "color": "#61DAFB",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Vue.js",
+    "glyph": "vuejs",
+    "color": "#42B883",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Angular",
+    "glyph": "angular",
+    "color": "#DD0031",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "JavaScript",
+    "glyph": "js",
+    "color": "#F7DF1E",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Python",
+    "glyph": "python",
+    "color": "#3776AB",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Java",
+    "glyph": "java",
+    "color": "#E76F00",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "PHP",
+    "glyph": "php",
+    "color": "#777BB4",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Rust",
+    "glyph": "rust",
+    "color": "#CE4A3F",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Golang",
+    "glyph": "golang",
+    "color": "#00ADD8",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Swift",
+    "glyph": "swift",
+    "color": "#F05138",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Apple Developer",
+    "glyph": "apple",
+    "color": "#B0BAC8",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Stack Overflow",
+    "glyph": "stack-overflow",
+    "color": "#F48024",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "CodePen",
+    "glyph": "codepen",
+    "color": "#171717",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "JSFiddle",
+    "glyph": "jsfiddle",
+    "color": "#0084FF",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Cloudflare",
+    "glyph": "cloudflare",
+    "color": "#F38020",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "AWS",
+    "glyph": "aws",
+    "color": "#FF9900",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Google Cloud",
+    "glyph": "google",
+    "color": "#4285F4",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "DigitalOcean",
+    "glyph": "digital-ocean",
+    "color": "#0080FF",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Git",
+    "glyph": "git-alt",
+    "color": "#F05032",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "HTML5",
+    "glyph": "html5",
+    "color": "#E34F26",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "CSS3",
+    "glyph": "css3-alt",
+    "color": "#1572B6",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Sass",
+    "glyph": "sass",
+    "color": "#CC6699",
+    "category": "Desenvolvimento_Tecnologia",
+    "brand": true
+  },
+  {
+    "name": "Steam",
+    "glyph": "steam",
+    "color": "#2151AB",
+    "category": "Jogos_Launchers",
+    "brand": true
+  },
+  {
+    "name": "Xbox",
+    "glyph": "xbox",
+    "color": "#107C10",
+    "category": "Jogos_Launchers",
+    "brand": true
+  },
+  {
+    "name": "PlayStation",
+    "glyph": "playstation",
+    "color": "#003087",
+    "category": "Jogos_Launchers",
+    "brand": true
+  },
+  {
+    "name": "Unity",
+    "glyph": "unity",
+    "color": "#4B4B4B",
+    "category": "Jogos_Launchers",
+    "brand": true
+  },
+  {
+    "name": "Battle.net",
+    "glyph": "battle-net",
+    "color": "#148EFF",
+    "category": "Jogos_Launchers",
+    "brand": true
+  },
+  {
+    "name": "Itch.io",
+    "glyph": "itch-io",
+    "color": "#FA5C5C",
+    "category": "Jogos_Launchers",
+    "brand": true
+  },
+  {
+    "name": "Twitch Gaming",
+    "glyph": "twitch",
+    "color": "#9146FF",
+    "category": "Jogos_Launchers",
+    "brand": true
+  },
+  {
+    "name": "Discord Gaming",
+    "glyph": "discord",
+    "color": "#5865F2",
+    "category": "Jogos_Launchers",
+    "brand": true
+  },
+  {
+    "name": "PayPal",
+    "glyph": "paypal",
+    "color": "#003087",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Stripe",
+    "glyph": "stripe",
+    "color": "#635BFF",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Bitcoin",
+    "glyph": "bitcoin",
+    "color": "#F7931A",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Ethereum",
+    "glyph": "ethereum",
+    "color": "#627EEA",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Apple Pay",
+    "glyph": "apple-pay",
+    "color": "#111111",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Google Pay",
+    "glyph": "google-pay",
+    "color": "#4285F4",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Visa",
+    "glyph": "cc-visa",
+    "color": "#263A8F",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Mastercard",
+    "glyph": "cc-mastercard",
+    "color": "#EB001B",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Amazon",
+    "glyph": "amazon",
+    "color": "#FF9900",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "eBay",
+    "glyph": "ebay",
+    "color": "#E53238",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Shopify",
+    "glyph": "shopify",
+    "color": "#95BF47",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Etsy",
+    "glyph": "etsy",
+    "color": "#F1641E",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "AliPay",
+    "glyph": "alipay",
+    "color": "#1677FF",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Patreon",
+    "glyph": "patreon",
+    "color": "#FF424D",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Kickstarter",
+    "glyph": "kickstarter",
+    "color": "#05CE78",
+    "category": "Compras_Financas",
+    "brand": true
+  },
+  {
+    "name": "Dropbox Drive",
+    "glyph": "dropbox",
+    "color": "#0061FF",
+    "category": "Armazenamento_Nuvem",
+    "brand": true
+  },
+  {
+    "name": "Google Drive Cloud",
+    "glyph": "google-drive",
+    "color": "#0F9D58",
+    "category": "Armazenamento_Nuvem",
+    "brand": true
+  },
+  {
+    "name": "Configuracoes",
+    "glyph": "gear",
+    "color": "#8B91B5",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Gerenciador de Arquivos",
+    "glyph": "folder-open",
+    "color": "#EAB85D",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Lixeira",
+    "glyph": "trash-can",
+    "color": "#8B99AA",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Terminal",
+    "glyph": "terminal",
+    "color": "#121F31",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Pesquisar",
+    "glyph": "magnifying-glass",
+    "color": "#6D8CF2",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Calendario",
+    "glyph": "calendar-days",
+    "color": "#FF7A92",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Email",
+    "glyph": "envelope",
+    "color": "#3B9FFF",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Camera",
+    "glyph": "camera",
+    "color": "#81A8F4",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Galeria",
+    "glyph": "image",
+    "color": "#D16CF6",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Mapas",
+    "glyph": "map-location-dot",
+    "color": "#45B883",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Clima",
+    "glyph": "cloud-sun",
+    "color": "#55A9FF",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Calculadora",
+    "glyph": "calculator",
+    "color": "#627CF1",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Relogio",
+    "glyph": "clock",
+    "color": "#AA7DFF",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Notas",
+    "glyph": "note-sticky",
+    "color": "#F1CB70",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Alarme",
+    "glyph": "bell",
+    "color": "#FFAD63",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Seguranca",
+    "glyph": "shield-halved",
+    "color": "#35B39B",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Processos",
+    "glyph": "microchip",
+    "color": "#34C2C6",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Downloads",
+    "glyph": "download",
+    "color": "#569EE7",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Procurar Pastas",
+    "glyph": "folder-tree",
+    "color": "#74A8E6",
+    "category": "Ferramentas_Sistema",
+    "brand": false
+  },
+  {
+    "name": "Pintura",
+    "glyph": "palette",
+    "color": "#CE86EF",
+    "category": "Criatividade_Conteudo",
+    "brand": false
+  },
+  {
+    "name": "Video Editor",
+    "glyph": "film",
+    "color": "#9A70F5",
+    "category": "Criatividade_Conteudo",
+    "brand": false
+  },
+  {
+    "name": "Audio Editor",
+    "glyph": "wave-square",
+    "color": "#6CB9FC",
+    "category": "Criatividade_Conteudo",
+    "brand": false
+  },
+  {
+    "name": "Desenho",
+    "glyph": "paintbrush",
+    "color": "#EC8C9C",
+    "category": "Criatividade_Conteudo",
+    "brand": false
+  },
+  {
+    "name": "Foto",
+    "glyph": "camera-retro",
+    "color": "#71A7E8",
+    "category": "Criatividade_Conteudo",
+    "brand": false
+  },
+  {
+    "name": "Texturas",
+    "glyph": "layer-group",
+    "color": "#9AA0F0",
+    "category": "Criatividade_Conteudo",
+    "brand": false
+  },
+  {
+    "name": "Modelagem 3D",
+    "glyph": "cube",
+    "color": "#BC8DE9",
+    "category": "Criatividade_Conteudo",
+    "brand": false
+  },
+  {
+    "name": "Render 3D",
+    "glyph": "cubes",
+    "color": "#75D3C7",
+    "category": "Criatividade_Conteudo",
+    "brand": false
+  },
+  {
+    "name": "Arquivos Zip",
+    "glyph": "file-zipper",
+    "color": "#FFB060",
+    "category": "Criatividade_Conteudo",
+    "brand": false
+  },
+  {
+    "name": "Fontes",
+    "glyph": "font",
+    "color": "#D8AFEB",
+    "category": "Criatividade_Conteudo",
+    "brand": false
+  },
+  {
+    "name": "Agenda",
+    "glyph": "calendar-check",
+    "color": "#FF8FB8",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Tarefas",
+    "glyph": "list-check",
+    "color": "#5EE3A1",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Estudos",
+    "glyph": "book-open",
+    "color": "#A78BFA",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Projetos",
+    "glyph": "diagram-project",
+    "color": "#70BAE9",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Saude",
+    "glyph": "heart-pulse",
+    "color": "#FF7185",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Viagens",
+    "glyph": "plane",
+    "color": "#5DCAEB",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Academia",
+    "glyph": "dumbbell",
+    "color": "#77C59C",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Financeiro",
+    "glyph": "wallet",
+    "color": "#61D9A1",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Compras",
+    "glyph": "cart-shopping",
+    "color": "#F2BB5B",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Favoritos",
+    "glyph": "star",
+    "color": "#FFC65D",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Conversas",
+    "glyph": "comments",
+    "color": "#5BAEFF",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Musica",
+    "glyph": "music",
+    "color": "#E86EE8",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Jogos",
+    "glyph": "gamepad",
+    "color": "#9F90EF",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Arquivos",
+    "glyph": "folder",
+    "color": "#F1C964",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  },
+  {
+    "name": "Rede",
+    "glyph": "wifi",
+    "color": "#66C8ED",
+    "category": "Rotina_Pessoal",
+    "brand": false
+  }
+]
