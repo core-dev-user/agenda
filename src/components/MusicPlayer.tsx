@@ -214,7 +214,7 @@ export function NotConnected({ small }: { small?: boolean }) {
     <div className={cn("flex h-full flex-col items-center justify-center gap-2 text-center", small ? "p-3" : "p-8")}>
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ff0033] text-white shadow-lg"><Play size={22} fill="currentColor" className="translate-x-[1px]" /></div>
       <div className={cn("font-display font-semibold", small ? "text-sm" : "text-xl")}>{open ? "Escolha uma música" : "YouTube Music"}</div>
-      {!small && <div className="max-w-sm text-sm text-fg-muted">{open ? "Toque algo no YouTube Music (aba Música) e o player aparece aqui." : "Conecte uma vez com sua conta Google. Depois a música toca em segundo plano e você controla tudo pelo Agenda."}</div>}
+      {!small && <div className="max-w-sm text-sm text-fg-muted">{open ? "Toque algo no YouTube Music (aba Música) e o player aparece aqui." : "Conecte uma vez com sua conta Google. Depois a música toca em segundo plano e você controla tudo pelo Widgy."}</div>}
       <button className="btn btn-accent" disabled={!isDesktop} onClick={() => { bridge.music.open(); openWindow("music") }}>Abrir YouTube Music</button>
     </div>
   )

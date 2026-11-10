@@ -1,0 +1,56 @@
+# Publicação pontual da versão Widgy 0.3.2; preserva a release anterior.
+name: Publicar Widgy 0.3.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    if: "startsWith(github.event.head_commit.message, 'release: v0.3.2')"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Conferir versão
+        shell: bash
+        run: test "$(node -p "require('./package.json').version")" = "0.3.2"
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Testar isolamento de players e capas do Spotify
+        run: npm run test:media
+
+      - name: Compilar Widgy, fontes, ícones e abertura
+        run: npm run build
+
+      - name: Criar release Widgy 0.3.2
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.2 >/dev/null 2>&1 || gh release create v0.3.2 --target "$GITHUB_SHA" --title "Widgy 0.3.2 — Spotify e abertura" --notes "Widget de Spotify/Deezer melhorado: capas com novas tentativas, cache por música e sessão, controles e layouts personalizáveis. Abertura Widgy azul modernizada: pétalas de sakura, halo suave, anéis e reflexo. Preserva as 301 fontes, os 845 ícones e as configurações das versões anteriores. A leitura de capas e a função de avançar dependem dos metadados fornecidos pelo player ao Windows."
+
+      - name: Gerar instalador Windows e publicar arquivos do atualizador
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis --publish always
+
+      - name: Confirmar arquivos publicados
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.2 --json assets --jq '.assets[].name' | grep -Fx 'Widgy-Setup-0.3.2.exe'
+          gh release view v0.3.2 --json assets --jq '.assets[].name' | grep -Fx 'latest.yml'

@@ -32,7 +32,7 @@ function Preview({ s, widgets }: { s: Partial<Settings>; widgets?: number }) {
     <div className="relative h-28 overflow-hidden rounded-xl" style={bg}>
       <div className="absolute inset-0" style={{ background: `rgb(0 0 0 / ${wp.dim})` }} />
       <div className="absolute top-3 left-3 w-[62%] p-2" style={{ ...win, color: fg }}>
-        <div className="truncate text-[11px] font-semibold" style={{ fontFamily: fontFamily(s.displayFont ?? "playfair") }}>Agenda</div>
+        <div className="truncate text-[11px] font-semibold" style={{ fontFamily: fontFamily(s.displayFont ?? "playfair") }}>Widgy</div>
         <div className="mt-1 text-[9px] opacity-70" style={{ fontFamily: fontFamily(s.uiFont ?? "outfit") }}>{THEME_LABEL[theme]}</div>
         <div className="mt-1.5 flex items-center gap-1">
           <span className="h-3 w-8 rounded-full" style={{ background: accent, borderRadius: theme === "retro" ? 0 : 99 }} />
@@ -114,7 +114,7 @@ export function TemplatesTab() {
           <Preview s={DEFAULT_SETTINGS} />
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
-              <div className="truncate font-semibold">Padrão do Agenda</div>
+              <div className="truncate font-semibold">Padrão do Widgy</div>
               <div className="text-xs text-fg-muted">O visual original do app</div>
             </div>
             <button className="btn !py-1.5 text-xs" onClick={() => applyTemplate("default")}>Aplicar</button>

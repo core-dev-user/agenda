@@ -61,7 +61,7 @@ export function RoutineTab() {
       </Section>
 
       <Section title="Tela Hoje">
-        <Switch label="Abrir a tela Hoje quando o Agenda abrir" checked={!!s.todayOnStart} onChange={(v) => set({ todayOnStart: v })} />
+        <Switch label="Abrir a tela Hoje quando o Widgy abrir" checked={!!s.todayOnStart} onChange={(v) => set({ todayOnStart: v })} />
       </Section>
     </>
   )
@@ -292,7 +292,7 @@ export function ModeTab() {
 
   return (
     <>
-      <Section title="Modo de uso" desc="Escolha como o Agenda aparece no seu PC. Seus dados, widgets e abas continuam iguais em qualquer modo.">
+      <Section title="Modo de uso" desc="Escolha como o Widgy aparece no seu PC. Seus dados, widgets e abas continuam iguais em qualquer modo.">
         <div className="grid gap-2 sm:grid-cols-3">
           {(["desktop", "app", "screen"] as UiMode[]).map((m) => {
             const Icon = MODE_ICON[m]
@@ -315,7 +315,7 @@ export function ModeTab() {
         </div>
       </Section>
 
-      <Section title="Monitor" desc={mode === "app" ? "Em qual monitor a janela abre." : mode === "desktop" ? (span && (shows?.length ?? 0) > 1 ? "O Agenda ocupa todos os monitores. O monitor escolhido aqui é o principal do Agenda (onde abrem as coisas na primeira vez)." : "Em qual monitor ficam os widgets do Agenda.") : "Em qual monitor fica a tela própria do Agenda — por exemplo, o segundo monitor."}>
+      <Section title="Monitor" desc={mode === "app" ? "Em qual monitor a janela abre." : mode === "desktop" ? (span && (shows?.length ?? 0) > 1 ? "O Widgy ocupa todos os monitores. O monitor escolhido aqui é o principal do Widgy (onde abrem as coisas na primeira vez)." : "Em qual monitor ficam os widgets do Widgy.") : "Em qual monitor fica a tela própria do Widgy — por exemplo, o segundo monitor."}>
         {!shows && <div className="flex items-center gap-2 py-2 text-sm text-fg-muted"><Loader2 size={14} className="animate-spin" /> Procurando monitores…</div>}
         {shows && shows.length <= 1 && <div className="py-1 text-sm text-fg-muted">Só um monitor ligado agora. Se ligar outro, ele aparece aqui.</div>}
         {shows && shows.length > 1 && <MonitorMap list={shows} value={disp} onPick={setDisp} />}
@@ -326,13 +326,13 @@ export function ModeTab() {
               checked={span}
               onChange={async (v) => { bridge.store.flush?.(); setSpan(v); await bridge.mode.span(v) }}
             />
-            <div className="text-xs text-fg-muted">Arraste widgets e abas de um monitor para o outro livremente. Cada monitor tem o papel de parede inteiro, e a busca, os avisos e as abas abrem no monitor onde você clicou por último. Mudar isso reabre o Agenda.</div>
+            <div className="text-xs text-fg-muted">Arraste widgets e abas de um monitor para o outro livremente. Cada monitor tem o papel de parede inteiro, e a busca, os avisos e as abas abrem no monitor onde você clicou por último. Mudar isso reabre o Widgy.</div>
           </>
         )}
       </Section>
 
       <div className="flex items-center justify-end gap-3">
-        {changed && <span className="text-sm text-fg-muted">O Agenda vai fechar e abrir de novo já no modo novo.</span>}
+        {changed && <span className="text-sm text-fg-muted">O Widgy vai fechar e abrir de novo já no modo novo.</span>}
         <button className="btn btn-accent disabled:opacity-40" disabled={!changed || busy} onClick={apply}>
           {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Aplicar e reabrir
         </button>
@@ -390,26 +390,26 @@ function MainBarSwitch() {
   return (
     <div className="mt-3 border-t border-line pt-3">
       <Switch
-        label="Substituir a barra do Windows pela do Agenda (em todos os monitores)"
+        label="Substituir a barra do Windows pela do Widgy (em todos os monitores)"
         checked={on}
         onChange={async (v) => { bridge.store.flush?.(); await bridge.bar.set({ on: v }); location.reload() }}
       />
-      <div className="text-xs text-fg-muted">Esconde a barra do Windows e põe a do Agenda no lugar em cada monitor, com as abas do Agenda e também os programas do Windows abertos e fixados. Ela segue o jeito escolhido em Configurações › Barra e ícones (Dock, Pílula ou Barra, posição, tamanho, lupa, nomes, ocultar sozinha). Se o Agenda fechar, a barra do Windows volta sozinha. A seta perto do relógio mostra os ícones da bandeja do Windows.</div>
+      <div className="text-xs text-fg-muted">Esconde a barra do Windows e põe a do Widgy no lugar em cada monitor, com as abas do Widgy e também os programas do Windows abertos e fixados. Ela segue o jeito escolhido em Configurações › Barra e ícones (Dock, Pílula ou Barra, posição, tamanho, lupa, nomes, ocultar sozinha). Se o Widgy fechar, a barra do Windows volta sozinha. A seta perto do relógio mostra os ícones da bandeja do Windows.</div>
       {on && (
         <>
           <Switch
-            label="Win+S abre a pesquisa do Agenda"
+            label="Win+S abre a pesquisa do Widgy"
             checked={keys}
             onChange={async (v) => setKeys((await bridge.bar.set({ keys: v })).keys)}
           />
           {keys && (
             <Switch
-              label="Tecla Windows sozinha abre o Iniciar do Agenda (desligado: abre o Iniciar do Windows)"
+              label="Tecla Windows sozinha abre o Iniciar do Widgy (desligado: abre o Iniciar do Windows)"
               checked={winKey === "agenda"}
               onChange={async (v) => setWinKey((await bridge.bar.set({ winKey: v ? "agenda" : "windows" })).winKey)}
             />
           )}
-          <div className="text-xs text-fg-muted">Os outros atalhos (Win+E, Win+D, Win+Shift+S…) continuam iguais. Com um jogo aberto, o Agenda não mexe no teclado.</div>
+          <div className="text-xs text-fg-muted">Os outros atalhos (Win+E, Win+D, Win+Shift+S…) continuam iguais. Com um jogo aberto, o Widgy não mexe no teclado.</div>
         </>
       )}
     </div>
@@ -427,10 +427,10 @@ export function SystemExtra() {
   const hib = s.hibernateMin ?? 15
   return (
     <>
-      <Section title="Bandeja e atalho" desc="O Agenda pode ficar rodando perto do relógio do Windows: o YouTube Music, as calls e os avisos continuam funcionando.">
+      <Section title="Bandeja e atalho" desc="O Widgy pode ficar rodando perto do relógio do Windows: o YouTube Music, as calls e os avisos continuam funcionando.">
         <Switch label="Fechar no X manda para a bandeja (em vez de encerrar)" checked={cfg.closeToTray} onChange={(v) => upd({ closeToTray: v })} />
         <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
-          <span className="flex items-center gap-2"><Keyboard size={15} /> Atalho para mostrar/esconder o Agenda de qualquer lugar</span>
+          <span className="flex items-center gap-2"><Keyboard size={15} /> Atalho para mostrar/esconder o Widgy de qualquer lugar</span>
           <select className="field !w-auto" value={cfg.hotkey} onChange={(e) => upd({ hotkey: e.target.value })}>
             {HOTKEYS.map((k) => <option key={k} value={k}>{hotkeyLabel(k)}</option>)}
           </select>
@@ -458,8 +458,8 @@ export function SystemExtra() {
         <div className="text-xs text-fg-muted">Vai para a pasta “Agenda backup”. As Finanças vão criptografadas: só abrem nesta conta do Windows.</div>
       </Section>
 
-      <Section title="Desempenho" desc="O Agenda já para as animações sozinho quando está minimizado ou na bandeja.">
-        <Switch label="Pausar as animações enquanto um jogo está aberto (o Agenda em segundo plano não pesa no jogo)" checked={s.perfPauseInGame ?? true} onChange={(v) => set({ perfPauseInGame: v })} />
+      <Section title="Desempenho" desc="O Widgy já para as animações sozinho quando está minimizado ou na bandeja.">
+        <Switch label="Pausar as animações enquanto um jogo está aberto (o Widgy em segundo plano não pesa no jogo)" checked={s.perfPauseInGame ?? true} onChange={(v) => set({ perfPauseInGame: v })} />
         <Switch label="Modo leve: sem vidro desfocado, pétalas e partículas do cursor (para PCs mais fracos)" checked={!!s.perfLite} onChange={(v) => set({ perfLite: v })} />
       </Section>
 

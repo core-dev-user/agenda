@@ -1,10 +1,10 @@
-# 🌸 Agenda
+# Widgy
 
 Sua área de trabalho personalizada: widgets, hábitos, estudos, serviços, listas e galeria com upscale até 8K.
 
 ## Usar
 
-- **Abrir o app:** atalho **Agenda** na área de trabalho. Ele roda `node_modules/electron/dist/electron.exe` apontando para esta pasta, porque o Smart App Control do Windows bloqueia o `Agenda.exe` empacotado (sem assinatura digital).
+- **Abrir o app:** atalho **Widgy** na área de trabalho. Ele roda `node_modules/electron/dist/electron.exe` apontando para esta pasta, porque o Smart App Control do Windows bloqueia o `Widgy.exe` empacotado (sem assinatura digital).
 - **Depois de mudar o código:** `npm run build` (o atalho já usa a versão nova)
 - **Desenvolver (com recarregamento automático):** `npm run dev`
 - **Gerar um .exe separado:** `npm run dist` (pode ser bloqueado pelo Windows sem assinatura)
@@ -42,8 +42,34 @@ Em **Configurações → Fontes**, escolha a tipografia da interface, dos númer
 
 ## Pacote de ícones e fundos integrado
 
-Em **Configurações → Barra e ícones → Ícones dos apps**, escolha entre os ícones originais e cinco coleções: **Vidro líquido, Neon noturno, Metal escovado, Minimal e Retrô 95**. O pacote inclui **169 aplicativos × 5 estilos = 845 ícones SVG**; a galeria permite buscar por nome e categoria. Os ícones de programas conhecidos podem substituir visualmente os ícones nativos na barra de tarefas e no menu Iniciar do Agenda. Programas não reconhecidos mantêm o ícone original do Windows; nada é alterado no sistema operacional.
+Em **Configurações → Barra e ícones → Ícones dos apps**, escolha entre os ícones originais e cinco coleções: **Vidro líquido, Neon noturno, Metal escovado, Minimal e Retrô 95**. O pacote inclui **169 aplicativos × 5 estilos = 845 ícones SVG**; a galeria permite buscar por nome e categoria. Os ícones de programas conhecidos podem substituir visualmente os ícones nativos na barra de tarefas e no menu Iniciar do Widgy. Programas não reconhecidos mantêm o ícone original do Windows; nada é alterado no sistema operacional.
 
 Os **17 fundos padrão** continuam em **Papel de parede → Degradê**. Eles já eram incluídos como CSS (sem dependência de internet, adaptáveis a qualquer resolução) e não precisam ser duplicados como PNGs no instalador.
 
 **Empacotamento:** o script `scripts/generate-icon-pack.mjs` gera as imagens SVG durante `npm run build` a partir do pacote `@fortawesome/fontawesome-free@6.7.2`. A pasta gerada `public/icon-packs/` é copiada para `dist/` pelo Vite e incorporada ao instalador pelo electron-builder. A licença do Font Awesome é copiada para `icon-packs/FONT-AWESOME-LICENSE.txt`. Em desenvolvimento, `npm run dev` gera as imagens automaticamente via `predev`.
+
+
+## Identidade Widgy
+
+A marca oficial é o **calendário azul com sakura de cinco pétalas**. O SVG canônico é `public/logos/widgy.svg` e o alias `public/logos/agenda.svg` foi mantido para compatibilidade. `npm run icon` gera o ícone do app em PNG, ICO e favicon a partir do SVG. A abertura inicial utiliza o mesmo símbolo, azul-marinho, tipografia Widgy e uma animação discreta, com suporte a movimento reduzido.
+
+**Dados e atualização:** o nome público, atalho e instalador mudam para Widgy, mas o `appId` (`com.agenda.desktop`), o protocolo interno `agenda://`, a chave `agenda` e a pasta de dados legada (`%APPDATA%\\Agenda`) são mantidos deliberadamente. O instalador novo continua vindo do repositório `core-dev-user/agenda` e pode atualizar uma instalação existente sem apagar notas, widgets e personalizações. Não renomeie esses identificadores sem migrar os dados.
+
+**Estilo inicial:** azul `#238DFF`, papel de parede Oceano noturno e pétalas azuladas. As preferências já salvas continuam respeitadas; para voltar ao visual de marca novo, restaure as configurações visuais em Configurações → Sistema.
+
+
+## Player de Spotify e música do Windows
+
+O widget **Spotify e música do PC** usa a central de mídia do Windows (Global System Media Transport Controls): não precisa fazer login com a conta Spotify dentro do Widgy. Em **Configurações do widget** há quatro layouts (automático, cartão, compacto e capa), quatro fundos (capa desfocada, vidro, sólido e transparente), três formatos da capa e três cores dos controles; também é possível ocultar o álbum, o player, a linha de progresso, os tempos e os botões.
+
+- O serviço Windows lê **todas as sessões** e envia a sessão correspondente a cada widget individualmente, evitando que o Spotify mostre músicas de outro player.
+- A capa é lida do `Thumbnail.OpenReadAsync` fornecido pelo Windows, com cache por música e novas tentativas quando a capa chega depois do título. Não reusa a capa de uma faixa anterior. Se o Spotify não publicar a miniatura na central de mídia, aparece um fallback visual em vez de uma capa errada.
+- Os botões de reproduzir/pausar, anterior e próxima controlam **o player selecionado**, não outro aplicativo em primeiro plano. A busca na linha do tempo só fica ativa quando o Windows informa que é suportada.
+- Os widgets e seus ajustes antigos são preservados. Sem mídia ou fora do Windows é exibido um estado vazio. O serviço PowerShell é iniciado somente quando há widgets ativos e é encerrado quando o último é removido.
+
+**Testes:** `npm run test:media` verifica seleção isolada, player ausente, capa tardia, invalidação por música e cache individual. Em um Windows com Spotify instalado, teste tocar, pausar, trocar faixas, retornar ao app, mudar tema e reproduzir outro player simultaneamente. A API do Windows só expõe os metadados que o player decide compartilhar.
+
+
+### Efeitos da abertura Widgy
+
+A tela inicial usa a nova logo azul com pétalas de sakura (Canvas), halo suave, dois anéis discretos, pontos de luz e um reflexo breve sobre o ícone. A duração e o botão **Pular abertura** continuam seguindo as preferências anteriores; a configuração de reduzir movimento desativa os efeitos animados. O splash não baixa arquivos externos.

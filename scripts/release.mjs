@@ -1,4 +1,4 @@
-// Lança uma versão nova do Agenda para quem instalou (atualização automática).
+// Lança uma versão nova do Widgy para quem instalou (atualização automática).
 //
 //   npm run release            → 0.2.0 vira 0.2.1
 //   npm run release -- minor   → 0.2.0 vira 0.3.0
@@ -33,5 +33,5 @@ console.log(`
 ✔ Versão ${version} enviada. O GitHub está gerando o instalador agora (uns 10 minutos):
   https://github.com/core-dev-user/agenda/actions
   Quando terminar, ela aparece em https://github.com/core-dev-user/agenda/releases
-  e os Agendas instalados baixam sozinhos ao abrir (ou em até 3 horas).
+  e os Widgys instalados baixam sozinhos ao abrir (ou em até 3 horas).
 `)

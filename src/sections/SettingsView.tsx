@@ -28,12 +28,12 @@ import { IntegrationsTab, ModeTab, RoutineTab, SystemExtra } from "./SettingsExt
 const TABS = [
   { id: "mode", label: "Modo de uso", e: MonitorSmartphone, c: "#6ea8ff" },
   { id: "templates", label: "Templates", e: LayoutTemplate, c: "#a78bfa" },
-  { id: "look", label: "Aparência", e: Palette, c: "#ff8fb8" },
+  { id: "look", label: "Aparência", e: Palette, c: "#329FFD" },
   { id: "fonts", label: "Fontes", e: Type, c: "#8f9bff" },
   { id: "cursor", label: "Cursor", e: MousePointer2, c: "#7cc8ff" },
   { id: "taskbar", label: "Barra e ícones", e: PanelBottom, c: "#9aa3b5" },
   { id: "wallpaper", label: "Papel de parede", e: Image, c: "#3ccfcf" },
-  { id: "fx", label: "Sakura e efeitos", e: Flower2, c: "#ff6fa8" },
+  { id: "fx", label: "Sakura e efeitos", e: Flower2, c: "#70C6FF" },
   { id: "widgets", label: "Widgets", e: LayoutGrid, c: "#ffb36e" },
   { id: "pet", label: "Bichinho", e: PawPrint, c: "#f2a65a" },
   { id: "routine", label: "Rotina e avisos", e: Bell, c: "#ff6b6b" },
@@ -182,7 +182,7 @@ function Fonts() {
         as extras são carregadas sob demanda quando há internet.
       </div>
       <Slider label="Tamanho geral do texto" value={s.fontScale} min={0.8} max={1.3} step={0.05} onChange={(v) => set({ fontScale: v })} format={(v) => Math.round(v * 100) + "%"} />
-      <FontRow k="uiFont" label="Letras (interface)" sample="Agenda do dia" />
+      <FontRow k="uiFont" label="Letras (interface)" sample="Widgy · Meu dia" />
       <FontRow k="numFont" label="Números (relógios, valores)" sample="12:45 R$ 980" />
       <FontRow k="displayFont" label="Títulos" sample="Hábitos e lembretes" />
     </>
@@ -272,7 +272,7 @@ function IconsSection() {
   return (
     <Section title="Ícones dos apps" desc="Muda o visual dos ícones na barra de tarefas, no menu Início, nas janelas e nos atalhos.">
       <IconPackSettings value={s.iconPackStyle ?? "original"} onChange={(value) => set({ iconPackStyle: value })} />
-      <div className="pt-4 text-xs font-semibold text-fg-muted">Estilos originais do Agenda (usados ao escolher Originais acima)</div>
+      <div className="pt-4 text-xs font-semibold text-fg-muted">Estilos originais do Widgy (usados ao escolher Originais acima)</div>
       <div className="grid grid-cols-4 gap-2">
         {ICON_STYLES.map((st) => (
           <button key={st.id} onClick={() => set({ iconStyle: st.id })} className={cn("flex flex-col items-center gap-2 rounded-xl border p-3 text-xs", s.iconStyle === st.id ? "border-brand bg-brand/15" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]")}>
@@ -356,11 +356,11 @@ function PcBarChoice() {
       <Segmented
         value={on ? "agenda" : "windows"}
         onChange={async (v) => { bridge.store.flush?.(); await bridge.bar.set({ on: v === "agenda" }); location.reload() }}
-        options={[{ value: "windows", label: "Do Windows (a normal)" }, { value: "agenda", label: "Do Agenda (personalizada)" }]}
+        options={[{ value: "windows", label: "Do Windows (a normal)" }, { value: "agenda", label: "Do Widgy (personalizada)" }]}
       />
       <div className="mt-1.5 text-xs text-fg-muted">
         {on
-          ? "A barra do Agenda está no lugar da do Windows, com o jeito escolhido aqui embaixo. Ela tem o botão do Windows para abrir o Iniciar normal."
+          ? "A barra do Widgy está no lugar da do Windows, com o jeito escolhido aqui embaixo. Ela tem o botão do Windows para abrir o Iniciar normal."
           : "O Windows continua com a barra dele. As opções aqui embaixo valem para a barra de dentro do Agenda."}
       </div>
     </Section>
@@ -404,8 +404,8 @@ function BarItemsSection() {
   }
   const pins = s.pcPins ?? []
   return (
-    <Section title="O que aparece na barra" desc="Ligue ou desligue cada item. Vale para a barra do Agenda e, com ela no lugar da barra do Windows, para a barra do PC.">
-      <div className="mb-1 text-xs text-fg-muted">As abas do Agenda ligam e desligam lá em cima, junto da cor de cada app.</div>
+    <Section title="O que aparece na barra" desc="Ligue ou desligue cada item. Vale para a barra do Widgy e, com ela no lugar da barra do Windows, para a barra do PC.">
+      <div className="mb-1 text-xs text-fg-muted">As abas do Widgy ligam e desligam lá em cima, junto da cor de cada app.</div>
       <div className="mt-2 mb-1 text-sm">Botões</div>
       {BAR_BUTTONS.filter((b) => !b.pcOnly || pcBar).map((b) => (
         <Switch key={b.id} label={b.label} checked={!hide.has(b.id)} onChange={(v) => toggle(b.id, v)} />
@@ -721,7 +721,7 @@ function System() {
           <button className="btn" onClick={() => set({ widgetsLocked: false })}>Destravar widgets</button>
         </div>
       </Section>
-      <div className="text-center text-xs text-fg-muted">Agenda v0.1</div>
+      <div className="text-center text-xs text-fg-muted">Widgy</div>
     </>
   )
 }

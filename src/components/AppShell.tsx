@@ -52,7 +52,7 @@ export default function AppShell() {
       <aside className="surface relative z-10 m-2 mr-0 flex w-[208px] shrink-0 flex-col !rounded-[calc(var(--r)*1.1)] p-2" style={drag}>
         <div className="flex items-center gap-2 px-2 pt-1 pb-3">
           <Logo size={28} />
-          <div className="font-display text-lg font-semibold">Agenda</div>
+          <div className="font-display text-lg font-semibold">Widgy</div>
         </div>
         <button
           style={noDrag}

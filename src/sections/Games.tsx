@@ -107,7 +107,7 @@ export default function Games() {
       {!games.length && !running.length && (
         <div className="py-16 text-center text-fg-muted">
           <div className="font-display text-lg text-fg">Nenhum jogo registrado ainda</div>
-          <div className="mt-1 text-sm">Abra um jogo: o Agenda reconhece sozinho e começa a contar o tempo.</div>
+          <div className="mt-1 text-sm">Abra um jogo: o Widgy reconhece sozinho e começa a contar o tempo.</div>
         </div>
       )}
     </div>

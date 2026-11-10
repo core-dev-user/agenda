@@ -43,12 +43,12 @@ function StartMenu() {
     }}>
       <label className="flex h-10 shrink-0 items-center gap-2 rounded-full border border-line bg-[color-mix(in_srgb,var(--fg)_6%,transparent)] px-4">
         <Search size={15} className="text-fg-muted" />
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pesquisar apps e abas do Agenda" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pesquisar apps e abas do Widgy" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
       </label>
 
       {sections.length > 0 && (
         <>
-          <div className="mt-4 mb-2 text-xs font-semibold text-fg-muted">Agenda</div>
+          <div className="mt-4 mb-2 text-xs font-semibold text-fg-muted">Widgy</div>
           <div className="grid shrink-0 grid-cols-6 gap-1">
             {sections.map((s) => (
               <button key={s.id} className="bar-btn flex-col gap-1.5 py-2.5 text-[11px]" onClick={() => { bridge.bar.toMain({ type: "open", id: s.id }); done() }}>

@@ -9,7 +9,7 @@ const INFO: Record<WebAppId, { name: string; logo: string; bg: string; hint: str
   ifood: { name: "iFood", logo: "logos/ifood.svg", bg: "#ffffff", hint: "Faça seu pedido aqui; o widget do iFood acompanha o status pela página de pedidos da sua conta." },
 }
 
-/** Janela de um app web (Discord / iFood) dentro do Agenda, com opção de janela separada. */
+/** Janela de um app web (Discord / iFood) dentro do Widgy, com opção de janela separada. */
 function WebAppView({ id }: { id: WebAppId }) {
   const st = useWebApps((s) => s[id])
   const slot = useRef<HTMLDivElement>(null)
@@ -26,7 +26,7 @@ function WebAppView({ id }: { id: WebAppId }) {
         <button className="btn btn-ghost btn-icon" title="Início" onClick={() => bridge.webapp.nav(id, "home")}><Home size={14} /></button>
         <button className="btn btn-ghost btn-icon" title="Abrir esta página no seu navegador" onClick={async () => { const u = await bridge.webapp.url(id); if (u) bridge.app.openExternal(u) }}><Globe size={14} /></button>
         {st?.popped ? (
-          <button className="btn" onClick={() => bridge.webapp.dock(id)}><MonitorDown size={14} /> Trazer para o Agenda</button>
+          <button className="btn" onClick={() => bridge.webapp.dock(id)}><MonitorDown size={14} /> Trazer para o Widgy</button>
         ) : (
           <button className="btn" onClick={() => bridge.webapp.popout(id)}><ExternalLink size={14} /> Abrir em janela separada</button>
         )}
@@ -39,7 +39,7 @@ function WebAppView({ id }: { id: WebAppId }) {
               <div className="font-display text-xl font-semibold">{info.name} está numa janela separada</div>
               <div className="mt-1 text-sm text-fg-muted">Fechar aquela janela traz ele de volta para cá, sem desconectar.</div>
             </div>
-            <button className="btn btn-accent" onClick={() => bridge.webapp.dock(id)}><MonitorDown size={15} /> Trazer para o Agenda</button>
+            <button className="btn btn-accent" onClick={() => bridge.webapp.dock(id)}><MonitorDown size={15} /> Trazer para o Widgy</button>
           </div>
         ) : (
           <div ref={slot} className="flex h-full items-center justify-center overflow-hidden rounded-[calc(var(--r)*0.6)] text-fg-muted" style={{ background: info.bg }}>

@@ -100,7 +100,7 @@ contextBridge.exposeInMainWorld("agenda", {
   pcmedia: {
     sub: (id, app) => ipcRenderer.invoke("media:sub", id, app),
     unsub: (id) => ipcRenderer.invoke("media:unsub", id),
-    cmd: (c) => ipcRenderer.invoke("media:cmd", c),
+    cmd: (c, id, seconds) => ipcRenderer.invoke("media:cmd", c, id, seconds),
     onState: on("media:state"),
   },
   sysmon: {

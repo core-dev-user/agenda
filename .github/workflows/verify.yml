@@ -19,8 +19,29 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run test:media
       - run: npm run build
       - run: node --test tests/taskbar-control.test.cjs
+
+  powershell-syntax:
+    name: Windows media worker (PowerShell)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validar sintaxe do leitor do Spotify
+        shell: powershell
+        run: |
+          node -e "require('fs').writeFileSync('media-worker-test.ps1', require('./electron/media.cjs').PS)"
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) 'media-worker-test.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host $_.ToString() }
+            exit 1
+          }
 
   windows-native-compile:
     runs-on: windows-latest
