@@ -40,8 +40,15 @@ export function Wallpaper({ screenId }: { screenId?: number }) {
     let raf = 0
     let tx = 0, ty = 0, cx = 0, cy = 0
     const move = (e: PointerEvent) => {
-      tx = (e.clientX / innerWidth - 0.5) * -24
-      ty = (e.clientY / innerHeight - 0.5) * -24
+      // só reage ao mouse na própria área de trabalho deste monitor: em cima de uma aba, das configurações
+      // ou de um menu a imagem fica parada (antes ela "andava" ao arrastar um controle)
+      const t = e.target as Element | null
+      if (t?.closest?.("[data-appwin],[data-modal],.surface")) return
+      const box = layer.current?.parentElement?.getBoundingClientRect()
+      if (!box) return
+      const inside = e.clientX >= box.left && e.clientX <= box.right && e.clientY >= box.top && e.clientY <= box.bottom
+      tx = inside ? ((e.clientX - box.left) / box.width - 0.5) * -24 : 0
+      ty = inside ? ((e.clientY - box.top) / box.height - 0.5) * -24 : 0
       if (!raf) raf = requestAnimationFrame(tick)
     }
     const tick = () => {

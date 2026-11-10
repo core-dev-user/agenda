@@ -41,6 +41,8 @@ public static class AgKeys {
   static uint tid = 0;
   static Thread th;
   static bool winHeld = false, clean = false, ate = false;
+  // Shift, Ctrl ou Alt apertados: o atalho é outro (ex.: Win+Shift+S tira print) — o Agenda não mexe
+  static bool shift = false, ctrl = false, alt = false;
   /** tecla Windows sozinha abre o Iniciar do Agenda (false: deixa o Iniciar do Windows abrir normalmente) */
   public static bool WinAlone = false;
   static uint eaten = 0; // tecla engolida (S/Q) — engole também o soltar dela
@@ -58,6 +60,9 @@ public static class AgKeys {
       bool injected = (k.flags & 0x10) != 0;
       bool down = w.ToInt32() == 0x100 || w.ToInt32() == 0x104;
       if (!injected) {
+        if (k.vk == 0xA0 || k.vk == 0xA1 || k.vk == 0x10) shift = down;
+        else if (k.vk == 0xA2 || k.vk == 0xA3 || k.vk == 0x11) ctrl = down;
+        else if (k.vk == 0xA4 || k.vk == 0xA5 || k.vk == 0x12) alt = down;
         bool isWin = k.vk == 0x5B || k.vk == 0x5C;
         if (isWin) {
           if (down) { if (!winHeld) { winHeld = true; clean = true; ate = false; } }
@@ -77,7 +82,7 @@ public static class AgKeys {
           return new IntPtr(1);
         } else if (winHeld && down) {
           clean = false;
-          if (k.vk == 0x53 || k.vk == 0x51) { // S ou Q: pesquisa
+          if ((k.vk == 0x53 || k.vk == 0x51) && !shift && !ctrl && !alt) { // Win+S ou Win+Q (sem outra tecla junto): pesquisa
             if (eaten != k.vk) Events.Add("search");
             eaten = k.vk; ate = true;
             return new IntPtr(1);
