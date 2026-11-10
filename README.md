@@ -56,3 +56,15 @@ A marca oficial é o **calendário azul com sakura de cinco pétalas**. O SVG ca
 **Dados e atualização:** o nome público, atalho e instalador mudam para Widgy, mas o `appId` (`com.agenda.desktop`), o protocolo interno `agenda://`, a chave `agenda` e a pasta de dados legada (`%APPDATA%\\Agenda`) são mantidos deliberadamente. O instalador novo continua vindo do repositório `core-dev-user/agenda` e pode atualizar uma instalação existente sem apagar notas, widgets e personalizações. Não renomeie esses identificadores sem migrar os dados.
 
 **Estilo inicial:** azul `#238DFF`, papel de parede Oceano noturno e pétalas azuladas. As preferências já salvas continuam respeitadas; para voltar ao visual de marca novo, restaure as configurações visuais em Configurações → Sistema.
+
+
+## Player de Spotify e música do Windows
+
+O widget **Spotify e música do PC** usa a central de mídia do Windows (Global System Media Transport Controls): não precisa fazer login com a conta Spotify dentro do Widgy. Em **Configurações do widget** há quatro layouts (automático, cartão, compacto e capa), quatro fundos (capa desfocada, vidro, sólido e transparente), três formatos da capa e três cores dos controles; também é possível ocultar o álbum, o player, a linha de progresso, os tempos e os botões.
+
+- O serviço Windows lê **todas as sessões** e envia a sessão correspondente a cada widget individualmente, evitando que o Spotify mostre músicas de outro player.
+- A capa é lida do `Thumbnail.OpenReadAsync` fornecido pelo Windows, com cache por música e novas tentativas quando a capa chega depois do título. Não reusa a capa de uma faixa anterior. Se o Spotify não publicar a miniatura na central de mídia, aparece um fallback visual em vez de uma capa errada.
+- Os botões de reproduzir/pausar, anterior e próxima controlam **o player selecionado**, não outro aplicativo em primeiro plano. A busca na linha do tempo só fica ativa quando o Windows informa que é suportada.
+- Os widgets e seus ajustes antigos são preservados. Sem mídia ou fora do Windows é exibido um estado vazio. O serviço PowerShell é iniciado somente quando há widgets ativos e é encerrado quando o último é removido.
+
+**Testes:** `npm run test:media` verifica seleção isolada, player ausente, capa tardia, invalidação por música e cache individual. Em um Windows com Spotify instalado, teste tocar, pausar, trocar faixas, retornar ao app, mudar tema e reproduzir outro player simultaneamente. A API do Windows só expõe os metadados que o player decide compartilhar.
