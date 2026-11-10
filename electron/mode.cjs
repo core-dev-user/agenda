@@ -109,7 +109,9 @@ function attach(win) {
   for (const ev of ["display-metrics-changed", "display-added", "display-removed"]) screen.on(ev, fit)
   win.__agendaRaise = (on) => {
     raised = !!on
-    if (raised) { win.show(); win.focus() } else sink()
+    // vir para a frente: o Windows não deixa um programa tomar o foco sozinho (ex.: Chrome maximizado na frente);
+    // o ajudante força do jeito que o Windows permite
+    if (raised) { win.show(); win.focus(); native("activate " + h) } else sink()
   }
 }
 
