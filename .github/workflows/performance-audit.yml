@@ -36,6 +36,8 @@ jobs:
           }
       - name: Medir processos em três cenários
         shell: pwsh
+        env:
+          AGENDA_MODE: screen
         run: ./tests/performance-audit.ps1 -OutputDir perf-results -HoldSeconds 23
       - name: Publicar relatórios e capturas de teste
         if: always()
