@@ -334,7 +334,7 @@ function hidePreview() {
   clearTimeout(previewT); previewT = null
   if (!previewKey) return
   previewKey = ""
-  winh.call("unthumb")
+  winh.call("phide")
   if (preview && !preview.isDestroyed()) preview.hide()
 }
 /** items: janelas do programa; anchor: centro do botão (px da barra) */
@@ -365,12 +365,11 @@ function showPreview(barWin, items, anchor) {
   const go = () => {
     if (previewKey !== key || w.isDestroyed()) return
     w.showInactive()
-    winh.call("unthumb")
-    const sf = d.scaleFactor || 1
-    const dst = winh.hwndOf(w)
+    winh.call("phide")
     for (const t of tiles) {
-      const r = t.thumb
-      winh.call(`thumb ${dst} ${t.h} ${Math.round(r.x * sf)} ${Math.round(r.y * sf)} ${Math.round((r.x + r.w) * sf)} ${Math.round((r.y + r.h) * sf)}`)
+      // retângulo da miniatura na tela, em pixels reais
+      const p = screen.dipToScreenRect(null, { x: x + t.thumb.x, y: y + t.thumb.y, width: t.thumb.w, height: t.thumb.h })
+      winh.call(`pshow ${t.h} ${p.x} ${p.y} ${p.width} ${p.height}`)
     }
   }
   if (w.webContents.isLoading()) w.webContents.once("did-finish-load", () => { w.webContents.send("preview:data", { tiles }); go() })

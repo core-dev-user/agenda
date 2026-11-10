@@ -280,6 +280,57 @@ public static class AgWin {
   }
   public static void UnThumb() { foreach (var th in thumbs) DwmUnregisterThumbnail(th); thumbs.Clear(); }
 
+  // O Chromium desenha por cima da miniatura do DWM, então ela fica numa janelinha nativa (sem foco, sem barra,
+  // deixa o clique passar para a prévia do Agenda que está embaixo), encaixada no quadro de cada janela.
+  class Peek : System.Windows.Forms.Form {
+    protected override bool ShowWithoutActivation { get { return true; } }
+    protected override System.Windows.Forms.CreateParams CreateParams {
+      get { var cp = base.CreateParams; cp.ExStyle |= 0x80000 | 0x20 | 0x08000000 | 0x80 | 0x8; return cp; } // camada, clique passa, sem foco, sem barra, sempre na frente
+    }
+  }
+  static System.Windows.Forms.Form uiRoot;
+  static List<Peek> peeks = new List<Peek>();
+  static void Ui(Action a) {
+    if (uiRoot == null) {
+      var ready = new System.Threading.ManualResetEvent(false);
+      var t = new System.Threading.Thread(() => {
+        uiRoot = new System.Windows.Forms.Form();
+        var hh = uiRoot.Handle; // cria a janela (invisível) que recebe os pedidos
+        ready.Set();
+        System.Windows.Forms.Application.Run(new System.Windows.Forms.ApplicationContext());
+      });
+      t.SetApartmentState(System.Threading.ApartmentState.STA);
+      t.IsBackground = true;
+      t.Start();
+      ready.WaitOne(3000);
+    }
+    try { uiRoot.Invoke(a); } catch { }
+  }
+  /** mostra a miniatura da janela src no retângulo (pixels da tela) */
+  public static void PeekShow(string src, int x, int y, int w, int h) {
+    Ui(() => {
+      var f = new Peek();
+      f.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+      f.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
+      f.ShowInTaskbar = false;
+      f.TopMost = true;
+      f.BackColor = System.Drawing.Color.FromArgb(255, 1, 254); // cor "furada": a sobra em volta da miniatura fica transparente
+      f.Bounds = new System.Drawing.Rectangle(x, y, w, h);
+      f.Show();
+      f.Bounds = new System.Drawing.Rectangle(x, y, w, h);
+      SetLayeredWindowAttributes(f.Handle, 0xFE01FF, 255, 0x1 | 0x2);
+      peeks.Add(f);
+      Thumb(f.Handle.ToInt64().ToString(), src, 0, 0, w, h);
+    });
+  }
+  public static void PeekHide() {
+    Ui(() => {
+      UnThumb();
+      foreach (var f in peeks) { try { f.Close(); f.Dispose(); } catch { } }
+      peeks.Clear();
+    });
+  }
+
   public static void Minimize(string s) { ShowWindow(H(s), 6); }
   public static void Close(string s) { PostMessage(H(s), 0x0010, IntPtr.Zero, IntPtr.Zero); }
 }
@@ -288,7 +339,7 @@ public static class AgWin {
 const PS = `
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
-try { Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
+try { Add-Type -ReferencedAssemblies System.Drawing, System.Windows.Forms -TypeDefinition @'
 ${CS}
 '@ } catch { '{"error":' + (ConvertTo-Json ([string]$_)) + '}'; exit 1 }
 $ErrorActionPreference = 'SilentlyContinue'
@@ -315,6 +366,8 @@ while ($true) {
     'close'    { [AgWin]::Close($a[1]) }
     'thumb'    { [AgWin]::Thumb($a[1], $a[2], [int]$a[3], [int]$a[4], [int]$a[5], [int]$a[6]) }
     'unthumb'  { [AgWin]::UnThumb() }
+    'pshow'    { [AgWin]::PeekShow($a[1], [int]$a[2], [int]$a[3], [int]$a[4], [int]$a[5]) }
+    'phide'    { [AgWin]::PeekHide() }
     'icon'     { $out = [AgWin]::Icon($l.Substring(5).Trim(), 48); if (-not $out) { $out = 'none' } }
     'desktop'  { (New-Object -ComObject Shell.Application).ToggleDesktop() }
   }
