@@ -1,0 +1,37 @@
+name: Auditar desempenho Widgy
+on:
+  push:
+    branches: [audit/widgy-performance-20261110]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-benchmark:
+    runs-on: windows-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci
+      - name: Testes unitários existentes
+        run: |
+          npm run test:media
+          node --test tests/taskbar-control.test.cjs
+      - name: Compilar para Electron
+        run: npm run build
+      - name: Medir processos em três cenários
+        shell: pwsh
+        run: ./tests/performance-audit.ps1 -OutputDir perf-results -HoldSeconds 23
+      - name: Publicar relatórios e capturas de teste
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: widgy-auditoria-windows
+          path: perf-results/
+          retention-days: 7
