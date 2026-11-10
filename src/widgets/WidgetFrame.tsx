@@ -72,7 +72,7 @@ export const WIDGET_META: Record<WidgetType, { label: string; icon: LucideIcon; 
   musicclip: { label: "Clipe da música (YouTube Music)", icon: Clapperboard, color: "#ff3b5c" },
   valagent: { label: "Valorant: agente (templates)", icon: Target, color: "#ff4655" },
   sysmon: { label: "Desempenho do PC (CPU, GPU, RAM)", icon: Cpu, color: "#3ccfcf" },
-  pcmusic: { label: "Player do PC (Spotify, Deezer…)", icon: Headphones, color: "#1db954" },
+  pcmusic: { label: "Spotify e música do PC", icon: Headphones, color: "#1db954" },
   countdown: { label: "Contagem regressiva (dias para…)", icon: Hourglass, color: "#ff8fb8" },
 }
 
