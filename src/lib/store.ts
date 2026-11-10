@@ -49,7 +49,7 @@ export const THEME_PRESETS: Record<ThemeId, Partial<Settings>> = {
 export const DEFAULT_SETTINGS: Settings = {
   theme: "glass",
   dark: true,
-  accent: "#ff8fb8",
+  accent: "#238DFF",
   uiFont: "outfit",
   numFont: "space",
   displayFont: "playfair",
@@ -63,13 +63,13 @@ export const DEFAULT_SETTINGS: Settings = {
   // seta do Windows por padrão (a personalizada fica como opção nas configurações)
   cursorStyle: "system",
   cursorEffect: "sakura",
-  cursorColor: "#ffc4dc",
+  cursorColor: "#A9DFFF",
   cursorSize: 1,
   taskbar: { position: "bottom", style: "dock", size: 56, autoHide: false, showLabels: false, magnify: true },
   wallpaper: {
     type: "gradient",
-    gradient: "dusk",
-    color: "#1a1020",
+    gradient: "ocean",
+    color: "#081A34",
     image: null,
     blur: 0,
     dim: 0.15,
@@ -372,7 +372,7 @@ export const useStore = create<State>()(
       deleteTemplate: (id) => set((s) => ({ templates: s.templates.filter((t) => t.id !== id) })),
       applyTemplate: (id) =>
         set((s) => {
-          const t = id === "default" ? { name: "Padrão do Agenda", settings: lookOf(DEFAULT_SETTINGS), widgets: undefined } : s.templates.find((x) => x.id === id)
+          const t = id === "default" ? { name: "Padrão do Widgy", settings: lookOf(DEFAULT_SETTINGS), widgets: undefined } : s.templates.find((x) => x.id === id)
           if (!t) return {}
           const undo = { name: t.name, settings: lookOf(s.settings), widgets: t.widgets ? JSON.parse(JSON.stringify(s.widgets)) : undefined }
           const look = { ...t.settings }

@@ -1,5 +1,5 @@
-# Lança uma versão do Agenda: roda quando uma etiqueta "vX.Y.Z" chega no GitHub (npm run release).
-# Gera o instalador num Windows do GitHub e publica a Release com o Agenda-Setup-X.Y.Z.exe e o latest.yml,
+# Lança uma versão do Widgy: roda quando uma etiqueta "vX.Y.Z" chega no GitHub (npm run release).
+# Gera o instalador num Windows do GitHub e publica a Release com o Widgy-Setup-X.Y.Z.exe e o latest.yml,
 # que é o que os Agendas instalados consultam para se atualizar sozinhos.
 name: Lançar versão
 
@@ -33,7 +33,7 @@ jobs:
       # acabam abrindo duas Releases com a mesma etiqueta
       - name: Criar a Release
         shell: bash
-        run: gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "${GITHUB_REF_NAME#v}" --notes ""
+        run: gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Widgy ${GITHUB_REF_NAME#v}" --notes ""
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

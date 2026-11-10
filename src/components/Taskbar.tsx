@@ -252,7 +252,7 @@ function StartMenu({ onPick, close }: { onPick: (id: SectionId) => void; close: 
       <div className="mb-4 flex items-center gap-3">
         <Logo size={48} />
         <div>
-          <div className="font-display text-2xl font-semibold italic">Agenda</div>
+          <div className="font-display text-2xl font-semibold tracking-[-0.035em]">Widgy</div>
           <div className="text-xs text-fg-muted">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
         </div>
       </div>

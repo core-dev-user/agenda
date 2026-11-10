@@ -40,11 +40,11 @@ function makeTray() {
   if (tray) return
   const icon = nativeImage.createFromPath(path.join(__dirname, "..", "build", process.platform === "win32" ? "icon.ico" : "icon.png")).resize({ width: 16, height: 16 })
   tray = new Tray(icon)
-  tray.setToolTip("Agenda")
+  tray.setToolTip("Widgy")
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: "Abrir o Agenda", click: show },
+    { label: "Abrir o Widgy", click: show },
     { type: "separator" },
-    { label: "Sair do Agenda", click: () => { quitting = true; app.quit() } },
+    { label: "Sair do Widgy", click: () => { quitting = true; app.quit() } },
   ]))
   tray.on("click", show)
 }

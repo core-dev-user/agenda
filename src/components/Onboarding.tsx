@@ -46,7 +46,7 @@ function ModeArt({ mode }: { mode: UiMode }) {
 const MODE_ICON: Record<UiMode, LucideIcon> = { app: AppWindowIcon, desktop: Monitor, screen: MonitorSmartphone }
 
 const MUSIC_APPS: { id: PcApp | "ytmusic"; label: string; player: string }[] = [
-  { id: "ytmusic", label: "YouTube Music (dentro do Agenda)", player: "" },
+  { id: "ytmusic", label: "YouTube Music (dentro do Widgy)", player: "" },
   { id: "spotify", label: "Spotify", player: "spotify" },
   { id: "deezer", label: "Deezer", player: "deezer" },
   { id: "applemusic", label: "Apple Music", player: "applemusic" },
@@ -120,7 +120,7 @@ export default function Onboarding() {
         <div className="mb-6 flex items-center gap-3">
           <Logo size={44} />
           <div>
-            <div className="font-display text-2xl font-semibold">Bem-vindo ao Agenda</div>
+            <div className="font-display text-2xl font-semibold">Bem-vindo ao Widgy</div>
             <div className="text-sm text-fg-muted">{step === 0 ? "Como você quer usar?" : "Encontramos estes apps no seu PC"}</div>
           </div>
           <div className="ml-auto flex gap-1.5">
@@ -154,8 +154,8 @@ export default function Onboarding() {
                 <button onClick={() => setMainBar(!mainBar)} className="flex items-center gap-3 rounded-xl border border-line p-3 text-left sm:col-span-3 hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]">
                   <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-md border", mainBar ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-line")}>{mainBar && <Check size={12} strokeWidth={3} />}</span>
                   <span>
-                    <span className="block text-sm font-medium">Usar a barra do Agenda no lugar da barra do Windows</span>
-                    <span className="block text-xs text-fg-muted">Iniciar, programas abertos e fixados e relógio na barra do Agenda. Se o Agenda fechar, a do Windows volta.</span>
+                    <span className="block text-sm font-medium">Usar a barra do Widgy no lugar da barra do Windows</span>
+                    <span className="block text-xs text-fg-muted">Iniciar, programas abertos e fixados e relógio na barra do Widgy. Se o Widgy fechar, a do Windows volta.</span>
                   </span>
                 </button>
               )}

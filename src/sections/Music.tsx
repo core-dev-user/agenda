@@ -87,7 +87,7 @@ export default function Music() {
         <button className="btn" onClick={() => { useStore.setState({ musicTab: "player" }); bridge.music.cmd("library") }}><Library size={14} /> Biblioteca</button>
         <button className={cn("btn", stats && "btn-accent")} onClick={() => useStore.setState({ musicTab: stats ? "player" : "stats" })} title="Música mais ouvida, artistas, gêneros, minutos…"><BarChart3 size={14} /> Estatísticas</button>
         {m.popped ? (
-          <button className="btn" onClick={() => bridge.music.dock()} title="Trazer o YouTube Music de volta para dentro do Agenda"><MonitorDown size={14} /> Trazer para o Agenda</button>
+          <button className="btn" onClick={() => bridge.music.dock()} title="Trazer o YouTube Music de volta para dentro do Widgy"><MonitorDown size={14} /> Trazer para o Widgy</button>
         ) : (
           <button className="btn" onClick={() => bridge.music.popout()} title="A música continua tocando"><ExternalLink size={14} /> Abrir em janela separada</button>
         )}
@@ -106,7 +106,7 @@ export default function Music() {
               <div className="font-display text-xl font-semibold">Tocando em janela separada</div>
               <div className="mt-1 text-sm text-fg-muted">Fechar aquela janela traz o YouTube Music de volta para cá, sem parar a música.</div>
             </div>
-            <button className="btn btn-accent relative" onClick={() => bridge.music.dock()}><MonitorDown size={15} /> Trazer para o Agenda</button>
+            <button className="btn btn-accent relative" onClick={() => bridge.music.dock()}><MonitorDown size={15} /> Trazer para o Widgy</button>
           </div>
         ) : (
           <div ref={slot} className="relative flex h-full items-center justify-center overflow-hidden rounded-[calc(var(--r)*0.6)] bg-[#030303] text-fg-muted">
@@ -123,7 +123,7 @@ export default function Music() {
         )}
       </div>
 
-      {/* barra de baixo no estilo do Agenda */}
+      {/* barra de baixo no estilo do Widgy */}
       <div className="flex flex-wrap items-center gap-4 px-4 py-3">
         {m.ready ? (
           <>
@@ -149,10 +149,10 @@ export default function Music() {
       </div>
       <div className="flex flex-wrap items-center gap-4 border-t border-line px-4 py-1.5 text-xs">
         <div className="min-w-60 flex-1">
-          <Switch label="Carregar o YouTube Music junto com o Agenda (em segundo plano)" checked={auto} onChange={(v) => setSettings({ musicAutostart: v })} />
+          <Switch label="Carregar o YouTube Music junto com o Widgy (em segundo plano)" checked={auto} onChange={(v) => setSettings({ musicAutostart: v })} />
         </div>
         <span className="text-fg-muted">Fechar a aba Música não para a música.</span>
-        <button className="btn btn-ghost text-xs" onClick={() => confirm("Sair da conta Google no YouTube Music do Agenda?") && bridge.music.logout()}><LogOut size={13} /> Sair da conta</button>
+        <button className="btn btn-ghost text-xs" onClick={() => confirm("Sair da conta Google no YouTube Music do Widgy?") && bridge.music.logout()}><LogOut size={13} /> Sair da conta</button>
       </div>
     </div>
   )

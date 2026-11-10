@@ -34,7 +34,7 @@ export function UpdatePrompt() {
             <Download size={18} className="mt-0.5 shrink-0 text-brand" />
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold">Versão {st.version} pronta</div>
-              <div className="mt-0.5 text-xs text-fg-muted">Reinicie para atualizar. Se preferir, ela é instalada sozinha na próxima vez que você fechar o Agenda.</div>
+              <div className="mt-0.5 text-xs text-fg-muted">Reinicie para atualizar. Se preferir, ela é instalada sozinha na próxima vez que você fechar o Widgy.</div>
               <div className="mt-3 flex gap-2">
                 <button className="btn !py-1 text-xs" onClick={() => bridge.update?.install()}><RotateCw size={12} /> Reiniciar agora</button>
                 <button className="btn btn-ghost !py-1 text-xs" onClick={() => setLater(st.version)}>Depois</button>
@@ -54,13 +54,13 @@ export function UpdatesSection() {
   const [busy, setBusy] = useState(false)
   if (!bridge.update || !st) return null
   const line =
-    !st.enabled ? "Rodando pelo código: as atualizações automáticas só funcionam no Agenda instalado pelo instalador."
+    !st.enabled ? "Rodando pelo código: as atualizações automáticas só funcionam no Widgy instalado pelo instalador."
     : st.status === "checking" ? "Procurando…"
     : st.status === "downloading" ? `Baixando a versão ${st.version}… ${st.percent}%`
     : st.status === "ready" ? `Versão ${st.version} baixada. Reinicie para instalar.`
     : st.status === "none" ? "Você está com a versão mais nova."
     : st.status === "error" ? `Não consegui procurar agora (${st.error || "sem conexão"}).`
-    : "O Agenda procura atualizações sozinho ao abrir e a cada 3 horas."
+    : "O Widgy procura atualizações sozinho ao abrir e a cada 3 horas."
   return (
     <Card>
       <div className="font-display mb-1 text-lg font-semibold">Atualizações</div>

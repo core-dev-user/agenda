@@ -202,7 +202,7 @@ function makeBar(d) {
     skipTaskbar: true, alwaysOnTop: true, focusable: false, hasShadow: false, show: false, roundedCorners: false,
     // barra inteira: vidro acrílico do Windows; dock e pílula: janela transparente, só a dock aparece
     ...(dock ? { transparent: true, backgroundColor: "#00000000" } : { transparent: false, backgroundMaterial: "acrylic", backgroundColor: "#00000000" }),
-    title: "Agenda — barra", webPreferences: prefs(),
+    title: "Widgy — barra", webPreferences: prefs(),
   })
   b.setAlwaysOnTop(true, "pop-up-menu")
   // a parte transparente deixa o clique passar para o que está atrás; a página avisa quando o mouse está na dock
@@ -222,7 +222,7 @@ function makeDesk(d) {
     ...work,
     frame: false, resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
     skipTaskbar: true, hasShadow: false, show: false, roundedCorners: false, backgroundColor: "#000000",
-    title: "Agenda — fundo", webPreferences: prefs(),
+    title: "Widgy — fundo", webPreferences: prefs(),
   })
   page(k, { view: "desk" })
   const h = winh.hwndOf(k)
@@ -315,7 +315,7 @@ function openMenu(kind, anchorX, w, h, barWin, fromKey) {
   const m = new BrowserWindow({
     x, y, width: W, height: H,
     frame: false, transparent: false, backgroundMaterial: "acrylic", resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
-    skipTaskbar: true, alwaysOnTop: true, show: false, roundedCorners: true, backgroundColor: "#00000000", title: "Agenda — menu", webPreferences: prefs(),
+    skipTaskbar: true, alwaysOnTop: true, show: false, roundedCorners: true, backgroundColor: "#00000000", title: "Widgy — menu", webPreferences: prefs(),
   })
   m.setAlwaysOnTop(true, "pop-up-menu")
   page(m, { view: "menu", kind: String(kind) })
@@ -344,7 +344,7 @@ function previewWin() {
   preview = new BrowserWindow({
     width: 300, height: 200, frame: false, transparent: false, backgroundMaterial: "acrylic", resizable: false, movable: false, minimizable: false, maximizable: false,
     fullscreenable: false, skipTaskbar: true, alwaysOnTop: true, focusable: false, show: false, roundedCorners: true, backgroundColor: "#00000000",
-    title: "Agenda — prévia", webPreferences: prefs(),
+    title: "Widgy — prévia", webPreferences: prefs(),
   })
   preview.setAlwaysOnTop(true, "pop-up-menu")
   page(preview, { view: "preview" })

@@ -4,31 +4,31 @@
 
 /* ---------- tokens shadcn (usados pelos botões liquid/metal) ---------- */
 :root {
-  --background: oklch(0.16 0.02 330);
-  --foreground: oklch(0.97 0.01 330);
-  --primary: var(--accent, #ff8fb8);
+  --background: oklch(0.16 0.02 255);
+  --foreground: oklch(0.97 0.01 255);
+  --primary: var(--accent, #238DFF);
   --primary-foreground: #fff;
-  --secondary: oklch(0.3 0.03 330);
+  --secondary: oklch(0.3 0.03 255);
   --secondary-foreground: #fff;
-  --muted: oklch(0.35 0.02 330);
-  --muted-foreground: oklch(0.75 0.02 330);
-  --accent-c: oklch(0.3 0.04 330);
+  --muted: oklch(0.35 0.02 255);
+  --muted-foreground: oklch(0.75 0.02 255);
+  --accent-c: oklch(0.3 0.04 255);
   --accent-foreground: #fff;
   --destructive: oklch(0.62 0.22 25);
   --border: rgb(255 255 255 / 0.14);
   --input: rgb(255 255 255 / 0.18);
-  --ring: var(--accent, #ff8fb8);
+  --ring: var(--accent, #238DFF);
 
-  /* tokens do Agenda (sobrescritos via JS) */
-  --accent: #ff8fb8;
+  /* tokens do Widgy (sobrescritos via JS; preferências antigas preservadas) */
+  --accent: #238DFF;
   --r: 22px;
   --blur: 24px;
   --sa: 0.12;
   --font-ui: "Outfit Variable", sans-serif;
   --font-num: "Space Grotesk Variable", sans-serif;
   --font-display: "Playfair Display Variable", serif;
-  --fg: #fdf6fa;
-  --fg-muted: rgb(253 246 250 / 0.62);
+  --fg: #F3F8FF;
+  --fg-muted: rgb(229 239 255 / 0.62);
   --line: rgb(255 255 255 / 0.14);
   --field: rgb(255 255 255 / 0.07);
   --tb-size: 56px;
@@ -59,11 +59,11 @@
 }
 
 html:not(.dark) {
-  --fg: #2a1520;
-  --fg-muted: rgb(42 21 32 / 0.6);
+  --fg: #1A2B43;
+  --fg-muted: rgb(26 43 67 / 0.6);
   --line: rgb(0 0 0 / 0.1);
   --field: rgb(255 255 255 / 0.45);
-  --foreground: #2a1520;
+  --foreground: #1A2B43;
   --border: rgb(0 0 0 / 0.12);
 }
 
@@ -72,7 +72,7 @@ html, body, #root { height: 100%; margin: 0; overflow: hidden; }
 body {
   font-family: var(--font-ui);
   color: var(--fg);
-  background: #0b0710;
+  background: #071428;
   -webkit-font-smoothing: antialiased;
   user-select: none;
 }
@@ -360,3 +360,12 @@ html:has([data-dim]) [data-desktop] .surface, html:has([data-dim]) [data-desktop
 /* um monitor dentro da página (área de trabalho em vários monitores): o quadro não pega cliques, só o que está dentro */
 .screen-frame { pointer-events: none; }
 .screen-frame > :not(.pointer-events-none) { pointer-events: auto; }
+
+/* Entrada opcional da marca Widgy (respeita a preferência do usuário). */
+@keyframes widgy-mark-in {
+  from { opacity: 0; transform: translateY(8px) scale(.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .widgy-logo-animated { animation: none !important; }
+}

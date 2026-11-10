@@ -1,29 +1,30 @@
 {
-  "name": "agenda",
-  "productName": "Agenda",
+  "name": "widgy",
+  "productName": "Widgy",
   "version": "0.3.1",
-  "description": "Agenda — sua área de trabalho personalizada",
+  "description": "Widgy — sua área de trabalho personalizada",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n vite,app \"vite\" \"wait-on tcp:5173 && cross-env AGENDA_DEV=1 electron .\"",
-    "build": "node scripts/generate-icon-pack.mjs && tsc -b && vite build",
+    "build": "npm run icon && node scripts/generate-icon-pack.mjs && tsc -b && vite build",
     "start": "electron .",
     "icon": "node scripts/make-icon.mjs",
     "dist": "npm run icon && npm run build && electron-builder --win --dir",
     "release": "node scripts/release.mjs",
-    "predev": "node scripts/generate-icon-pack.mjs"
+    "predev": "npm run icon && node scripts/generate-icon-pack.mjs"
   },
   "build": {
     "appId": "com.agenda.desktop",
-    "productName": "Agenda",
+    "productName": "Widgy",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**",
       "electron/**",
-      "build/icon.png"
+      "build/icon.png",
+      "build/icon.ico"
     ],
     "asarUnpack": [
       "node_modules/sharp/**",
@@ -39,9 +40,9 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Agenda",
-      "artifactName": "Agenda-Setup-${version}.${ext}",
-      "uninstallDisplayName": "Agenda",
+      "shortcutName": "Widgy",
+      "artifactName": "Widgy-Setup-${version}.${ext}",
+      "uninstallDisplayName": "Widgy",
       "deleteAppDataOnUninstall": false
     },
     "publish": [

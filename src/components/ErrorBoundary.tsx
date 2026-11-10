@@ -10,7 +10,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; label?: stri
   state = { err: null as Error | null, n: 0 }
   static getDerivedStateFromError(err: Error) { return { err } }
   componentDidCatch(err: Error, info: { componentStack?: string | null }) {
-    console.error(`[${this.props.label ?? "Agenda"}]`, err, info.componentStack)
+    console.error(`[${this.props.label ?? "Widgy"}]`, err, info.componentStack)
   }
   render() {
     if (!this.state.err) return <div key={this.state.n} className="contents">{this.props.children}</div>

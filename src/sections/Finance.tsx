@@ -126,7 +126,7 @@ function Welcome({ go }: { go: () => void }) {
     <div className="mx-auto max-w-2xl space-y-5 py-6 text-center">
       <img src="logos/financas.svg" className="mx-auto h-24 w-24" draggable={false} />
       <div className="font-display text-2xl font-semibold">Suas finanças, só no seu PC</div>
-      <p className="text-fg-muted">Importe o extrato da conta Itaú e as faturas dos seus dois cartões. O Agenda separa tudo em categorias sozinho e aprende com as suas correções.</p>
+      <p className="text-fg-muted">Importe o extrato da conta Itaú e as faturas dos seus dois cartões. O Widgy separa tudo em categorias sozinho e aprende com as suas correções.</p>
       <div className="grid gap-3 text-left sm:grid-cols-3">
         {[
           { i: <Landmark size={18} />, t: "Extrato da conta", d: "No app ou site do Itaú, exporte o extrato em OFX (o mais preciso), PDF ou copie e cole." },
@@ -352,7 +352,7 @@ function Txns({ month, catFilter, setCatFilter }: { month: string; catFilter: st
         <span className="text-sm text-fg-muted">{list.length} lançamentos · <span className="font-num text-fg">{money(total, true)}</span></span>
         <button className="btn" onClick={() => setAdding(true)}><Plus size={14} /> Lançamento</button>
       </div>
-      {catFilter === "review" && <div className="text-xs text-fg-muted">Escolha a categoria certa: o Agenda aprende e os próximos lançamentos iguais já chegam certos.</div>}
+      {catFilter === "review" && <div className="text-xs text-fg-muted">Escolha a categoria certa: o Widgy aprende e os próximos lançamentos iguais já chegam certos.</div>}
       {list.length === 0 ? <Empty icon="🧾" title="Nada por aqui">Mude os filtros ou importe um extrato.</Empty> : (
         <div className="overflow-hidden rounded-xl border border-line">
           <table className="w-full text-sm">
@@ -661,7 +661,7 @@ function FinSettings() {
   const savePin = async () => {
     if (pinNew && pinNew.length < 4) { setMsg("Use pelo menos 4 dígitos."); return }
     const ok = await bridge.finance.setPin(pinOld, pinNew || null)
-    setMsg(ok ? (pinNew ? "Senha definida. A aba pede a senha ao abrir o Agenda." : "Senha removida.") : "A senha atual não confere.")
+    setMsg(ok ? (pinNew ? "Senha definida. A aba pede a senha ao abrir o Widgy." : "Senha removida.") : "A senha atual não confere.")
     if (ok) { setPinOld(""); setPinNew(""); check() }
   }
   const exportCSV = () => {
@@ -675,7 +675,7 @@ function FinSettings() {
     <div className="mx-auto max-w-3xl space-y-5">
       <Card>
         <div className="mb-1 flex items-center gap-2 font-semibold"><ShieldCheck size={16} /> Segurança</div>
-        <div className="mb-3 text-sm text-fg-muted">Os dados ficam só neste PC, criptografados pela sua conta do Windows. Com uma senha, a aba também pede a senha toda vez que o Agenda abre.</div>
+        <div className="mb-3 text-sm text-fg-muted">Os dados ficam só neste PC, criptografados pela sua conta do Windows. Com uma senha, a aba também pede a senha toda vez que o Widgy abre.</div>
         <div className="flex flex-wrap items-center gap-2">
           {hasPin && <input type="password" className="field !w-40" placeholder="Senha atual" value={pinOld} onChange={(e) => setPinOld(e.target.value)} />}
           <input type="password" className="field !w-40" placeholder={hasPin ? "Nova senha (vazio = remover)" : "Criar senha (4+ dígitos)"} value={pinNew} onChange={(e) => setPinNew(e.target.value)} />
@@ -721,7 +721,7 @@ function FinSettings() {
       </Card>
 
       <Card>
-        <div className="mb-1 font-semibold">O que o Agenda aprendeu</div>
+        <div className="mb-1 font-semibold">O que o Widgy aprendeu</div>
         <div className="mb-2 text-sm text-fg-muted">Toda vez que você corrige uma categoria, vira uma regra. Apagar uma regra recategoriza o que ela tinha mudado.</div>
         {data.rules.length === 0 ? <div className="text-sm text-fg-muted">Nenhuma regra ainda.</div> : (
           <div className="max-h-64 space-y-1 overflow-auto">

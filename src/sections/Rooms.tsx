@@ -119,9 +119,9 @@ function SharePicker({ open, onClose }: { open: boolean; onClose: () => void }) 
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <span className="w-16 text-sm">Som</span>
-          <Segmented value={audio} onChange={setAudio} options={[{ value: "discord", label: "PC sem o Discord" }, { value: "agenda", label: "PC sem o Agenda" }, { value: "none", label: "Sem som" }]} />
+          <Segmented value={audio} onChange={setAudio} options={[{ value: "discord", label: "PC sem o Discord" }, { value: "agenda", label: "PC sem o Widgy" }, { value: "none", label: "Sem som" }]} />
         </div>
-        <div className="text-xs text-fg-muted">“Sem o Discord”: os amigos ouvem o jogo, música e vídeos, mas não a call do Discord. “Sem o Agenda”: use se a conversa for por aqui, para sua voz e a deles não voltarem.</div>
+        <div className="text-xs text-fg-muted">“Sem o Discord”: os amigos ouvem o jogo, música e vídeos, mas não a call do Discord. “Sem o Widgy”: use se a conversa for por aqui, para sua voz e a deles não voltarem.</div>
         <Switch label="Priorizar movimento (jogos e vídeos). Desligado: priorizar nitidez (texto, código)" checked={motion} onChange={setMotion} />
         <div className="flex justify-end gap-2">
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
