@@ -1,122 +1,115 @@
-// "O que está tocando" de qualquer player do PC (Spotify, Deezer, Apple Music, navegador…)
-// pela central de mídia do Windows (a mesma do controle de volume do Windows).
-// Só roda enquanto algum widget está inscrito.
+// Spotify/Deezer/etc. use the Windows Global System Media Transport Controls (SMTC).
+// A single PowerShell worker reads all sessions; each widget independently chooses a source.
 const path = require("node:path")
 const fs = require("node:fs")
 const os = require("node:os")
 const { spawn } = require("node:child_process")
+const { pickSession, mergeArtwork } = require("./media-utils.cjs")
 
-const PS = `
-$ErrorActionPreference = 'SilentlyContinue'
-[Console]::OutputEncoding = [Text.Encoding]::UTF8
-Add-Type -AssemblyName System.Runtime.WindowsRuntime
-$asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation\`1' })[0]
-function Await($op, [Type]$t) { $task = $asTask.MakeGenericMethod($t).Invoke($null, @($op)); $null = $task.Wait(5000); $task.Result }
-$null = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]
-$null = [Windows.Storage.Streams.IRandomAccessStreamWithContentType, Windows.Storage.Streams, ContentType = WindowsRuntime]
-$mgr = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
-$lastKey = ''
-$want = ''
-function Pick() {
-  $all = @($mgr.GetSessions())
-  if ($want) { $m = $all | Where-Object { $_.SourceAppUserModelId -like "*$want*" } | Select-Object -First 1; if ($m) { return $m } }
-  # sem preferência: o que estiver tocando, senão o atual do Windows (ignora o próprio Agenda)
-  $others = $all | Where-Object { $_.SourceAppUserModelId -notlike '*agenda*' }
-  $p = $others | Where-Object { $_.GetPlaybackInfo().PlaybackStatus -eq 4 } | Select-Object -First 1
-  if ($p) { return $p }
-  $c = $mgr.GetCurrentSession(); if ($c -and $c.SourceAppUserModelId -notlike '*agenda*') { return $c }
-  return ($others | Select-Object -First 1)
-}
-# [Console]::In bloqueia no ReadLineAsync; um leitor próprio da entrada padrão é assíncrono de verdade
-$in = New-Object System.IO.StreamReader([Console]::OpenStandardInput())
-$pending = $null
-while ($true) {
-  # comandos: "want spotify", "toggle", "next", "prev"
-  while ($true) {
-    if ($pending -eq $null) { $pending = $in.ReadLineAsync() }
-    if (-not $pending.IsCompleted) { break }
-    $cmd = $pending.Result; $pending = $null
-    if ($cmd -eq $null) { exit }
-    $s = Pick
-    switch -Wildcard ($cmd) {
-      'want *' { $want = $cmd.Substring(5).Trim(); $lastKey = '' }
-      'toggle' { if ($s) { $null = Await ($s.TryTogglePlayPauseAsync()) ([bool]) } }
-      'next'   { if ($s) { $null = Await ($s.TrySkipNextAsync()) ([bool]) } }
-      'prev'   { if ($s) { $null = Await ($s.TrySkipPreviousAsync()) ([bool]) } }
-    }
-  }
-  $s = Pick
-  if (-not $s) { '{"none":true}'; Start-Sleep -Milliseconds 1500; continue }
-  $p = Await ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
-  $pb = $s.GetPlaybackInfo(); $tl = $s.GetTimelineProperties()
-  $key = "$($s.SourceAppUserModelId)|$($p.Title)|$($p.Artist)"
-  $art = $null
-  if ($key -ne $lastKey -and $p.Thumbnail) {
-    $st = Await ($p.Thumbnail.OpenReadAsync()) ([Windows.Storage.Streams.IRandomAccessStreamWithContentType])
-    if ($st) {
-      $ns = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($st)
-      $ms = New-Object System.IO.MemoryStream; $ns.CopyTo($ms)
-      $art = 'data:' + $st.ContentType + ';base64,' + [Convert]::ToBase64String($ms.ToArray())
-      $ns.Dispose(); $ms.Dispose()
-    }
-  }
-  $o = [ordered]@{
-    app = $s.SourceAppUserModelId; title = $p.Title; artist = $p.Artist; album = $p.AlbumTitle
-    playing = ($pb.PlaybackStatus -eq 4); pos = [math]::Round($tl.Position.TotalSeconds, 1); dur = [math]::Round($tl.EndTime.TotalSeconds, 1)
-    canNext = $pb.Controls.IsNextEnabled; canPrev = $pb.Controls.IsPreviousEnabled
-  }
-  if ($key -ne $lastKey) { $o.art = $art; $o.newTrack = $true; $lastKey = $key }
-  ($o | ConvertTo-Json -Compress)
-  Start-Sleep -Milliseconds 1000
-}
-`
+const PS = "$ErrorActionPreference = 'Stop'\n[Console]::OutputEncoding = [Text.Encoding]::UTF8\nAdd-Type -AssemblyName System.Runtime.WindowsRuntime\n$asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {\n  $_.Name -eq 'AsTask' -and $_.IsGenericMethodDefinition -and $_.GetParameters().Count -eq 1 -and\n  $_.GetParameters()[0].ParameterType.Name -eq ('IAsyncOperation' + [char]96 + '1')\n})[0]\nfunction Await($operation, [Type]$resultType) {\n  $task = $asTask.MakeGenericMethod($resultType).Invoke($null, @($operation))\n  if (-not $task.Wait(5000)) { throw 'Timeout ao ler a central de midia' }\n  return $task.Result\n}\n$null = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]\n$null = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties, Windows.Media.Control, ContentType = WindowsRuntime]\n$null = [Windows.Storage.Streams.IRandomAccessStreamWithContentType, Windows.Storage.Streams, ContentType = WindowsRuntime]\n$null = [Windows.Storage.Streams.DataReader, Windows.Storage.Streams, ContentType = WindowsRuntime]\ntry {\n  $manager = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])\n} catch {\n  '{\"sessions\":[],\"error\":\"A central de mídia do Windows não está disponível.\"}'\n  exit 1\n}\n$keys = @{}\n$covers = @{}\n$attempts = @{}\n$input = New-Object System.IO.StreamReader([Console]::OpenStandardInput())\n$pending = $null\n\nfunction ReadCover($thumbnail) {\n  if (-not $thumbnail) { return $null }\n  $stream = $null\n  $reader = $null\n  $inputStream = $null\n  try {\n    $stream = Await ($thumbnail.OpenReadAsync()) ([Windows.Storage.Streams.IRandomAccessStreamWithContentType])\n    if (-not $stream) { return $null }\n    $length = [long]$stream.Size\n    if ($length -le 0 -or $length -gt 2097152) { return $null }\n    $inputStream = $stream.GetInputStreamAt([uint64]0)\n    $reader = [Windows.Storage.Streams.DataReader]::new($inputStream)\n    $loaded = Await ($reader.LoadAsync([uint32]$length)) ([uint32])\n    if ($loaded -le 0) { return $null }\n    $bytes = New-Object 'System.Byte[]' ([int]$loaded)\n    $reader.ReadBytes($bytes)\n    $contentType = [string]$stream.ContentType\n    if (-not $contentType.StartsWith('image/')) { $contentType = 'image/jpeg' }\n    return 'data:' + $contentType + ';base64,' + [Convert]::ToBase64String($bytes)\n  } catch {\n    return $null\n  } finally {\n    if ($reader) { $reader.Dispose() }\n    if ($inputStream) { $inputStream.Dispose() }\n    if ($stream) { $stream.Dispose() }\n  }\n}\nfunction Lookup($id) {\n  if (-not $id) { return $null }\n  return @($manager.GetSessions() | Where-Object { $_.SourceAppUserModelId -eq $id } | Select-Object -First 1)[0]\n}\n\nwhile ($true) {\n  try {\n    # stdin is polled asynchronously so media updates never block waiting for commands.\n    while ($true) {\n      if ($null -eq $pending) { $pending = $input.ReadLineAsync() }\n      if (-not $pending.IsCompleted) { break }\n      $line = $pending.Result\n      $pending = $null\n      if ($null -eq $line) { exit 0 }\n      $parts = $line.Split(' ')\n      if ($parts.Count -lt 2) { continue }\n      $command = $parts[0]\n      if ($command -notin @('toggle', 'next', 'prev', 'seek')) { continue }\n      $id = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[1]))\n      $s = Lookup $id\n      if (-not $s) { continue }\n      try {\n        switch ($command) {\n          'toggle' { $null = Await ($s.TryTogglePlayPauseAsync()) ([bool]) }\n          'next' { $null = Await ($s.TrySkipNextAsync()) ([bool]) }\n          'prev' { $null = Await ($s.TrySkipPreviousAsync()) ([bool]) }\n          'seek' {\n            $seconds = if ($parts.Count -gt 2) { [double]$parts[2] } else { 0 }\n            $ticks = [long][Math]::Round([Math]::Max(0, $seconds) * 10000000)\n            $null = Await ($s.TryChangePlaybackPositionAsync($ticks)) ([bool])\n          }\n        }\n      } catch {}\n    }\n    $current = $manager.GetCurrentSession()\n    $currentId = if ($current) { [string]$current.SourceAppUserModelId } else { '' }\n    $items = New-Object System.Collections.Generic.List[object]\n    foreach ($s in @($manager.GetSessions())) {\n      try {\n        $id = [string]$s.SourceAppUserModelId\n        if (-not $id -or $id -match '(?i)(widgy|agenda)(\\.exe|!|$)') { continue }\n        $media = Await ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])\n        if (-not $media -or -not $media.Title) { continue }\n        $pb = $s.GetPlaybackInfo()\n        $timeline = $s.GetTimelineProperties()\n        $key = \"$id|$($media.Title)|$($media.Artist)|$($media.AlbumTitle)\"\n        if ($keys[$id] -ne $key) {\n          $keys[$id] = $key\n          $covers[$id] = $null\n          $attempts[$id] = [datetime]::MinValue\n        }\n        $art = $null\n        if (-not $covers[$id] -and $media.Thumbnail -and [DateTime]::UtcNow -ge $attempts[$id]) {\n          $attempts[$id] = [DateTime]::UtcNow.AddSeconds(6)\n          $art = ReadCover $media.Thumbnail\n          if ($art) { $covers[$id] = $art }\n        }\n        $record = [ordered]@{\n          app = $id\n          primary = ($id -eq $currentId)\n          title = [string]$media.Title\n          artist = [string]$media.Artist\n          album = [string]$media.AlbumTitle\n          playing = ($pb.PlaybackStatus -eq 4)\n          pos = [Math]::Max(0, [Math]::Round($timeline.Position.TotalSeconds, 1))\n          dur = [Math]::Max(0, [Math]::Round($timeline.EndTime.TotalSeconds, 1))\n          canNext = [bool]$pb.Controls.IsNextEnabled\n          canPrev = [bool]$pb.Controls.IsPreviousEnabled\n          canSeek = [bool]$pb.Controls.IsPlaybackPositionEnabled\n        }\n        if ($art) { $record.art = $art }\n        $items.Add($record)\n      } catch {\n        # A session can disappear between GetSessions and querying metadata.\n      }\n    }\n    @{ sessions = @($items.ToArray()) } | ConvertTo-Json -Compress -Depth 5\n  } catch {\n    '{\"sessions\":[],\"error\":\"Falha temporária ao consultar o Windows.\"}'\n  }\n  Start-Sleep -Milliseconds 1100\n}\n"
 
-let ps = null
-let buf = ""
-let want = ""
-let last = null
-const subs = new Set()
+let worker = null
+let buffer = ""
+let sessions = []
+let error = ""
+let retryTimer = null
+const subscribers = new Map()
+const coverCache = new Map()
 let getWin = () => null
 
+const current = (id) => {
+  if (process.platform !== "win32") return { widgetId: id, none: true, unsupported: true }
+  const match = pickSession(sessions, subscribers.get(id))
+  return match ? { ...match, widgetId: id } : { widgetId: id, none: true, error: error || undefined }
+}
+function notify() {
+  const window = getWin()
+  if (!window || window.isDestroyed()) return
+  for (const id of subscribers.keys()) window.webContents.send("media:state", current(id))
+}
+function parse(line) {
+  let payload
+  try { payload = JSON.parse(line) } catch { return }
+  if (!payload || !Array.isArray(payload.sessions)) return
+  error = typeof payload.error === "string" ? payload.error : ""
+  sessions = payload.sessions.map((item) => mergeArtwork(item, coverCache))
+  const live = new Set(sessions.map((s) => s.app))
+  for (const id of coverCache.keys()) if (!live.has(id)) coverCache.delete(id)
+  notify()
+}
 function start() {
-  if (ps || process.platform !== "win32") return
-  const file = path.join(os.tmpdir(), "agenda-media.ps1")
-  try { fs.writeFileSync(file, "﻿" + PS, "utf8") } catch { return }
+  if (worker || !subscribers.size || process.platform !== "win32") return
+  clearTimeout(retryTimer)
+  const file = path.join(os.tmpdir(), "widgy-media-v2.ps1")
+  try { fs.writeFileSync(file, "\uFEFF" + PS, "utf8") }
+  catch (e) { error = "Não foi possível iniciar o leitor de mídia."; notify(); return }
+  let proc
   try {
-    ps = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", file], { windowsHide: true })
-  } catch { ps = null; return }
-  if (want) ps.stdin.write("want " + want + "\n")
-  ps.stdout.on("data", (d) => {
-    buf += d.toString("utf8")
-    const lines = buf.split(/\r?\n/)
-    buf = lines.pop() ?? ""
-    for (const l of lines) {
-      if (!l.trim().startsWith("{")) continue
-      try {
-        const o = JSON.parse(l)
-        // a capa só vem quando a música muda: guarda para quem se inscrever depois
-        if (o.newTrack) last = o
-        else if (last && !o.none) o.art = last.art
-        if (o.none) last = null
-        const w = getWin()
-        if (w && !w.isDestroyed()) w.webContents.send("media:state", o)
-      } catch {}
-    }
+    proc = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", file], { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] })
+  } catch (e) {
+    error = "PowerShell indisponível no Windows."
+    notify()
+    return
+  }
+  worker = proc
+  buffer = ""
+  proc.stdout.on("data", (data) => {
+    if (worker !== proc) return
+    buffer += data.toString("utf8")
+    if (buffer.length > 16 * 1024 * 1024) buffer = ""
+    const lines = buffer.split(/\r?\n/)
+    buffer = lines.pop() || ""
+    for (const line of lines) if (line.trim().startsWith("{")) parse(line)
   })
-  ps.on("exit", () => { ps = null })
+  proc.stderr.on("data", (data) => {
+    const msg = data.toString("utf8").trim()
+    if (msg) console.warn("Widgy pcmedia:", msg.slice(0, 500))
+  })
+  proc.on("error", (e) => { error = "Leitor de mídia indisponível."; console.warn("Widgy pcmedia:", e.message); notify() })
+  proc.on("exit", () => {
+    if (worker !== proc) return
+    worker = null
+    sessions = []
+    coverCache.clear()
+    error = "Conexão com a central de mídia interrompida."
+    notify()
+    if (subscribers.size) retryTimer = setTimeout(start, 3500)
+  })
 }
-function stop() { if (ps) { try { ps.kill() } catch {} ps = null } }
-
-function register(ipcMain, winGetter) {
-  getWin = winGetter
-  ipcMain.handle("media:sub", (_e, id, app) => {
-    subs.add(id)
-    if (typeof app === "string" && app !== want) { want = app; if (ps) ps.stdin.write("want " + app + "\n") }
+function stop() {
+  clearTimeout(retryTimer)
+  retryTimer = null
+  const proc = worker
+  worker = null
+  if (proc) try { proc.kill() } catch {}
+  sessions = []
+  coverCache.clear()
+  error = ""
+}
+function register(ipcMain, windowGetter) {
+  getWin = windowGetter
+  ipcMain.handle("media:sub", (_event, id, app) => {
+    id = String(id || "").slice(0, 120)
+    if (!id) return null
+    subscribers.set(id, String(app || "").trim().toLowerCase().slice(0, 64))
     start()
-    return last
+    return current(id)
   })
-  ipcMain.handle("media:unsub", (_e, id) => { subs.delete(id); if (!subs.size) stop() })
-  ipcMain.handle("media:cmd", (_e, cmd) => { if (ps && ["toggle", "next", "prev"].includes(cmd)) ps.stdin.write(cmd + "\n") })
+  ipcMain.handle("media:unsub", (_event, id) => {
+    subscribers.delete(String(id || ""))
+    if (!subscribers.size) stop()
+  })
+  ipcMain.handle("media:cmd", (_event, cmd, id, arg) => {
+    if (!worker || !subscribers.has(id) || !["toggle", "next", "prev", "seek"].includes(cmd)) return false
+    const session = pickSession(sessions, subscribers.get(id))
+    if (!session) return false
+    if (cmd === "seek" && !session.canSeek) return false
+    const seconds = Math.max(0, Math.min(Number(session.dur) || 86400, Number(arg) || 0))
+    const code = Buffer.from(session.app, "utf8").toString("base64")
+    try {
+      worker.stdin.write(cmd + " " + code + (cmd === "seek" ? " " + seconds.toFixed(2) : "") + "\n")
+      return true
+    } catch { return false }
+  })
 }
-
 module.exports = { register }
