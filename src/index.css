@@ -369,3 +369,22 @@ html:has([data-dim]) [data-desktop] .surface, html:has([data-dim]) [data-desktop
 @media (prefers-reduced-motion: reduce) {
   .widgy-logo-animated { animation: none !important; }
 }
+
+
+/* Reflexo breve e controlado sobre o símbolo na abertura. */
+.widgy-splash-sheen::after {
+  content: "";
+  position: absolute;
+  inset: -30% -90%;
+  transform: translateX(-110%) rotate(18deg);
+  background: linear-gradient(90deg, transparent 38%, rgba(228,248,255,.27) 50%, transparent 62%);
+  animation: widgy-splash-sheen 3.8s .45s ease-in-out 1 both;
+}
+@keyframes widgy-splash-sheen {
+  0%, 13% { transform: translateX(-110%) rotate(18deg); opacity: 0; }
+  22% { opacity: .85; }
+  51%, 100% { transform: translateX(110%) rotate(18deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .widgy-splash-sheen::after { animation: none !important; opacity: 0 !important; }
+}
