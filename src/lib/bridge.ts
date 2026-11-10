@@ -109,7 +109,7 @@ export interface AgendaBridge {
     onAudio(cb: (pcm: Uint8Array) => void): Unsub
     onAudioEnd(cb: (msg: string) => void): Unsub
   }
-  pcmedia: { sub(id: string, app?: string): Promise<PcMedia | null>; unsub(id: string): Promise<void>; cmd(c: "toggle" | "next" | "prev"): Promise<void>; onState(cb: (m: PcMedia) => void): Unsub }
+  pcmedia: { sub(id: string, app?: string): Promise<PcMedia | null>; unsub(id: string): Promise<void>; cmd(c: "toggle" | "next" | "prev" | "seek", id: string, seconds?: number): Promise<boolean>; onState(cb: (m: PcMedia) => void): Unsub }
   finance: {
     status(): Promise<{ exists: boolean; hasPin: boolean; unlocked: boolean; secure: boolean; waitMs: number }>
     open(pin?: string): Promise<{ ok: boolean; data?: string | null; error?: "pin" | "wait"; waitMs?: number }>
@@ -237,7 +237,11 @@ export interface ScreenRect { id: number; x: number; y: number; w: number; h: nu
 export interface DisplayInfo { id: number; label: string; n: number; primary: boolean; current: boolean; w: number; h: number; hz: number; bounds: { x: number; y: number; width: number; height: number } }
 export type PcApp = "spotify" | "deezer" | "applemusic" | "amazonmusic" | "tidal" | "discord" | "whatsapp" | "steam" | "cs2" | "valorant" | "lol" | "epic"
 export interface PcMedia {
+  widgetId?: string
   none?: boolean
+  unsupported?: boolean
+  error?: string
+  primary?: boolean
   app?: string
   title?: string
   artist?: string
@@ -247,6 +251,7 @@ export interface PcMedia {
   dur?: number
   canNext?: boolean
   canPrev?: boolean
+  canSeek?: boolean
   art?: string | null
   newTrack?: boolean
 }
@@ -339,7 +344,7 @@ const browserFallback: AgendaBridge = {
   games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop, valorantAgent: async () => null, onValorantAgent: noop },
   sysmon: { sub: async () => false, unsub: async () => false, onData: noop },
   mode: { get: async () => ({ mode: "screen", monitors: 1 }), set: async () => false, displays: async () => [], raise: async () => {}, screens: async () => [], onScreens: noop, span: async () => false, detectApps: async () => ({ apps: [], monitors: 1 }), onSummon: noop },
-  pcmedia: { sub: async () => null, unsub: async () => {}, cmd: async () => {}, onState: noop },
+  pcmedia: { sub: async () => ({ none: true, unsupported: true }), unsub: async () => {}, cmd: async () => false, onState: noop },
   share: { sources: async () => [], pick: async () => {}, audioStart: async () => ({ ok: false, excluded: "agenda" }), audioStop: async () => {}, onAudio: noop, onAudioEnd: noop },
   bar: (() => {
     const c: BarConfig = { on: false, height: 64, position: "bottom", keys: true, winKey: "windows", available: false, active: false }

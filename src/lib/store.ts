@@ -112,7 +112,7 @@ export const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
   musicclip: [480, 296],
   valagent: [320, 440],
   sysmon: [360, 260],
-  pcmusic: [400, 200],
+  pcmusic: [440, 220],
   countdown: [320, 200],
 }
 
