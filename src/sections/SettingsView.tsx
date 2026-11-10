@@ -7,6 +7,7 @@ import { GlyphTile } from "@/components/Glyph"
 import { useStore, THEME_PRESETS } from "@/lib/store"
 import { bridge, isDesktop, mediaUrl } from "@/lib/bridge"
 import { FONTS } from "@/lib/fonts"
+import { FontPicker } from "@/components/FontPicker"
 import type { CursorEffect, CursorStyle, LockClock as LockClockT, Settings, ThemeId } from "@/lib/types"
 import { LOCK_DEFAULT } from "@/components/LockClock"
 import { cn } from "@/lib/utils"
@@ -166,14 +167,7 @@ function FontRow({ k, label, sample }: { k: "uiFont" | "numFont" | "displayFont"
   const [s, set] = useS()
   return (
     <Section title={label}>
-      <div className="grid grid-cols-2 gap-2">
-        {FONTS.map((f) => (
-          <button key={f.id} onClick={() => set({ [k]: f.id } as Partial<Settings>)} className={cn("flex items-center justify-between rounded-xl border px-3 py-2 text-left transition", s[k] === f.id ? "border-brand bg-brand/15" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]")}>
-            <span style={{ fontFamily: f.family, fontSize: f.id === "press" ? 11 : 18 }} className="truncate">{sample}</span>
-            <span className="ml-2 shrink-0 text-[10px] text-fg-muted">{f.label}</span>
-          </button>
-        ))}
-      </div>
+      <FontPicker label="Escolher fonte" value={s[k]} onChange={(id) => set({ [k]: id } as Partial<Settings>)} sample={sample} />
     </Section>
   )
 }
@@ -182,10 +176,14 @@ function Fonts() {
   const [s, set] = useS()
   return (
     <>
+      <div className="text-sm text-fg-muted">
+        {FONTS.length} fontes para personalizar sua área de trabalho. As fontes originais funcionam offline;
+        as extras são carregadas sob demanda quando há internet.
+      </div>
       <Slider label="Tamanho geral do texto" value={s.fontScale} min={0.8} max={1.3} step={0.05} onChange={(v) => set({ fontScale: v })} format={(v) => Math.round(v * 100) + "%"} />
       <FontRow k="uiFont" label="Letras (interface)" sample="Agenda do dia" />
       <FontRow k="numFont" label="Números (relógios, valores)" sample="12:45 R$ 980" />
-      <FontRow k="displayFont" label="Títulos" sample="Hábitos" />
+      <FontRow k="displayFont" label="Títulos" sample="Hábitos e lembretes" />
     </>
   )
 }
@@ -578,12 +576,7 @@ function LockClockSection() {
             ))}
           </div>
           <div className="grid grid-cols-2 gap-x-6">
-            <label className="block text-sm">Fonte
-              <select className="field mt-1 w-full" value={c.font ?? ""} onChange={(e) => p({ font: e.target.value || undefined })}>
-                <option value="">Do estilo escolhido</option>
-                {FONTS.map((f) => <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>{f.label}</option>)}
-              </select>
-            </label>
+            <FontPicker label="Fonte do relógio da tela" value={c.font ?? ""} onChange={(id) => p({ font: id || undefined })} allowDefault defaultLabel="Do estilo escolhido" sample="12:45" />
             <div>
               <div className="mb-1 text-sm">Alinhamento</div>
               <Segmented value={c.align} onChange={(v) => p({ align: v, x: v === "left" ? 6 : v === "right" ? 94 : 50 })} options={[{ value: "left", label: "Esquerda" }, { value: "center", label: "Centro" }, { value: "right", label: "Direita" }]} />

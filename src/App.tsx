@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store"
 import { bridge, mediaUrl } from "@/lib/bridge"
 import type { MediaItem } from "@/lib/types"
 import { importDropped, pasteImages } from "@/components/MediaPicker"
-import { fontFamily } from "@/lib/fonts"
+import { fontFamily, ensureFont } from "@/lib/fonts"
 import { cn, todayISO } from "@/lib/utils"
 import type { SectionId, WidgetType } from "@/lib/types"
 import type { BarSync } from "@/lib/bridge"
@@ -184,6 +184,7 @@ export function useThemeVars() {
     set("--font-ui", fontFamily(s.uiFont))
     set("--font-num", fontFamily(s.numFont))
     set("--font-display", fontFamily(s.displayFont))
+    for (const id of [s.uiFont, s.numFont, s.displayFont]) void ensureFont(id)
     set("--tb-size", s.taskbar.size + "px")
     r.style.fontSize = 16 * s.fontScale + "px"
   }, [s])

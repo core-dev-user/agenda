@@ -29,3 +29,12 @@ src/lib            estado (zustand), temas, fontes, tipos
 
 - Padrão: Lanczos3 + nitidez suave (mantém a foto idêntica, só mais definida).
 - Com IA: em **Imagens → Instalar motor de IA** baixa o Real-ESRGAN (usa a placa de vídeo), que reconstrói detalhes de verdade.
+
+
+## Biblioteca de fontes
+
+Em **Configurações → Fontes**, escolha a tipografia da interface, dos números e dos títulos por uma **roda de seleção** com pesquisa e filtros por categoria. A mesma biblioteca funciona no relógio do papel de parede, nos relógios dos widgets, nas letras e na aparência individual de cada widget.
+
+- As 14 fontes originais permanecem empacotadas e funcionam sem internet. As outras são baixadas sob demanda de **Google Fonts** (domínios permitidos na política de segurança do aplicativo); sem conexão, o texto usa a fonte de fallback até que a escolhida carregue.
+- Abrir o seletor **não baixa a biblioteca inteira**: só as fontes próximas da região visível da roda e a fonte selecionada são carregadas. O cache é gerenciado pelo Chromium/Electron.
+- As preferências continuam salvas por ID nas configurações e nos templates já existentes. A aparência também é sincronizada com a barra e os monitores adicionais.
