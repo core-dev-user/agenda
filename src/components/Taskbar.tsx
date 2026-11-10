@@ -120,7 +120,7 @@ export function Taskbar() {
           </DockBtn>
           <Divider vertical={vertical} />
           <div className={cn("flex gap-1.5", vertical ? "flex-col" : "flex-row", !isDock && !vertical && "flex-1")}>
-            {SECTIONS.map((sec, i) => {
+            {SECTIONS.filter((sec) => !tb.hide?.includes(sec.id)).map((sec, i) => {
               const w = windows.find((x) => x.id === sec.id)
               return (
                 <DockBtn
@@ -141,16 +141,16 @@ export function Taskbar() {
             })}
           </div>
           <Divider vertical={vertical} />
-          <DockBtn label="Adicionar widget" size={size} active={menu === "widgets"} onClick={() => setMenu(menu === "widgets" ? null : "widgets")} scaleFn={(el) => magnify(99, el)} position={tb.position} vertical={vertical}>
+          {!tb.hide?.includes("widgets") && <DockBtn label="Adicionar widget" size={size} active={menu === "widgets"} onClick={() => setMenu(menu === "widgets" ? null : "widgets")} scaleFn={(el) => magnify(99, el)} position={tb.position} vertical={vertical}>
             <Plus size={icon} />
-          </DockBtn>
-          <DockBtn label={s.widgetsLocked ? "Destravar widgets" : "Travar widgets"} size={size} onClick={() => setSettings({ widgetsLocked: !s.widgetsLocked })} scaleFn={(el) => magnify(100, el)} position={tb.position} vertical={vertical}>
+          </DockBtn>}
+          {!tb.hide?.includes("lock") && <DockBtn label={s.widgetsLocked ? "Destravar widgets" : "Travar widgets"} size={size} onClick={() => setSettings({ widgetsLocked: !s.widgetsLocked })} scaleFn={(el) => magnify(100, el)} position={tb.position} vertical={vertical}>
             {s.widgetsLocked ? <Lock size={icon * 0.8} /> : <Unlock size={icon * 0.8} />}
-          </DockBtn>
-          <DockBtn label="Avisos" size={size} active={menu === "bell"} onClick={() => setMenu(menu === "bell" ? null : "bell")} scaleFn={(el) => magnify(101, el)} position={tb.position} vertical={vertical}>
+          </DockBtn>}
+          {!tb.hide?.includes("bell") && <DockBtn label="Avisos" size={size} active={menu === "bell"} onClick={() => setMenu(menu === "bell" ? null : "bell")} scaleFn={(el) => magnify(101, el)} position={tb.position} vertical={vertical}>
             <BellIcon size={Math.round(icon * 0.8)} />
-          </DockBtn>
-          {!isDock && (
+          </DockBtn>}
+          {!isDock && !tb.hide?.includes("clock") && (
             <div className={cn("font-num flex flex-col items-center px-3 text-xs leading-tight", vertical && "py-2")}>
               <span className="text-sm font-semibold">{now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
               <span className="text-fg-muted">{now.toLocaleDateString("pt-BR")}</span>

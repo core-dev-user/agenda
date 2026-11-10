@@ -36,6 +36,10 @@ export interface Settings {
     autoHide: boolean
     showLabels: boolean
     magnify: boolean
+    /** itens escondidos da barra: ids das abas do Agenda e dos botões ("widgets", "lock", "bell", "tray", "clock", "corner") */
+    hide?: string[]
+    /** mostrar os programas do Windows abertos (os fixados aparecem sempre) */
+    pcOpen?: boolean
   }
   wallpaper: {
     type: "gradient" | "image" | "color"

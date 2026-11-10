@@ -3,7 +3,7 @@
 // reserva o espaço dela (as janelas maximizadas param em cima da barra) e mostra os programas abertos.
 // Nos monitores onde o Agenda principal não está, um fundo do Agenda (papel de parede + relógio) cobre
 // a área de trabalho do Windows. A tecla Windows e Win+S abrem o Iniciar/pesquisa do Agenda (keys.cjs).
-const { app, BrowserWindow, screen, shell } = require("electron")
+const { app, BrowserWindow, screen, shell, nativeImage } = require("electron")
 const path = require("node:path")
 const fs = require("node:fs")
 const fsp = require("node:fs/promises")
@@ -97,12 +97,43 @@ function layout() {
 
 /* ---------------- ícones dos programas ---------------- */
 const icons = new Map()
+/**
+ * De onde tirar o ícone: atalhos (.lnk) apontam para o programa (ou para um ícone próprio);
+ * atalhos de internet (.url, ex.: jogos da Steam) dizem o ícone na linha IconFile.
+ */
+const expand = (p) => String(p || "").replace(/%([^%]+)%/g, (m, k) => process.env[k] ?? process.env[k.toUpperCase()] ?? m).replace(/^"|"$/g, "")
+function iconSource(file) {
+  const low = file.toLowerCase()
+  try {
+    if (low.endsWith(".lnk")) {
+      const l = shell.readShortcutLink(file)
+      const icon = expand(l.icon)
+      if (icon && fs.existsSync(icon)) return { file: icon, index: l.iconIndex || 0 }
+      const target = expand(l.target)
+      if (target && fs.existsSync(target)) return { file: target, index: 0 }
+    } else if (low.endsWith(".url")) {
+      const m = fs.readFileSync(file, "utf8").match(/^IconFile=(.+)$/im)
+      const f = m && expand(m[1].trim())
+      if (f && fs.existsSync(f)) return { file: f, index: 0 }
+    }
+  } catch {}
+  return { file, index: 0 }
+}
 async function iconOf(file) {
   if (!file) return ""
   const k = file.toLowerCase()
   if (icons.has(k)) return icons.get(k)
   let url = ""
-  try { url = (await app.getFileIcon(file, { size: "large" })).toDataURL() } catch {}
+  // primeiro, o ícone exatamente como o Explorer desenha (resolve atalhos, .msc, jogos…)
+  const b64 = await winh.call("icon " + file)
+  if (b64 && b64 !== "none" && b64 !== "ok" && /^[A-Za-z0-9+/=]+$/.test(b64)) { icons.set(k, "data:image/png;base64," + b64); return icons.get(k) }
+  const src = iconSource(file)
+  try {
+    // arquivo .ico: lê direto (fica nítido); .exe/.dll: o Windows dá o ícone dele
+    if (/\.(ico|png)$/i.test(src.file)) { const img = nativeImage.createFromPath(src.file); if (!img.isEmpty()) url = img.resize({ width: 48, height: 48, quality: "best" }).toDataURL() }
+    if (!url) url = (await app.getFileIcon(src.file, { size: "large" })).toDataURL()
+  } catch {}
+  if (!url && src.file !== file) { try { url = (await app.getFileIcon(file, { size: "large" })).toDataURL() } catch {} }
   icons.set(k, url)
   return url
 }

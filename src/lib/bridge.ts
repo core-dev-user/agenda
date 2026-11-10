@@ -197,7 +197,7 @@ export interface BarSync {
   /** papel de parede (para o fundo dos outros monitores) */
   wall?: { bg: string; filter?: string }
   /** a barra de tarefas do Agenda (Configurações › Barra de tarefas) */
-  tb?: { position: "bottom" | "top" | "left" | "right"; style: "dock" | "bar" | "floating"; size: number; autoHide: boolean; magnify: boolean; showLabels: boolean }
+  tb?: { position: "bottom" | "top" | "left" | "right"; style: "dock" | "bar" | "floating"; size: number; autoHide: boolean; magnify: boolean; showLabels: boolean; hide?: string[]; pcOpen?: boolean }
   locked?: boolean
   icons?: { iconStyle: string; theme: string; iconShape?: string; iconColors?: Record<string, string> }
   /** abas do Agenda abertas (para o pontinho e o destaque na barra) */

@@ -1,3 +1,4 @@
+import { useUiMode } from "@/lib/uimode"
 import { useEffect, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import { Download, Upload, RotateCcw, Ban, Bell, Circle, CircleDashed, CircleDot, Crosshair, Droplets, Flame, Flashlight, Flower2, Gem, Grid3x3, HardDrive, Heart, Image, LayoutGrid, LayoutTemplate, Leaf, MonitorSmartphone, MousePointer, MousePointer2, Navigation, Orbit, Palette, PanelBottom, PartyPopper, PawPrint, Plug, Rainbow, Scissors, Snowflake, Sparkles, Spline, Star, Type, Wand2, WandSparkles, Waves, type LucideIcon } from "lucide-react"
@@ -331,7 +332,63 @@ function TaskbarTab() {
       <Switch label="Ampliar ícones ao passar o mouse (efeito Mac)" checked={tb.magnify} onChange={(v) => p({ magnify: v })} />
       <Switch label="Mostrar nomes das seções" checked={tb.showLabels} onChange={(v) => p({ showLabels: v })} />
     </Section>
+    <BarItemsSection />
     </>
+  )
+}
+
+/** o que aparece na barra: abas do Agenda, botões e programas do Windows — cada um liga/desliga */
+const BAR_BUTTONS: { id: string; label: string; pcOnly?: boolean }[] = [
+  { id: "widgets", label: "Adicionar widget" },
+  { id: "lock", label: "Travar widgets" },
+  { id: "bell", label: "Avisos" },
+  { id: "clock", label: "Relógio" },
+  { id: "tray", label: "Ícones do Windows (perto do relógio)", pcOnly: true },
+  { id: "corner", label: "Canto que mostra a área de trabalho (mouse no canto da barra e clicar)", pcOnly: true },
+]
+function BarItemsSection() {
+  const [s, set] = useS()
+  const tb = s.taskbar
+  const hide = new Set(tb.hide ?? [])
+  const pcBar = useUiMode((x) => x.mainBar)
+  const toggle = (id: string, on: boolean) => {
+    const h = new Set(hide)
+    if (on) h.delete(id); else h.add(id)
+    set({ taskbar: { ...tb, hide: [...h] } })
+  }
+  const pins = s.pcPins ?? []
+  return (
+    <Section title="O que aparece na barra" desc="Ligue ou desligue cada item. Vale para a barra do Agenda e, com ela no lugar da barra do Windows, para a barra do PC.">
+      <div className="mb-1 text-sm">Abas do Agenda</div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {SECTIONS.map((sec) => (
+          <div key={sec.id} className="flex items-center gap-2.5 rounded-xl border border-line px-2 py-1">
+            <AppIcon id={sec.id} size={26} />
+            <div className="min-w-0 flex-1"><Switch label={sec.label} checked={!hide.has(sec.id)} onChange={(v) => toggle(sec.id, v)} /></div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 mb-1 text-sm">Botões</div>
+      {BAR_BUTTONS.filter((b) => !b.pcOnly || pcBar).map((b) => (
+        <Switch key={b.id} label={b.label} checked={!hide.has(b.id)} onChange={(v) => toggle(b.id, v)} />
+      ))}
+      {pcBar && (
+        <>
+          <div className="mt-4 mb-1 text-sm">Programas do Windows</div>
+          <Switch label="Mostrar os programas abertos" checked={tb.pcOpen !== false} onChange={(v) => set({ taskbar: { ...tb, pcOpen: v } })} />
+          <div className="mt-1 text-xs text-fg-muted">Fixados na barra (para fixar outro, clique com o botão direito nele no Iniciar ou na barra):</div>
+          {!pins.length && <div className="py-1 text-sm text-fg-muted">Nenhum programa fixado.</div>}
+          <div className="mt-1 flex flex-col gap-1">
+            {pins.map((a) => (
+              <div key={a.path} className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm">
+                <span className="min-w-0 flex-1 truncate">{a.name}</span>
+                <button className="text-xs text-fg-muted hover:text-fg" onClick={() => set({ pcPins: pins.filter((x) => x.path !== a.path) })}>Tirar da barra</button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </Section>
   )
 }
 

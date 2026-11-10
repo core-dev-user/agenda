@@ -69,14 +69,17 @@ export function SystemBar() {
   // programas do Windows: fixados primeiro (na ordem), depois os abertos — janelas do mesmo programa juntas
   const pins = sync?.pins ?? []
   const groups: Group[] = pins.map((p) => ({ key: exeKey(p.path), exe: p.path, name: p.name, icon: "", wins: [], pinned: true }))
-  for (const w of wins) {
+  const hide = new Set(t.hide ?? [])
+  const shows = (id: string) => !hide.has(id)
+  // programas abertos do Windows (desligável); os fixados aparecem sempre
+  for (const w of t.pcOpen === false ? [] : wins) {
     const k = exeKey(w.exe || w.h)
     let g = groups.find((x) => x.key === k)
     if (!g) { g = { key: k, exe: w.exe, name: w.name, icon: w.icon, wins: [], pinned: false }; groups.push(g) }
     if (!g.icon) g.icon = w.icon
     g.wins.push(w)
   }
-  const sections = sync?.sections ?? []
+  const sections = (sync?.sections ?? []).filter((x) => shows(x.id))
   const secs = sync?.secs ?? []
   const icons: IconPrefs = (sync?.icons as IconPrefs | undefined) ?? { iconStyle: "auto", theme: "glass", iconShape: "squircle", iconColors: undefined } as unknown as IconPrefs
 
@@ -113,6 +116,9 @@ export function SystemBar() {
   const hideOffset = { bottom: { y: size + 40 }, top: { y: -(size + 40) }, left: { x: -(size + 40) }, right: { x: size + 40 } }[pos]
   const align = { bottom: "items-end justify-center", top: "items-start justify-center", left: "items-center justify-start", right: "items-center justify-end" }[pos]
   const time = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  // espessura da barra encostada na borda (igual ao espaço que ela reserva) e o canto "mostrar área de trabalho"
+  const band = t.size + 16 + (isDock ? 12 : 0)
+  const corner = { bottom: "right-0 bottom-0", top: "right-0 top-0", left: "left-0 bottom-0", right: "right-0 bottom-0" }[pos]
 
   return (
     <div className={cn("fixed inset-0 flex", vertical ? "flex-row" : "flex-col", align)} onContextMenu={(e) => e.preventDefault()}>
@@ -175,28 +181,32 @@ export function SystemBar() {
 
           {!isDock && !vertical && <div className="flex-1" />}
           <Divider vertical={vertical} />
-          <Btn {...btn} label="Adicionar widget" onClick={() => bridge.bar.toMain({ type: "widgets" })}><Plus size={icon} /></Btn>
-          <Btn {...btn} label={sync?.locked ? "Destravar widgets" : "Travar widgets"} onClick={() => bridge.bar.toMain({ type: "lock" })}>
-            {sync?.locked ? <Lock size={icon * 0.8} /> : <Unlock size={icon * 0.8} />}
-          </Btn>
-          <Btn {...btn} label="Avisos" onClick={() => bridge.bar.toMain({ type: "bell" })}>
+          {shows("widgets") && <Btn {...btn} label="Adicionar widget" onClick={() => bridge.bar.toMain({ type: "widgets" })}><Plus size={icon} /></Btn>}
+          {shows("lock") && (
+            <Btn {...btn} label={sync?.locked ? "Destravar widgets" : "Travar widgets"} onClick={() => bridge.bar.toMain({ type: "lock" })}>
+              {sync?.locked ? <Lock size={icon * 0.8} /> : <Unlock size={icon * 0.8} />}
+            </Btn>
+          )}
+          {shows("bell") && <Btn {...btn} label="Avisos" onClick={() => bridge.bar.toMain({ type: "bell" })}>
             <span className="relative">
               <Bell size={Math.round(icon * 0.8)} />
               {!!sync?.unread && <span className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] px-0.5 font-num text-[9px] text-white">{sync.unread > 9 ? "9+" : sync.unread}</span>}
             </span>
-          </Btn>
+          </Btn>}
 
           {/* bandeja do Windows, rede, som e relógio */}
-          <Btn {...btn} label={peek ? "Esconder os ícones do Windows" : "Ícones do Windows (perto do relógio)"} active={peek} onClick={() => { setPeek(!peek); bridge.bar.peek(!peek) }}>
-            <ChevronUp size={icon * 0.75} className={cn("transition-transform", peek && "rotate-180", vertical && (pos === "left" ? "rotate-90" : "-rotate-90"))} />
-          </Btn>
+          {shows("tray") && (
+            <Btn {...btn} label={peek ? "Esconder os ícones do Windows" : "Ícones do Windows (perto do relógio)"} active={peek} onClick={() => { setPeek(!peek); bridge.bar.peek(!peek) }}>
+              <ChevronUp size={icon * 0.75} className={cn("transition-transform", peek && "rotate-180", vertical && (pos === "left" ? "rotate-90" : "-rotate-90"))} />
+            </Btn>
+          )}
           {!isDock && !vertical && (
             <>
               <Btn {...btn} label="Rede" onClick={() => bridge.bar.power("network")}><Wifi size={icon * 0.75} /></Btn>
               <Btn {...btn} label="Som" onClick={() => bridge.bar.power("volume")}><Volume2 size={icon * 0.75} /></Btn>
             </>
           )}
-          <button
+          {shows("clock") && <button
             className={cn("bar-btn shrink-0 font-num leading-tight", vertical ? "w-full flex-col py-1" : "h-[calc(100%-8px)] flex-col !items-center px-2.5")}
             data-on={menu === "clock"}
             title={now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
@@ -204,10 +214,23 @@ export function SystemBar() {
           >
             <span className="text-[13px] font-semibold">{time}</span>
             {!isDock && !vertical && <span className="text-[11px] text-fg-muted">{now.toLocaleDateString("pt-BR")}</span>}
-          </button>
-          {!isDock && !vertical && <button className="ml-0.5 h-[calc(100%-12px)] w-1.5 shrink-0 rounded-sm hover:bg-[color-mix(in_srgb,var(--fg)_25%,transparent)]" title="Mostrar a área de trabalho" onClick={() => bridge.bar.desktop()} />}
+          </button>}
         </div>
       </motion.div>
+
+      {/* canto da tela (como no Windows): levar o mouse até o canto e clicar mostra a área de trabalho; clicar de novo traz as janelas de volta */}
+      {shows("corner") && (
+        <button
+          className={cn("group absolute flex items-center justify-center", corner)}
+          style={vertical ? { width: band, height: 14 } : { width: 14, height: band }}
+          title="Mostrar a área de trabalho"
+          onPointerEnter={() => bridge.bar.hit(true)}
+          onPointerLeave={() => bridge.bar.hit(false)}
+          onClick={() => bridge.bar.desktop()}
+        >
+          <span className={cn("rounded-full bg-[color-mix(in_srgb,var(--fg)_0%,transparent)] transition-colors group-hover:bg-[color-mix(in_srgb,var(--fg)_35%,transparent)]", vertical ? "h-1 w-2/3" : "h-2/3 w-1")} />
+        </button>
+      )}
     </div>
   )
 }

@@ -217,6 +217,35 @@ public static class AgWin {
     keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero);
     SetForegroundWindow(h);
   }
+  // ---- ícone de qualquer arquivo/atalho, igual ao do Explorer (atalhos .lnk/.url, .msc, .exe…) ----
+  [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IShellItemImageFactory { [PreserveSig] int GetImage(SZ size, int flags, out IntPtr phbm); }
+  [StructLayout(LayoutKind.Sequential)] struct SZ { public int cx, cy; }
+  [StructLayout(LayoutKind.Sequential)] struct BMP { public int type, w, h, stride; public ushort planes, bpp; public IntPtr bits; }
+  [DllImport("shell32.dll", CharSet=CharSet.Unicode, PreserveSig=false)] static extern void SHCreateItemFromParsingName(string path, IntPtr bc, [MarshalAs(UnmanagedType.LPStruct)] Guid riid, [MarshalAs(UnmanagedType.Interface)] out IShellItemImageFactory item);
+  [DllImport("gdi32.dll")] static extern int GetObject(IntPtr h, int n, out BMP b);
+  [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr h);
+  public static string Icon(string path, int px) {
+    IntPtr hb = IntPtr.Zero;
+    try {
+      IShellItemImageFactory f;
+      SHCreateItemFromParsingName(path, IntPtr.Zero, typeof(IShellItemImageFactory).GUID, out f);
+      var sz = new SZ(); sz.cx = px; sz.cy = px;
+      if (f.GetImage(sz, 0x4 | 0x1, out hb) != 0 || hb == IntPtr.Zero) return "";
+      BMP b; GetObject(hb, Marshal.SizeOf(typeof(BMP)), out b);
+      if (b.bits == IntPtr.Zero || b.bpp != 32) return "";
+      int h = Math.Abs(b.h);
+      using (var bmp = new System.Drawing.Bitmap(b.w, h, b.stride, System.Drawing.Imaging.PixelFormat.Format32bppPArgb, b.bits))
+      using (var copy = new System.Drawing.Bitmap(bmp))
+      using (var ms = new System.IO.MemoryStream()) {
+        if (b.h > 0) copy.RotateFlip(System.Drawing.RotateFlipType.RotateNoneFlipY); // DIB de baixo para cima
+        copy.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+        return Convert.ToBase64String(ms.ToArray());
+      }
+    } catch { return ""; }
+    finally { if (hb != IntPtr.Zero) DeleteObject(hb); }
+  }
+
   public static void Minimize(string s) { ShowWindow(H(s), 6); }
   public static void Close(string s) { PostMessage(H(s), 0x0010, IntPtr.Zero, IntPtr.Zero); }
 }
@@ -225,7 +254,7 @@ public static class AgWin {
 const PS = `
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
-try { Add-Type -TypeDefinition @'
+try { Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
 ${CS}
 '@ } catch { '{"error":' + (ConvertTo-Json ([string]$_)) + '}'; exit 1 }
 $ErrorActionPreference = 'SilentlyContinue'
@@ -250,6 +279,7 @@ while ($true) {
     'activate' { [AgWin]::Activate($a[1]) }
     'minimize' { [AgWin]::Minimize($a[1]) }
     'close'    { [AgWin]::Close($a[1]) }
+    'icon'     { $out = [AgWin]::Icon($l.Substring(5).Trim(), 48); if (-not $out) { $out = 'none' } }
     'desktop'  { (New-Object -ComObject Shell.Application).ToggleDesktop() }
   }
   $out
