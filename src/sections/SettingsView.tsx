@@ -18,6 +18,7 @@ import { MediaPicker } from "@/components/MediaPicker"
 import { LivingStudio } from "@/components/LivingStudio"
 import { FEEDS } from "@/widgets/News"
 import { AppIcon, ICON_STYLES, sectionColor } from "@/components/AppIcon"
+import { IconPackSettings } from "@/components/IconPackSettings"
 import { SECTIONS } from "@/components/sections-meta"
 import { TemplatesTab } from "./Templates"
 import { PetTab } from "@/pet/PetSettings"
@@ -270,6 +271,8 @@ function IconsSection() {
   const [s, set] = useS()
   return (
     <Section title="Ícones dos apps" desc="Muda o visual dos ícones na barra de tarefas, no menu Início, nas janelas e nos atalhos.">
+      <IconPackSettings value={s.iconPackStyle ?? "original"} onChange={(value) => set({ iconPackStyle: value })} />
+      <div className="pt-4 text-xs font-semibold text-fg-muted">Estilos originais do Agenda (usados ao escolher Originais acima)</div>
       <div className="grid grid-cols-4 gap-2">
         {ICON_STYLES.map((st) => (
           <button key={st.id} onClick={() => set({ iconStyle: st.id })} className={cn("flex flex-col items-center gap-2 rounded-xl border p-3 text-xs", s.iconStyle === st.id ? "border-brand bg-brand/15" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]")}>
@@ -467,6 +470,7 @@ function WallpaperTab() {
         </Section>
       )}
       <Section title="Fundo">
+        <p className="mb-2 text-xs text-fg-muted">Os 17 fundos do pacote visual já estão incluídos offline em forma de degradês adaptáveis à resolução.</p>
         <Segmented value={wp.type} onChange={(v) => p({ type: v })} options={[{ value: "gradient", label: "Degradê" }, { value: "image", label: "Imagem" }, { value: "color", label: "Cor sólida" }, { value: "video", label: "Vídeo ou GIF" }]} />
         <div className="pt-3">
           {wp.type === "gradient" && (

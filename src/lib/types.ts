@@ -5,6 +5,8 @@ export type TaskbarPosition = "bottom" | "top" | "left" | "right"
 export type TaskbarStyle = "dock" | "bar" | "floating"
 export type SectionId = "today" | "habits" | "studies" | "services" | "finance" | "lists" | "music" | "games" | "discord" | "whatsapp" | "ifood" | "rooms" | "gallery" | "settings"
 export type IconStyle = "auto" | "logos" | "color" | "glass" | "metal" | "neon" | "outline" | "flat" | "pixel"
+/** Novo conjunto de ícones offline, sem afetar os ícones que já existiam. */
+export type IconPackStyle = "original" | "glass" | "neon" | "metal" | "minimal" | "retro"
 export type WidgetType = "clock" | "stopwatch" | "weather" | "news" | "photo" | "calendar" | "note" | "shortcut" | "music" | "cs2" | "valorant" | "football" | "lyrics" | "tasks" | "discord" | "ifood" | "whatsapp" | "finance" | "agenda" | "musicstats" | "gaming" | "musicclip" | "valagent" | "sysmon" | "pcmusic" | "countdown"
 
 export interface Settings {
@@ -65,6 +67,7 @@ export interface Settings {
   overlay: { scanlines: boolean; grain: boolean; vignette: boolean }
   widgetsLocked: boolean
   iconStyle: IconStyle
+  iconPackStyle?: IconPackStyle
   iconShape: "squircle" | "circle" | "square"
   iconColors: Partial<Record<SectionId, string>>
   musicAutostart: boolean

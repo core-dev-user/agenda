@@ -1,8 +1,8 @@
 import records from "./iconPackCatalog.json"
-import type { SectionId } from "./types"
+import type { SectionId, IconPackStyle } from "./types"
+export type { IconPackStyle } from "./types"
 
 /** Assets are generated into /public/icon-packs before npm run build, then bundled by Vite. */
-export type IconPackStyle = "original" | "glass" | "neon" | "metal" | "minimal" | "retro"
 export const ICON_PACK_STYLES: { id: IconPackStyle; label: string }[] = [
   { id: "original", label: "Originais" },
   { id: "glass", label: "Vidro líquido" },
@@ -37,7 +37,7 @@ export function findPackIcon(name: string, executable = "") {
   }
   const normalizedName = iconSlug(name)
   // Only reasonably distinctive full names; avoid replacing "Google X" with the Google icon.
-  return records.find((r) => iconSlug(r.name).length >= 7 && normalizedName.startsWith(iconSlug(r.name) + "_"))
+  return records.find((r) => iconSlug(r.name).length >= 7 && (normalizedName.startsWith(iconSlug(r.name) + "_") || normalizedName.endsWith("_" + iconSlug(r.name))))
 }
 export const iconPackSrc = (name: string, style: IconPackStyle): string | null => {
   const entry = toEntry(name)

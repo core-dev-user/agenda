@@ -123,7 +123,7 @@ function useMainBar() {
         wall: wallCss(s.settings.wallpaper),
         tb: s.settings.taskbar,
         locked: s.settings.widgetsLocked,
-        icons: { iconStyle: s.settings.iconStyle, theme: s.settings.theme, iconShape: s.settings.iconShape, iconColors: s.settings.iconColors as Record<string, string> | undefined },
+        icons: { iconStyle: s.settings.iconStyle, theme: s.settings.theme, iconShape: s.settings.iconShape, iconColors: s.settings.iconColors as Record<string, string> | undefined, iconPackStyle: s.settings.iconPackStyle ?? "original" },
         secs: (() => {
           const top = [...s.windows].filter((w) => !w.minimized).sort((a, b) => b.z - a.z)[0]
           return s.windows.map((w) => ({ id: w.id, min: w.minimized, top: top?.id === w.id }))
