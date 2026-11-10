@@ -30,6 +30,7 @@ export function Preview() {
           <div className="flex items-center gap-2 px-2" style={{ height: t.head }}>
             {t.icon && <img src={t.icon} alt="" className="size-4 shrink-0" draggable={false} />}
             <span className="min-w-0 flex-1 truncate text-xs">{t.title}</span>
+            {t.min && <span className="shrink-0 text-[10px] text-fg-muted group-hover:hidden">minimizada</span>}
             <button
               className="flex size-6 shrink-0 items-center justify-center rounded-md opacity-0 transition-opacity group-hover:opacity-100 hover:!bg-red-500/80 hover:text-white"
               title="Fechar janela"
@@ -38,17 +39,12 @@ export function Preview() {
               <X size={13} />
             </button>
           </div>
-          {/* o Windows desenha a janela aqui; minimizada não tem imagem ao vivo: mostra o ícone */}
+          {/* o Windows desenha a janela aqui (a minimizada com a última imagem dela); o ícone só aparece se não vier imagem */}
           <div
             className="absolute flex flex-col items-center justify-center gap-2 rounded-md bg-black/25"
             style={{ left: t.thumb.x - t.x, top: t.thumb.y - t.y, width: t.thumb.w, height: t.thumb.h }}
           >
-            {t.min && (
-              <>
-                {t.icon && <img src={t.icon} alt="" className="size-10" draggable={false} />}
-                <span className="text-[11px] text-fg-muted">Minimizada</span>
-              </>
-            )}
+            {t.icon && <img src={t.icon} alt="" className="size-8 opacity-40" draggable={false} />}
           </div>
         </div>
       ))}

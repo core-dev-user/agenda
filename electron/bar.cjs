@@ -312,7 +312,7 @@ function openMenu(kind, anchorX, w, h, barWin, fromKey) {
 
 /* ---------------- prévia das janelas ao passar o mouse (como no Windows) ---------------- */
 // Uma janelinha acrílica em cima do botão; dentro dela o próprio Windows (DWM) desenha a miniatura ao vivo
-// de cada janela do programa. Janela minimizada não tem imagem ao vivo: mostra o ícone.
+// de cada janela do programa (a minimizada aparece com a última imagem dela).
 const TILE_W = 236, THUMB_H = 132, HEAD = 30, PAD = 8
 let preview = null
 let previewKey = ""
@@ -369,7 +369,6 @@ function showPreview(barWin, items, anchor) {
     const sf = d.scaleFactor || 1
     const dst = winh.hwndOf(w)
     for (const t of tiles) {
-      if (t.min) continue
       const r = t.thumb
       winh.call(`thumb ${dst} ${t.h} ${Math.round(r.x * sf)} ${Math.round(r.y * sf)} ${Math.round((r.x + r.w) * sf)} ${Math.round((r.y + r.h) * sf)}`)
     }
