@@ -13,7 +13,7 @@ export function IconPackSettings({ value, onChange }: { value: IconPackStyle; on
   return (
     <div className="space-y-3 rounded-xl border border-line p-3">
       <div className="text-sm font-semibold">Pacote visual · 169 aplicativos</div>
-      <p className="text-xs text-fg-muted">Escolha um estilo para os ícones do Agenda e dos programas reconhecidos na barra e no menu Iniciar. Outros programas mantêm seus ícones originais. Todos os desenhos funcionam sem internet.</p>
+      <p className="text-xs text-fg-muted">Escolha um estilo para os ícones do Widgy e dos programas reconhecidos na barra e no menu Iniciar. Outros programas mantêm seus ícones originais. Todos os desenhos funcionam sem internet.</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {ICON_PACK_STYLES.map((theme) => (
           <button key={theme.id} type="button" aria-pressed={value === theme.id} onClick={() => onChange(theme.id)}

@@ -159,7 +159,7 @@ export function SystemBar() {
               <WinLogo size={Math.round(size * 0.5)} />
             </Btn>
           )}
-          <Btn {...btn} label="Iniciar do Agenda" active={menu === "start"} onClick={(el) => openMenu("start", el, 640, 660)}>
+          <Btn {...btn} label="Iniciar do Widgy" active={menu === "start"} onClick={(el) => openMenu("start", el, 640, 660)}>
             <Logo size={Math.round(size * 0.78)} />
           </Btn>
           <Divider vertical={vertical} />

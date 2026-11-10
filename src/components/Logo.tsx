@@ -8,7 +8,7 @@ export function Logo({ size = 48, animated = false, glyphOnly = false }: { size?
   const animation = animated ? "widgy-mark-in 700ms cubic-bezier(.16,1,.3,1) both" : undefined
 
   if (glyphOnly) return (
-    <svg width={size} height={size} viewBox="-46 -46 92 92" role="img" aria-label="Sakura do Widgy" style={{ animation }}>
+    <svg width={size} height={size} viewBox="-46 -46 92 92" role="img" aria-label="Sakura do Widgy" className={animated ? "widgy-logo-animated" : undefined} style={{ animation }}>
       <g fill="#DDF1FF">
         {angles.map((deg) => <path key={deg} d={petal} transform={`rotate(${deg})`} />)}
       </g>
@@ -23,6 +23,7 @@ export function Logo({ size = 48, animated = false, glyphOnly = false }: { size?
     <img
       src="logos/widgy.svg"
       alt="Widgy"
+      className={animated ? "widgy-logo-animated" : undefined}
       width={size}
       height={size}
       draggable={false}
