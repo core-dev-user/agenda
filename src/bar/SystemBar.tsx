@@ -47,6 +47,7 @@ export function SystemBar() {
   // esconde sozinha: sempre (ocultar automaticamente) ou enquanto tem janela maximizada neste monitor
   const auto = t.autoHide || (t.smartHide !== false && max)
   const dockRef = useRef<HTMLDivElement>(null)
+  const previewTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => bridge.bar.onWins((d) => { setWins(d.wins); setFg(d.fg) }), [])
   useEffect(() => bridge.bar.onMenuState(setMenu), [])
   useEffect(() => { const id = setInterval(() => setNow(new Date()), 5000); return () => clearInterval(id) }, [])
@@ -173,6 +174,15 @@ export function SystemBar() {
                 focused={isFg}
                 count={g.wins.length}
                 onClick={() => clickApp(g)}
+                onHover={g.wins.length ? (el, on) => {
+                  // prévia das janelas abertas (como no Windows), depois de um instante parado em cima
+                  clearTimeout(previewTimer.current)
+                  if (!on) { bridge.bar.previewLeave(); return }
+                  previewTimer.current = setTimeout(() => {
+                    const r = el.getBoundingClientRect()
+                    bridge.bar.preview(g.wins.map((w) => ({ h: w.h, title: w.title, icon: w.icon || g.icon, min: w.min })), vertical ? r.top + r.height / 2 : r.left + r.width / 2)
+                  }, 350)
+                } : undefined}
                 onRight={() => pin(g)}
                 onMiddle={() => bridge.bar.launch(g.exe)}
               >
@@ -240,9 +250,9 @@ function Divider({ vertical }: { vertical: boolean }) {
 
 /** botão da barra: mesmo comportamento da barra do Agenda (lupa sem empurrar os vizinhos, legenda, pontinho) */
 function Btn({
-  children, label, size, onClick, onRight, onMiddle, running, focused, active, showLabel, count, magnify, vertical, pos, isDock,
+  children, label, size, onClick, onHover, onRight, onMiddle, running, focused, active, showLabel, count, magnify, vertical, pos, isDock,
 }: {
-  children: ReactNode; label: string; size: number; onClick: (el: HTMLButtonElement) => void; onRight?: () => void; onMiddle?: () => void
+  children: ReactNode; label: string; size: number; onClick: (el: HTMLButtonElement) => void; onHover?: (el: HTMLButtonElement, on: boolean) => void; onRight?: () => void; onMiddle?: () => void
   running?: boolean; focused?: boolean; active?: boolean; showLabel?: boolean; count?: number
   magnify: (el: HTMLElement | null) => number; vertical: boolean; pos: Pos; isDock: boolean
 }) {
@@ -259,9 +269,9 @@ function Btn({
       onClick={() => ref.current && onClick(ref.current)}
       onContextMenu={(e) => { e.preventDefault(); onRight?.() }}
       onAuxClick={(e) => { if (e.button === 1) onMiddle?.() }}
-      onPointerEnter={() => setHover(true)}
-      onPointerLeave={() => setHover(false)}
-      title={isDock ? undefined : label}
+      onPointerEnter={() => { setHover(true); if (ref.current) onHover?.(ref.current, true) }}
+      onPointerLeave={() => { setHover(false); if (ref.current) onHover?.(ref.current, false) }}
+      title={isDock || onHover ? undefined : label}
       className={cn("relative flex shrink-0 items-center justify-center gap-2 rounded-[calc(var(--r)*0.6)] transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_8%,transparent)]", (active || (showLabel && focused)) && "bg-[color-mix(in_srgb,var(--fg)_12%,transparent)]", showLabel && "px-2")}
       style={{ height: size, minWidth: size }}
     >
@@ -281,7 +291,7 @@ function Btn({
         />
       )}
       <AnimatePresence>
-        {hover && isDock && !showLabel && (
+        {hover && isDock && !showLabel && !onHover && (
           <motion.span
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}

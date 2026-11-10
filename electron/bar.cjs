@@ -274,6 +274,7 @@ function openMenu(kind, anchorX, w, h, barWin, fromKey) {
   if (again && fromKey !== "search") { closeMenu(); return }
   if (again && menu) { menu.focus(); return }
   closeMenu()
+  hidePreview()
   const d = (barWin && !barWin.isDestroyed() && displayOfWin(barWin)) || screen.getPrimaryDisplay()
   const b = bars.get(d.id) || primaryBar()
   const { barRect, band, pos } = rects(d)
@@ -309,6 +310,79 @@ function openMenu(kind, anchorX, w, h, barWin, fromKey) {
   for (const bw of bars.values()) if (!bw.isDestroyed()) bw.webContents.send("bar:menuState", bw === b ? kind : "")
 }
 
+/* ---------------- prévia das janelas ao passar o mouse (como no Windows) ---------------- */
+// Uma janelinha acrílica em cima do botão; dentro dela o próprio Windows (DWM) desenha a miniatura ao vivo
+// de cada janela do programa. Janela minimizada não tem imagem ao vivo: mostra o ícone.
+const TILE_W = 236, THUMB_H = 132, HEAD = 30, PAD = 8
+let preview = null
+let previewKey = ""
+let previewT = null
+let previewHover = false
+function previewWin() {
+  if (preview && !preview.isDestroyed()) return preview
+  preview = new BrowserWindow({
+    width: 300, height: 200, frame: false, transparent: false, backgroundMaterial: "acrylic", resizable: false, movable: false, minimizable: false, maximizable: false,
+    fullscreenable: false, skipTaskbar: true, alwaysOnTop: true, focusable: false, show: false, roundedCorners: true, backgroundColor: "#00000000",
+    title: "Agenda — prévia", webPreferences: prefs(),
+  })
+  preview.setAlwaysOnTop(true, "pop-up-menu")
+  page(preview, { view: "preview" })
+  preview.on("closed", () => { preview = null; previewKey = "" })
+  return preview
+}
+function hidePreview() {
+  clearTimeout(previewT); previewT = null
+  if (!previewKey) return
+  previewKey = ""
+  winh.call("unthumb")
+  if (preview && !preview.isDestroyed()) preview.hide()
+}
+/** items: janelas do programa; anchor: centro do botão (px da barra) */
+function showPreview(barWin, items, anchor) {
+  clearTimeout(previewT); previewT = null
+  if (menu || !items || !items.length) return hidePreview()
+  const key = items.map((i) => i.h).join(",")
+  if (key === previewKey && preview && preview.isVisible()) return
+  const d = (barWin && displayOfWin(barWin)) || screen.getPrimaryDisplay()
+  const { band, pos } = rects(d)
+  const B = d.bounds
+  const n = Math.min(items.length, Math.max(1, Math.floor((B.width - 40) / TILE_W)))
+  const list = items.slice(0, n)
+  const W = PAD * 2 + n * TILE_W, H = PAD * 2 + HEAD + THUMB_H
+  const vertical = pos === "left" || pos === "right"
+  const bar = bars.get(d.id)
+  const br = bar ? bar.getBounds() : B
+  const clampX = (v) => Math.max(B.x + 8, Math.min(B.x + B.width - W - 8, Math.round(v)))
+  const clampY = (v) => Math.max(B.y + 8, Math.min(B.y + B.height - H - 8, Math.round(v)))
+  const x = pos === "left" ? B.x + band + 8 : pos === "right" ? B.x + B.width - band - W - 8 : clampX(br.x + anchor - W / 2)
+  const y = pos === "top" ? B.y + band + 8 : pos === "bottom" ? B.y + B.height - band - H - 8 : clampY(br.y + anchor - H / 2)
+  const w = previewWin()
+  previewKey = key
+  w.setBounds({ x, y, width: W, height: H })
+  // retângulo de cada miniatura (o mesmo que a página desenha)
+  const tiles = list.map((it, i) => ({ ...it, x: PAD + i * TILE_W, y: PAD, w: TILE_W, head: HEAD, thumb: { x: PAD + i * TILE_W + 8, y: PAD + HEAD, w: TILE_W - 16, h: THUMB_H - 8 } }))
+  w.webContents.send("preview:data", { tiles })
+  const go = () => {
+    if (previewKey !== key || w.isDestroyed()) return
+    w.showInactive()
+    winh.call("unthumb")
+    const sf = d.scaleFactor || 1
+    const dst = winh.hwndOf(w)
+    for (const t of tiles) {
+      if (t.min) continue
+      const r = t.thumb
+      winh.call(`thumb ${dst} ${t.h} ${Math.round(r.x * sf)} ${Math.round(r.y * sf)} ${Math.round((r.x + r.w) * sf)} ${Math.round((r.y + r.h) * sf)}`)
+    }
+  }
+  if (w.webContents.isLoading()) w.webContents.once("did-finish-load", () => { w.webContents.send("preview:data", { tiles }); go() })
+  else go()
+}
+/** saiu do botão: espera um pouco (pode estar indo para a prévia) */
+function leavePreview() {
+  clearTimeout(previewT)
+  previewT = setTimeout(() => { if (!previewHover) hidePreview() }, 280)
+}
+
 /* ---------------- tecla Windows ---------------- */
 function syncKeys() { keys.enable(!!bars.size && cfg.keys !== false && games.playing() === false) }
 keys.onKey((ev) => {
@@ -322,6 +396,8 @@ function teardown(restore = true) {
   for (const ev of ["display-added", "display-removed"]) screen.removeListener(ev, rebuild)
   screen.removeListener("display-metrics-changed", onMetrics)
   closeMenu()
+  hidePreview()
+  if (preview && !preview.isDestroyed()) preview.destroy()
   for (const b of bars.values()) if (!b.isDestroyed()) { winh.call("unappbar " + winh.hwndOf(b)); b.destroy() }
   for (const k of desks.values()) if (!k.isDestroyed()) k.destroy()
   bars.clear(); desks.clear(); hiddenOn.clear()
@@ -417,7 +493,12 @@ function register(ipcMain, mainGetter) {
   // menus (Iniciar, relógio…): janelinha acrílica em cima da barra que pediu, fecha ao clicar fora
   ipcMain.handle("bar:menu", (e, kind, anchorX, w, h) => openMenu(kind, anchorX, w, h, BrowserWindow.fromWebContents(e.sender)))
   ipcMain.handle("bar:closeMenu", () => closeMenu())
+  ipcMain.on("bar:preview", (e, items, anchor) => showPreview(BrowserWindow.fromWebContents(e.sender), items, anchor))
+  ipcMain.on("bar:previewLeave", () => leavePreview())
+  ipcMain.on("preview:hover", (_e, on) => { previewHover = !!on; if (on) clearTimeout(previewT); else leavePreview() })
+  ipcMain.on("preview:hide", () => hidePreview())
   ipcMain.handle("bar:click", (_e, h, wasMin) => {
+    hidePreview()
     if (h === lastFg && !wasMin) return winh.call("minimize " + h)
     lastFg = h
     return winh.call("activate " + h)

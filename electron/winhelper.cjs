@@ -255,6 +255,31 @@ public static class AgWin {
     finally { if (hb != IntPtr.Zero) DeleteObject(hb); }
   }
 
+  // ---- miniatura ao vivo de uma janela (igual à da barra do Windows), desenhada pelo DWM dentro da janela de prévia ----
+  [StructLayout(LayoutKind.Sequential)] struct TNP { public int flags; public RECT dst; public RECT src; public byte opacity; public bool visible; public bool clientOnly; }
+  [DllImport("dwmapi.dll")] static extern int DwmRegisterThumbnail(IntPtr dest, IntPtr src, out IntPtr thumb);
+  [DllImport("dwmapi.dll")] static extern int DwmUnregisterThumbnail(IntPtr thumb);
+  [DllImport("dwmapi.dll")] static extern int DwmQueryThumbnailSourceSize(IntPtr thumb, out SZ size);
+  [DllImport("dwmapi.dll")] static extern int DwmUpdateThumbnailProperties(IntPtr thumb, ref TNP p);
+  static List<IntPtr> thumbs = new List<IntPtr>();
+  /** encaixa a janela src dentro do retângulo (l,t,r,b) da janela dst, mantendo a proporção */
+  public static void Thumb(string dst, string src, int l, int t, int r, int b) {
+    IntPtr th;
+    if (DwmRegisterThumbnail(H(dst), H(src), out th) != 0) return;
+    thumbs.Add(th);
+    SZ sz; DwmQueryThumbnailSourceSize(th, out sz);
+    int bw = r - l, bh = b - t;
+    double k = (sz.cx > 0 && sz.cy > 0) ? Math.Min((double)bw / sz.cx, (double)bh / sz.cy) : 1;
+    if (k > 1) k = 1;
+    int w = (int)(sz.cx * k), h = (int)(sz.cy * k);
+    var p = new TNP();
+    p.flags = 0x1 | 0x4 | 0x8 | 0x10;
+    p.dst.L = l + (bw - w) / 2; p.dst.T = t + (bh - h) / 2; p.dst.R = p.dst.L + w; p.dst.B = p.dst.T + h;
+    p.opacity = 255; p.visible = true; p.clientOnly = false;
+    DwmUpdateThumbnailProperties(th, ref p);
+  }
+  public static void UnThumb() { foreach (var th in thumbs) DwmUnregisterThumbnail(th); thumbs.Clear(); }
+
   public static void Minimize(string s) { ShowWindow(H(s), 6); }
   public static void Close(string s) { PostMessage(H(s), 0x0010, IntPtr.Zero, IntPtr.Zero); }
 }
@@ -288,6 +313,8 @@ while ($true) {
     'activate' { [AgWin]::Activate($a[1]) }
     'minimize' { [AgWin]::Minimize($a[1]) }
     'close'    { [AgWin]::Close($a[1]) }
+    'thumb'    { [AgWin]::Thumb($a[1], $a[2], [int]$a[3], [int]$a[4], [int]$a[5], [int]$a[6]) }
+    'unthumb'  { [AgWin]::UnThumb() }
     'icon'     { $out = [AgWin]::Icon($l.Substring(5).Trim(), 48); if (-not $out) { $out = 'none' } }
     'desktop'  { (New-Object -ComObject Shell.Application).ToggleDesktop() }
   }
