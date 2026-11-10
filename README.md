@@ -38,3 +38,12 @@ Em **Configurações → Fontes**, escolha a tipografia da interface, dos númer
 - As 14 fontes originais permanecem empacotadas e funcionam sem internet. As outras são baixadas sob demanda de **Google Fonts** (domínios permitidos na política de segurança do aplicativo); sem conexão, o texto usa a fonte de fallback até que a escolhida carregue.
 - Abrir o seletor **não baixa a biblioteca inteira**: só as fontes próximas da região visível da roda e a fonte selecionada são carregadas. O cache é gerenciado pelo Chromium/Electron.
 - As preferências continuam salvas por ID nas configurações e nos templates já existentes. A aparência também é sincronizada com a barra e os monitores adicionais.
+
+
+## Pacote de ícones e fundos integrado
+
+Em **Configurações → Barra e ícones → Ícones dos apps**, escolha entre os ícones originais e cinco coleções: **Vidro líquido, Neon noturno, Metal escovado, Minimal e Retrô 95**. O pacote inclui **169 aplicativos × 5 estilos = 845 ícones SVG**; a galeria permite buscar por nome e categoria. Os ícones de programas conhecidos podem substituir visualmente os ícones nativos na barra de tarefas e no menu Iniciar do Agenda. Programas não reconhecidos mantêm o ícone original do Windows; nada é alterado no sistema operacional.
+
+Os **17 fundos padrão** continuam em **Papel de parede → Degradê**. Eles já eram incluídos como CSS (sem dependência de internet, adaptáveis a qualquer resolução) e não precisam ser duplicados como PNGs no instalador.
+
+**Empacotamento:** o script `scripts/generate-icon-pack.mjs` gera as imagens SVG durante `npm run build` a partir do pacote `@fortawesome/fontawesome-free@6.7.2`. A pasta gerada `public/icon-packs/` é copiada para `dist/` pelo Vite e incorporada ao instalador pelo electron-builder. A licença do Font Awesome é copiada para `icon-packs/FONT-AWESOME-LICENSE.txt`. Em desenvolvimento, `npm run dev` gera as imagens automaticamente via `predev`.

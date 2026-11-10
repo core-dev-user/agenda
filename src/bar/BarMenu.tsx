@@ -4,15 +4,19 @@ import { bridge, type BarMenu } from "@/lib/bridge"
 import { SECTIONS } from "@/components/sections-meta"
 import { GlyphTile } from "@/components/Glyph"
 import { cn } from "@/lib/utils"
+import { iconPackAppSrc, type IconPackStyle } from "@/lib/iconPack"
 import { exeKey, useBarSync } from "./sync"
 
 const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
 const done = () => bridge.bar.closeMenu()
 
-function LnkIcon({ file }: { file: string }) {
+function LnkIcon({ file, name, style }: { file: string; name: string; style: IconPackStyle }) {
   const [url, setUrl] = useState("")
   useEffect(() => { let ok = true; bridge.bar.icon(file).then((u) => ok && setUrl(u)); return () => { ok = false } }, [file])
-  return url ? <img src={url} alt="" className="size-7" draggable={false} /> : <span className="size-7 rounded-md bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]" />
+  const packed = iconPackAppSrc(name, file, style)
+  return packed ? <img src={packed} alt="" className="size-7" draggable={false} /> :
+    url ? <img src={url} alt="" className="size-7" draggable={false} /> :
+    <span className="size-7 rounded-md bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]" />
 }
 
 function StartMenu() {
@@ -66,7 +70,7 @@ function StartMenu() {
               onClick={() => launch(a.path)}
               onContextMenu={(e) => { e.preventDefault(); bridge.bar.toMain(pinned.has(exeKey(a.path)) ? { type: "unpin", path: a.path } : { type: "pin", app: { path: a.path, name: a.name } }) }}
             >
-              <LnkIcon file={a.path} />
+              <LnkIcon file={a.path} name={a.name} style={sync?.icons?.iconPackStyle ?? "original"} />
               <span className="min-w-0 flex-1 truncate">{a.name}</span>
               {pinned.has(exeKey(a.path)) && <Pin size={12} className="shrink-0 text-fg-muted" />}
             </button>

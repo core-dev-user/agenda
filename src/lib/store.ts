@@ -79,6 +79,7 @@ export const DEFAULT_SETTINGS: Settings = {
   overlay: { scanlines: false, grain: true, vignette: true },
   widgetsLocked: false,
   iconStyle: "logos",
+  iconPackStyle: "original",
   iconShape: "squircle",
   iconColors: {},
   musicAutostart: false,

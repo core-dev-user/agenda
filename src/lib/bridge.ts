@@ -216,7 +216,7 @@ export interface BarSync {
   /** a barra de tarefas do Agenda (Configurações › Barra de tarefas) */
   tb?: { position: "bottom" | "top" | "left" | "right"; style: "dock" | "bar" | "floating"; size: number; autoHide: boolean; magnify: boolean; showLabels: boolean; hide?: string[]; pcOpen?: boolean; smartHide?: boolean }
   locked?: boolean
-  icons?: { iconStyle: string; theme: string; iconShape?: string; iconColors?: Record<string, string> }
+  icons?: { iconStyle: string; theme: string; iconShape?: string; iconColors?: Record<string, string>; iconPackStyle?: "original" | "glass" | "neon" | "metal" | "minimal" | "retro" }
   /** abas do Agenda abertas (para o pontinho e o destaque na barra) */
   secs?: { id: string; min: boolean; top: boolean }[]
 }

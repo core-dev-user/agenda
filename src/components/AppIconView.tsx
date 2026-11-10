@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react"
 import type { IconStyle, SectionId, Settings } from "@/lib/types"
 import { SECTIONS } from "./sections-meta"
+import { iconPackSectionSrc } from "@/lib/iconPack"
 
 export const ICON_STYLES: { id: IconStyle; label: string }[] = [
   { id: "auto", label: "Automático (do tema)" },
@@ -31,7 +32,7 @@ const LOGO_FILES: Record<SectionId, string> = {
 }
 
 /** o que o desenho do ícone precisa das configurações */
-export type IconPrefs = Pick<Settings, "iconStyle" | "theme" | "iconShape" | "iconColors">
+export type IconPrefs = Pick<Settings, "iconStyle" | "theme" | "iconShape" | "iconColors" | "iconPackStyle">
 
 /** Ícone de um app/aba no estilo escolhido (sem ler o app: serve também para a barra do PC). */
 export function AppIconView({ id, size, styleOverride, s }: { id: SectionId; size: number; styleOverride?: Exclude<IconStyle, "auto">; s: IconPrefs }) {
@@ -41,6 +42,9 @@ export function AppIconView({ id, size, styleOverride, s }: { id: SectionId; siz
   const st = styleOverride ?? resolveIconStyle(s)
   const radius = st === "pixel" ? "0" : s.iconShape === "circle" ? "50%" : s.iconShape === "square" ? "18%" : "28%"
   const glyph = Math.round(size * 0.55)
+  // O pacote é opcional; os estilos existentes permanecem intactos.
+  const pack = styleOverride ? null : iconPackSectionSrc(id, s.iconPackStyle ?? "original")
+  if (pack) return <img src={pack} draggable={false} width={size} height={size} alt={meta.label} style={{display:"block",objectFit:"contain"}} />
 
   if (st === "logos")
     return (

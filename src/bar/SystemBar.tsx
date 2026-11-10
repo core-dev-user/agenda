@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo"
 import { AppIconView, type IconPrefs } from "@/components/AppIconView"
 import type { SectionId } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { iconPackAppSrc, type IconPackStyle } from "@/lib/iconPack"
 import { exeKey, useBarSync } from "./sync"
 
 /**
@@ -23,9 +24,12 @@ function useIcon(file: string, given: string) {
   useEffect(() => { if (given) setUrl(given); else if (file) bridge.bar.icon(file).then(setUrl) }, [file, given])
   return url
 }
-function ExeIcon({ g, size }: { g: Group; size: number }) {
+function ExeIcon({ g, size, style }: { g: Group; size: number; style: IconPackStyle }) {
   const icon = useIcon(g.exe, g.icon)
-  return icon ? <img src={icon} alt="" draggable={false} style={{ width: size, height: size }} /> : <span className="flex items-center justify-center text-xs font-semibold" style={{ width: size, height: size }}>{g.name.slice(0, 2)}</span>
+  const packed = iconPackAppSrc(g.name, g.exe, style)
+  return packed ? <img src={packed} alt="" draggable={false} style={{ width: size, height: size, objectFit: "contain" }} /> :
+    icon ? <img src={icon} alt="" draggable={false} style={{ width: size, height: size }} /> :
+    <span className="flex items-center justify-center text-xs font-semibold" style={{ width: size, height: size }}>{g.name.slice(0, 2)}</span>
 }
 
 export function SystemBar() {
@@ -89,6 +93,7 @@ export function SystemBar() {
   const sections = (sync?.sections ?? []).filter((x) => shows(x.id))
   const secs = sync?.secs ?? []
   const icons: IconPrefs = (sync?.icons as IconPrefs | undefined) ?? { iconStyle: "auto", theme: "glass", iconShape: "squircle", iconColors: undefined } as unknown as IconPrefs
+  const packStyle: IconPackStyle = icons.iconPackStyle ?? "original"
 
   // responsivo: os botões encolhem quando não cabem na borda
   const count = 1 + sections.length + groups.length + 3 + (isDock ? 2 : 5)
@@ -197,7 +202,7 @@ export function SystemBar() {
                 onRight={() => pin(g)}
                 onMiddle={() => bridge.bar.launch(g.exe)}
               >
-                <ExeIcon g={g} size={Math.round(size * 0.62)} />
+                <ExeIcon g={g} size={Math.round(size * 0.62)} style={packStyle} />
               </Btn>
             )
           })}
