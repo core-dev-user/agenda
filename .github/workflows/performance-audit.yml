@@ -38,7 +38,7 @@ jobs:
         shell: pwsh
         env:
           AGENDA_MODE: screen
-        run: ./tests/performance-audit.ps1 -OutputDir perf-results -HoldSeconds 23
+        run: ./tests/performance-audit.ps1 -OutputDir perf-results -HoldSeconds 28 -Only webapps
       - name: Publicar relatórios e capturas de teste
         if: always()
         uses: actions/upload-artifact@v4
