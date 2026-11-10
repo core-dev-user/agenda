@@ -9,12 +9,19 @@ interface Petal {
   size: number; hue: number; sway: number; phase: number
 }
 
-const PALETTE = [
+const PINK = [
   [255, 183, 207],
   [255, 205, 222],
   [255, 160, 195],
   [255, 228, 236],
   [247, 170, 205],
+]
+const BLUE = [
+  [195, 229, 255],
+  [165, 216, 255],
+  [129, 193, 255],
+  [220, 240, 255],
+  [110, 182, 246],
 ]
 
 function makePetalPath() {
@@ -39,12 +46,14 @@ export function SakuraCanvas({
   className = "",
   burst = false,
   opacity = 1,
+  palette = "blue",
 }: {
   density?: number
   interactive?: boolean
   className?: string
   burst?: boolean
   opacity?: number
+  palette?: "blue" | "pink"
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
 
@@ -52,6 +61,7 @@ export function SakuraCanvas({
     const canvas = ref.current!
     const ctx = canvas.getContext("2d")!
     const path = makePetalPath()
+    const PALETTE = palette === "pink" ? PINK : BLUE
     let W = 0, H = 0, dpr = 1
     const mouse = { x: -9999, y: -9999, vx: 0, vy: 0 }
     let raf = 0
@@ -206,7 +216,7 @@ export function SakuraCanvas({
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("resize", resize)
     }
-  }, [density, interactive, burst, opacity])
+  }, [density, interactive, burst, opacity, palette])
 
   return <canvas ref={ref} className={"pointer-events-none absolute inset-0 h-full w-full " + className} />
 }
