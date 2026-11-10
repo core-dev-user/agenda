@@ -69,7 +69,7 @@ export const DEFAULT_SETTINGS: Settings = {
   wallpaper: {
     type: "gradient",
     gradient: "ocean",
-    color: "#1a1020",
+    color: "#081A34",
     image: null,
     blur: 0,
     dim: 0.15,
