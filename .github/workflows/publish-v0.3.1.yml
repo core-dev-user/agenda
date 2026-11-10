@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   windows:
-    if: startsWith(github.event.head_commit.message, 'release: v0.3.1')
+    if: "startsWith(github.event.head_commit.message, 'release: v0.3.1')"
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
