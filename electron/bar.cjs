@@ -404,7 +404,7 @@ function leavePreview() {
 }
 
 /* ---------------- tecla Windows ---------------- */
-function syncKeys() { keys.enable(!!bars.size && cfg.keys !== false && games.playing() === false) }
+function syncKeys() { keys.winKey(cfg.winKey === "agenda"); keys.enable(!!bars.size && cfg.keys !== false && games.playing() === false) }
 keys.onKey((ev) => {
   if (!bars.size) return
   openMenu("start", null, 640, 660, primaryBar(), ev)
@@ -457,7 +457,7 @@ async function startApps() {
   return appsCache
 }
 
-const state = () => ({ on: cfg.on, height: cfg.height, position: cfg.position, keys: cfg.keys !== false, available: modes.mode() === "desktop", active: bars.size > 0 })
+const state = () => ({ on: cfg.on, height: cfg.height, position: cfg.position, keys: cfg.keys !== false, winKey: cfg.winKey === "agenda" ? "agenda" : "windows", available: modes.mode() === "desktop", active: bars.size > 0 })
 
 function register(ipcMain, mainGetter) {
   getMain = mainGetter
@@ -473,6 +473,7 @@ function register(ipcMain, mainGetter) {
     const q = p || {}
     if (typeof q.on === "boolean") cfg.on = q.on
     if (typeof q.keys === "boolean") cfg.keys = q.keys
+    if (q.winKey === "agenda" || q.winKey === "windows") cfg.winKey = q.winKey
     if (typeof q.height === "number") cfg.height = q.height
     if (q.position === "top" || q.position === "bottom") cfg.position = q.position
     save()

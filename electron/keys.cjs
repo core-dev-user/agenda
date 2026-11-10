@@ -40,7 +40,9 @@ public static class AgKeys {
   static IntPtr hook = IntPtr.Zero;
   static uint tid = 0;
   static Thread th;
-  static bool winHeld = false, clean = false;
+  static bool winHeld = false, clean = false, ate = false;
+  /** tecla Windows sozinha abre o Iniciar do Agenda (false: deixa o Iniciar do Windows abrir normalmente) */
+  public static bool WinAlone = false;
   static uint eaten = 0; // tecla engolida (S/Q) — engole também o soltar dela
 
   const uint MASK = 0xE8; // tecla sem uso: faz o Windows achar que foi um atalho
@@ -58,14 +60,16 @@ public static class AgKeys {
       if (!injected) {
         bool isWin = k.vk == 0x5B || k.vk == 0x5C;
         if (isWin) {
-          if (down) { if (!winHeld) { winHeld = true; clean = true; } }
+          if (down) { if (!winHeld) { winHeld = true; clean = true; ate = false; } }
           else {
             winHeld = false;
+            // Windows sozinha e o Iniciar é o do Windows: deixa passar normal
+            if (!ate && (!WinAlone || !clean)) { clean = false; return CallNextHookEx(hook, code, w, l); }
             // segura o soltar de verdade e manda: tecla neutra + soltar Windows (o Iniciar do Windows não abre)
             var seq = new[] { Key((ushort)MASK, false), Key((ushort)MASK, true), Key((ushort)k.vk, true) };
             SendInput(3, seq, Marshal.SizeOf(typeof(INPUT)));
-            if (clean) Events.Add("start");
-            clean = false;
+            if (clean && WinAlone) Events.Add("start");
+            clean = false; ate = false;
             return new IntPtr(1);
           }
         } else if (eaten != 0 && k.vk == eaten && !down) {
@@ -75,7 +79,7 @@ public static class AgKeys {
           clean = false;
           if (k.vk == 0x53 || k.vk == 0x51) { // S ou Q: pesquisa
             if (eaten != k.vk) Events.Add("search");
-            eaten = k.vk;
+            eaten = k.vk; ate = true;
             return new IntPtr(1);
           }
         }
@@ -127,12 +131,15 @@ while ($true) {
   if ($l -eq $null) { break }
   if ($l -eq 'on') { [AgKeys]::On() }
   elseif ($l -eq 'off') { [AgKeys]::Off() }
+  elseif ($l -eq 'win:agenda') { [AgKeys]::WinAlone = $true }
+  elseif ($l -eq 'win:windows') { [AgKeys]::WinAlone = $false }
 }
 [AgKeys]::Off()
 `
 
 let proc = null
 let want = false
+let winAgenda = false
 let onEvent = () => {}
 
 function start() {
@@ -150,7 +157,7 @@ function start() {
     for (const raw of lines) {
       const l = raw.trim()
       if (!l) continue
-      if (l === "ready") { if (want) send("on"); continue }
+      if (l === "ready") { send(winAgenda ? "win:agenda" : "win:windows"); if (want) send("on"); continue }
       if (l.startsWith("error")) console.error("keys:", l)
       if (l === "start" || l === "search") onEvent(l)
     }
@@ -169,4 +176,7 @@ function enable(on) {
   else send("off")
 }
 
-module.exports = { enable, onKey: (cb) => { onEvent = cb } }
+/** tecla Windows sozinha: true = Iniciar do Agenda; false = Iniciar do Windows (o padrão) */
+function winKey(agenda) { winAgenda = !!agenda; send(winAgenda ? "win:agenda" : "win:windows") }
+
+module.exports = { enable, winKey, onKey: (cb) => { onEvent = cb } }

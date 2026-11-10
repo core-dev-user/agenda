@@ -385,7 +385,8 @@ function MonitorMap({ list, value, onPick }: { list: DisplayInfo[]; value: numbe
 function MainBarSwitch() {
   const on = useUiMode((s) => s.mainBar)
   const [keys, setKeys] = useState(true)
-  useEffect(() => { bridge.bar.get().then((c) => setKeys(c.keys)) }, [])
+  const [winKey, setWinKey] = useState<"windows" | "agenda">("windows")
+  useEffect(() => { bridge.bar.get().then((c) => { setKeys(c.keys); setWinKey(c.winKey) }) }, [])
   return (
     <div className="mt-3 border-t border-line pt-3">
       <Switch
@@ -397,11 +398,18 @@ function MainBarSwitch() {
       {on && (
         <>
           <Switch
-            label="Tecla Windows abre o Iniciar do Agenda, e Win+S a pesquisa"
+            label="Win+S abre a pesquisa do Agenda"
             checked={keys}
             onChange={async (v) => setKeys((await bridge.bar.set({ keys: v })).keys)}
           />
-          <div className="text-xs text-fg-muted">Os outros atalhos (Win+E, Win+D, Win+Shift+S…) continuam iguais. Com um jogo aberto, a tecla Windows volta a abrir o Iniciar do Windows (o Agenda não mexe no teclado durante o jogo).</div>
+          {keys && (
+            <Switch
+              label="Tecla Windows sozinha abre o Iniciar do Agenda (desligado: abre o Iniciar do Windows)"
+              checked={winKey === "agenda"}
+              onChange={async (v) => setWinKey((await bridge.bar.set({ winKey: v ? "agenda" : "windows" })).winKey)}
+            />
+          )}
+          <div className="text-xs text-fg-muted">Os outros atalhos (Win+E, Win+D, Win+Shift+S…) continuam iguais. Com um jogo aberto, o Agenda não mexe no teclado.</div>
         </>
       )}
     </div>
