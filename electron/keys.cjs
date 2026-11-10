@@ -80,10 +80,15 @@ public static class AgKeys {
         } else if (eaten != 0 && k.vk == eaten && !down) {
           eaten = 0;
           return new IntPtr(1);
+        } else if (WinAlone && ctrl && !alt && !shift && k.vk == 0x1B && down) {
+          if (eaten != k.vk) Events.Add("start");
+          eaten = k.vk;
+          return new IntPtr(1);
         } else if (winHeld && down) {
           clean = false;
-          if ((k.vk == 0x53 || k.vk == 0x51) && !shift && !ctrl && !alt) { // Win+S ou Win+Q (sem outra tecla junto): pesquisa
-            if (eaten != k.vk) Events.Add("search");
+          string action = k.vk == 0x53 || k.vk == 0x51 ? "search" : k.vk == 0x49 ? "settings" : k.vk == 0x41 || k.vk == 0x4E ? "notifications" : k.vk == 0x43 ? "assistant" : k.vk >= 0x31 && k.vk <= 0x39 ? "pin:" + (k.vk - 0x31) : null;
+          if (action != null && !shift && !ctrl && !alt) { // Win+S ou Win+Q (sem outra tecla junto): pesquisa
+            if (eaten != k.vk) Events.Add(action);
             eaten = k.vk; ate = true;
             return new IntPtr(1);
           }
@@ -103,7 +108,7 @@ public static class AgKeys {
       while (GetMessage(out m, IntPtr.Zero, 0, 0) > 0) { }
       if (hook != IntPtr.Zero) UnhookWindowsHookEx(hook);
       hook = IntPtr.Zero;
-      winHeld = false; eaten = 0;
+      winHeld = false; eaten = 0; shift = false; ctrl = false; alt = false;
     });
     th.IsBackground = true;
     th.Start();
@@ -154,8 +159,10 @@ function start() {
   try {
     proc = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", file], { windowsHide: true })
   } catch { proc = null; return }
+  const child = proc
   let buf = ""
   proc.stdout.on("data", (d) => {
+    if (proc !== child) return
     buf += d.toString("utf8")
     const lines = buf.split(/\r?\n/)
     buf = lines.pop() ?? ""
@@ -164,13 +171,15 @@ function start() {
       if (!l) continue
       if (l === "ready") { send(winAgenda ? "win:agenda" : "win:windows"); if (want) send("on"); continue }
       if (l.startsWith("error")) console.error("keys:", l)
-      if (l === "start" || l === "search") onEvent(l)
+      if (["start", "search", "settings", "notifications", "assistant"].includes(l) || /^pin:[0-8]$/.test(l)) onEvent(l)
     }
   })
   proc.stderr.on("data", (d) => console.error("keys:", d.toString()))
-  proc.on("exit", () => { proc = null })
-  app.on("will-quit", () => { try { proc && proc.stdin.end() } catch {} })
+  proc.on("error", (error) => { console.error("keys:", error.message); if (proc === child) { proc = null; want = false } })
+  proc.on("exit", () => { if (proc === child) { proc = null; want = false } })
+
 }
+app.on("will-quit", () => { try { proc && proc.stdin.end() } catch {} })
 const send = (cmd) => { try { proc && proc.stdin.write(cmd + "\n") } catch {} }
 
 /** liga/desliga o gancho (desliga com jogo aberto) */

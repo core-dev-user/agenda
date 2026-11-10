@@ -20,3 +20,23 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - run: node --test tests/taskbar-control.test.cjs
+
+  windows-native-compile:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile native helpers with Windows PowerShell
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($file in @('electron/keys.cjs', 'electron/winhelper.cjs')) {
+            $source = Get-Content $file -Raw -Encoding UTF8
+            $match = [regex]::Match($source, '(?s)const CS = String\.raw`(.*?)`')
+            if (-not $match.Success) { throw "Native source missing: $file" }
+            if ($file -like '*winhelper*') {
+              Add-Type -ReferencedAssemblies System.Drawing, System.Windows.Forms -TypeDefinition $match.Groups[1].Value
+            } else {
+              Add-Type -TypeDefinition $match.Groups[1].Value
+            }
+          }
