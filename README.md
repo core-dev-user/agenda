@@ -68,3 +68,8 @@ O widget **Spotify e música do PC** usa a central de mídia do Windows (Global 
 - Os widgets e seus ajustes antigos são preservados. Sem mídia ou fora do Windows é exibido um estado vazio. O serviço PowerShell é iniciado somente quando há widgets ativos e é encerrado quando o último é removido.
 
 **Testes:** `npm run test:media` verifica seleção isolada, player ausente, capa tardia, invalidação por música e cache individual. Em um Windows com Spotify instalado, teste tocar, pausar, trocar faixas, retornar ao app, mudar tema e reproduzir outro player simultaneamente. A API do Windows só expõe os metadados que o player decide compartilhar.
+
+
+### Efeitos da abertura Widgy
+
+A tela inicial usa a nova logo azul com pétalas de sakura (Canvas), halo suave, dois anéis discretos, pontos de luz e um reflexo breve sobre o ícone. A duração e o botão **Pular abertura** continuam seguindo as preferências anteriores; a configuração de reduzir movimento desativa os efeitos animados. O splash não baixa arquivos externos.
