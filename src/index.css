@@ -356,3 +356,7 @@ html:has([data-dim]) [data-desktop] .surface, html:has([data-dim]) [data-desktop
 .wl-h-lift:hover > .wl-inner { transform: translateY(-5px) scale(1.012); box-shadow: 0 28px 60px -20px rgb(0 0 0 / .65) !important; }
 .wl-h-glow:hover > .wl-inner { box-shadow: 0 0 0 1px color-mix(in srgb, var(--wacc, var(--accent)) 70%, transparent), 0 0 38px -4px color-mix(in srgb, var(--wacc, var(--accent)) 60%, transparent) !important; }
 .wl-h-border:hover > .wl-inner { border-color: var(--wacc, var(--accent)) !important; }
+
+/* um monitor dentro da página (área de trabalho em vários monitores): o quadro não pega cliques, só o que está dentro */
+.screen-frame { pointer-events: none; }
+.screen-frame > :not(.pointer-events-none) { pointer-events: auto; }

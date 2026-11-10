@@ -10,7 +10,7 @@ const fs = require("node:fs")
 
 const MODES = ["app", "desktop", "screen"]
 const cfgFile = () => path.join(app.getPath("userData"), "mode.json")
-let cfg = { mode: "", display: 0 } // display: id do monitor escolhido (0 = o principal)
+let cfg = { mode: "", display: 0, span: true } // display: id do monitor escolhido (0 = o principal); span: área de trabalho em todos os monitores
 try { cfg = { ...cfg, ...JSON.parse(fs.readFileSync(cfgFile(), "utf8")) } } catch {}
 if (process.env.AGENDA_MODE != null) cfg.mode = process.env.AGENDA_MODE
 if (cfg.mode && !MODES.includes(cfg.mode)) cfg.mode = ""
@@ -24,7 +24,32 @@ function target() {
   return all.find((d) => d.id === cfg.display) || screen.getPrimaryDisplay()
 }
 const isPrimary = () => target().id === screen.getPrimaryDisplay().id
-const workArea = () => target().workArea
+/** área de trabalho em todos os monitores, como uma tela só (modo área de trabalho com 2+ monitores) */
+const spans = () => cfg.mode === "desktop" && cfg.span !== false && screen.getAllDisplays().length > 1 && !process.env.AGENDA_SHOT
+/** todos os monitores juntos (a tela inteira: o papel de parede vai até a borda, por baixo da dock) */
+function union() {
+  const all = screen.getAllDisplays().map((d) => d.bounds)
+  const x = Math.min(...all.map((r) => r.x)), y = Math.min(...all.map((r) => r.y))
+  const r = Math.max(...all.map((a) => a.x + a.width)), b = Math.max(...all.map((a) => a.y + a.height))
+  return { x, y, width: r - x, height: b - y }
+}
+/** retângulo da janela principal: o monitor escolhido, ou todos juntos */
+const workArea = () => (spans() ? union() : target().workArea)
+/** cada monitor dentro da janela principal (coordenadas da página), para o papel de parede, abas e avisos */
+function screensInWindow() {
+  const o = workArea()
+  const prim = screen.getPrimaryDisplay().id
+  const main = target().id
+  const list = spans() ? screen.getAllDisplays() : [target()]
+  return list
+    .sort((a, b) => a.bounds.x - b.bounds.x || a.bounds.y - b.bounds.y)
+    // x/y/w/h: área livre (abas, avisos, chão do bichinho); full: o monitor inteiro (papel de parede)
+    .map((d) => ({
+      id: d.id, x: d.workArea.x - o.x, y: d.workArea.y - o.y, w: d.workArea.width, h: d.workArea.height,
+      full: spans() ? { x: d.bounds.x - o.x, y: d.bounds.y - o.y, w: d.bounds.width, h: d.bounds.height } : undefined,
+      primary: d.id === prim, home: d.id === main,
+    }))
+}
 
 function displays() {
   const prim = screen.getPrimaryDisplay().id
@@ -69,7 +94,13 @@ function attach(win) {
   if (cfg.mode === "app") return
   if (cfg.mode !== "desktop") return
   const h = hwndOf(win)
-  const fit = () => { if (!win.isDestroyed()) win.setBounds(workArea()) }
+  let lastScreens = ""
+  const fit = () => {
+    if (win.isDestroyed()) return
+    win.setBounds(workArea())
+    const sc = JSON.stringify(screensInWindow())
+    if (sc !== lastScreens) { lastScreens = sc; win.webContents.send("mode:screens", JSON.parse(sc)) }
+  }
   const sink = () => { if (!raised && !win.isDestroyed()) native("bottom " + h) }
   win.once("ready-to-show", () => { native("own " + h); sink() })
   win.on("focus", () => setTimeout(sink, 0))
@@ -118,6 +149,15 @@ function detectApps() {
 function register(ipcMain, getWin, onQuit) {
   ipcMain.handle("mode:get", () => ({ mode: cfg.mode, monitors: screen.getAllDisplays().length, display: target().id }))
   ipcMain.handle("mode:displays", () => displays())
+  ipcMain.handle("mode:screens", () => screensInWindow())
+  ipcMain.handle("mode:span", (_e, on) => {
+    if (typeof on !== "boolean") return cfg.span !== false
+    const changed = on !== (cfg.span !== false)
+    cfg.span = on
+    save()
+    if (changed && cfg.mode === "desktop" && !process.env.AGENDA_SHOT) { app.relaunch(); onQuit() }
+    return on
+  })
   // trocar de modo (ou de monitor) reabre o app (a janela é criada de outro jeito em cada modo)
   ipcMain.handle("mode:set", (_e, m, display) => {
     if (!MODES.includes(m)) return false
@@ -136,4 +176,4 @@ function register(ipcMain, getWin, onQuit) {
   ipcMain.handle("apps:detect", () => detectApps())
 }
 
-module.exports = { mode, windowOptions, attach, register, isPrimary, workArea, target }
+module.exports = { mode, windowOptions, attach, register, isPrimary, workArea, target, spans, screensInWindow }

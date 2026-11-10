@@ -281,7 +281,7 @@ function StartMenu({ onPick, close }: { onPick: (id: SectionId) => void; close: 
 
 const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
 
-function WidgetMenu({ close }: { close: () => void }) {
+export function WidgetMenu({ close }: { close: () => void }) {
   const add = useStore((s) => s.addWidget)
   const [cat, setCat] = useState<WidgetCat>("rotina")
   const [q, setQ] = useState("")

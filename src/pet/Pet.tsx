@@ -6,6 +6,7 @@
  * Tudo roda num laço de animação só (que dorme quando ninguém está vendo) e mexe direto no DOM,
  * sem re-desenhar o React a cada quadro.
  */
+import { screenList } from "@/lib/screens"
 import { useEffect, useRef } from "react"
 import { useStore } from "@/lib/store"
 import { perfPaused } from "@/lib/perf"
@@ -73,7 +74,8 @@ function Cat({ prefs }: { prefs: PetPrefs }) {
 
     /* ---------------- plataformas: chão, barra de tarefas e o topo dos widgets ---------------- */
     let plats: Plat[] = []
-    const floor = (): Plat => ({ id: "floor", x1: 0, x2: innerWidth, y: innerHeight - 1 })
+    // chão: o pé da área livre (em vários monitores, acima da barra de cada um)
+    const floor = (): Plat => ({ id: "floor", x1: 0, x2: innerWidth, y: Math.min(innerHeight, ...screenList().map((sc) => sc.y + sc.h)) - 1 })
     const rectPlat = (id: string, el: Element): Plat | null => {
       const r = el.getBoundingClientRect()
       const s = sc()

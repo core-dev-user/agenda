@@ -1,11 +1,21 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { Bell, Bot, ChevronUp, Search, Volume2, Wifi } from "lucide-react"
-import { bridge, type BarMenu, type PcWindow } from "@/lib/bridge"
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { Bell, ChevronUp, Lock, Plus, Unlock, Volume2, Wifi } from "lucide-react"
+import { bridge, type BarMenu, type BarSync, type PcWindow } from "@/lib/bridge"
 import { Logo } from "@/components/Logo"
+import { AppIconView, type IconPrefs } from "@/components/AppIconView"
+import type { SectionId } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { exeKey, useBarSync } from "./sync"
 
+/**
+ * A barra de tarefas do Agenda como barra do PC: o mesmo jeito da barra de dentro do Agenda
+ * (Dock, Pílula ou Barra; embaixo, em cima ou dos lados; tamanho, lupa, nomes, ocultar sozinha),
+ * com as abas do Agenda e também os programas do Windows abertos e fixados.
+ */
 interface Group { key: string; exe: string; name: string; icon: string; wins: PcWindow[]; pinned: boolean }
+type Pos = "bottom" | "top" | "left" | "right"
+const TB_DEFAULT: NonNullable<BarSync["tb"]> = { position: "bottom", style: "dock", size: 56, autoHide: false, magnify: true, showLabels: false }
 
 /** ícone de um programa (fixado e fechado não vem na lista de janelas: pede ao Windows) */
 function useIcon(file: string, given: string) {
@@ -13,45 +23,50 @@ function useIcon(file: string, given: string) {
   useEffect(() => { if (given) setUrl(given); else if (file) bridge.bar.icon(file).then(setUrl) }, [file, given])
   return url
 }
-
-function AppBtn({ g, size, fg, onClick, onRight }: { g: Group; size: number; fg: string; onClick: () => void; onRight: () => void }) {
+function ExeIcon({ g, size }: { g: Group; size: number }) {
   const icon = useIcon(g.exe, g.icon)
-  const running = g.wins.length > 0
-  const isFg = g.wins.some((w) => w.h === fg)
-  const title = g.wins.length ? g.wins.map((w) => w.title).join("\n") : g.name
-  return (
-    <button
-      className="bar-btn shrink-0"
-      style={{ width: size, height: size }}
-      data-on={isFg}
-      title={title + (g.pinned ? "\n(clique direito: desafixar)" : "\n(clique direito: fixar na barra)")}
-      onClick={onClick}
-      onContextMenu={(e) => { e.preventDefault(); onRight() }}
-      onAuxClick={(e) => { if (e.button === 1) bridge.bar.launch(g.exe) }}
-    >
-      {icon ? <img src={icon} alt="" draggable={false} style={{ width: size * 0.58, height: size * 0.58 }} /> : <span className="text-xs font-semibold">{g.name.slice(0, 2)}</span>}
-      {g.wins.length > 1 && <span className="absolute top-0.5 right-1 font-num text-[9px] text-fg-muted">{g.wins.length}</span>}
-      {running && <span className="bar-dot" data-fg={isFg} />}
-    </button>
-  )
+  return icon ? <img src={icon} alt="" draggable={false} style={{ width: size, height: size }} /> : <span className="flex items-center justify-center text-xs font-semibold" style={{ width: size, height: size }}>{g.name.slice(0, 2)}</span>
 }
 
 export function SystemBar() {
   const sync = useBarSync()
+  const t = { ...TB_DEFAULT, ...(sync?.tb ?? {}) }
+  const pos = t.position as Pos
+  const vertical = pos === "left" || pos === "right"
+  const isDock = t.style !== "bar"
   const [wins, setWins] = useState<PcWindow[]>([])
   const [fg, setFg] = useState("")
   const [menu, setMenu] = useState<BarMenu | "">("")
   const [peek, setPeek] = useState(false)
   const [now, setNow] = useState(new Date())
-  const [W, setW] = useState(innerWidth)
-  const H = innerHeight
-  const center = useRef<HTMLDivElement>(null)
+  const [vw, setVw] = useState({ w: innerWidth, h: innerHeight })
+  const [mouse, setMouse] = useState<number | null>(null)
+  const [hidden, setHidden] = useState(false)
+  const dockRef = useRef<HTMLDivElement>(null)
   useEffect(() => bridge.bar.onWins((d) => { setWins(d.wins); setFg(d.fg) }), [])
   useEffect(() => bridge.bar.onMenuState(setMenu), [])
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 5000); return () => clearInterval(t) }, [])
-  useLayoutEffect(() => { const f = () => setW(innerWidth); addEventListener("resize", f); return () => removeEventListener("resize", f) }, [])
+  useEffect(() => { const id = setInterval(() => setNow(new Date()), 5000); return () => clearInterval(id) }, [])
+  useLayoutEffect(() => { const f = () => setVw({ w: innerWidth, h: innerHeight }); addEventListener("resize", f); return () => removeEventListener("resize", f) }, [])
 
-  // fixados primeiro (na ordem), depois os abertos — janelas do mesmo programa ficam juntas
+  // ocultar sozinha: some longe do mouse e volta quando ele encosta na borda da tela
+  useEffect(() => {
+    if (!t.autoHide) { setHidden(false); return }
+    if (!menu) setHidden(true)
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const cancel = () => { if (timer) clearTimeout(timer); timer = null }
+    const mv = (e: PointerEvent) => {
+      const edge = pos === "bottom" ? innerHeight - e.clientY : pos === "top" ? e.clientY : pos === "left" ? e.clientX : innerWidth - e.clientX
+      if (edge < 6) { cancel(); setHidden(false) }
+      else if (edge > t.size + 40 && !menu) { if (!timer) timer = setTimeout(() => { setHidden(true); timer = null }, 500) }
+      else cancel()
+    }
+    const out = () => { if (!menu && !timer) timer = setTimeout(() => { setHidden(true); timer = null }, 700) }
+    window.addEventListener("pointermove", mv)
+    document.addEventListener("pointerleave", out)
+    return () => { cancel(); window.removeEventListener("pointermove", mv); document.removeEventListener("pointerleave", out) }
+  }, [t.autoHide, pos, t.size, menu])
+
+  // programas do Windows: fixados primeiro (na ordem), depois os abertos — janelas do mesmo programa juntas
   const pins = sync?.pins ?? []
   const groups: Group[] = pins.map((p) => ({ key: exeKey(p.path), exe: p.path, name: p.name, icon: "", wins: [], pinned: true }))
   for (const w of wins) {
@@ -61,14 +76,26 @@ export function SystemBar() {
     if (!g.icon) g.icon = w.icon
     g.wins.push(w)
   }
+  const sections = sync?.sections ?? []
+  const secs = sync?.secs ?? []
+  const icons: IconPrefs = (sync?.icons as IconPrefs | undefined) ?? { iconStyle: "auto", theme: "glass", iconShape: "squircle", iconColors: undefined } as unknown as IconPrefs
 
-  // responsivo: os botões encolhem quando não cabem
-  const reserved = 2 * 64 + 290
-  const base = Math.min(48, H - 12)
-  const size = Math.max(28, Math.min(base, Math.floor((W - reserved) / Math.max(1, groups.length + 2)) - 4))
-  const compact = W < 900
+  // responsivo: os botões encolhem quando não cabem na borda
+  const count = 1 + sections.length + groups.length + 3 + (isDock ? 2 : 5)
+  const length = vertical ? vw.h : vw.w
+  const fixed = isDock ? 60 : vertical ? 120 : 260
+  const size = Math.max(26, Math.min(t.size, Math.floor((length - fixed) / Math.max(1, count)) - 6))
+  const icon = Math.round(size * 0.46)
 
-  const click = (g: Group) => {
+  const magnify = (el: HTMLElement | null) => {
+    if (!t.magnify || !isDock || mouse == null || !el) return 1
+    const r = el.getBoundingClientRect()
+    const c = vertical ? r.top + r.height / 2 : r.left + r.width / 2
+    const k = Math.max(0, 1 - Math.abs(mouse - c) / (size * 1.7))
+    return 1 + ((1 - Math.cos(k * Math.PI)) / 2) * 0.25
+  }
+
+  const clickApp = (g: Group) => {
     if (!g.wins.length) return bridge.bar.launch(g.exe)
     if (g.wins.length === 1) return bridge.bar.click(g.wins[0].h, g.wins[0].min)
     // várias janelas: vai passando por elas
@@ -79,44 +106,173 @@ export function SystemBar() {
   const pin = (g: Group) => bridge.bar.toMain(g.pinned ? { type: "unpin", path: g.exe } : { type: "pin", app: { path: g.exe, name: g.name } })
   const openMenu = (kind: BarMenu, el: HTMLElement, w: number, h: number) => {
     const r = el.getBoundingClientRect()
-    bridge.bar.menu(kind, r.left + r.width / 2, w, h)
+    bridge.bar.menu(kind, vertical ? r.top + r.height / 2 : r.left + r.width / 2, w, h)
   }
 
+  const btn = { size, vertical, pos, isDock, magnify }
+  const hideOffset = { bottom: { y: size + 40 }, top: { y: -(size + 40) }, left: { x: -(size + 40) }, right: { x: size + 40 } }[pos]
+  const align = { bottom: "items-end justify-center", top: "items-start justify-center", left: "items-center justify-start", right: "items-center justify-end" }[pos]
+  const time = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+
   return (
-    <div className="bar-bg fixed inset-0 flex items-center px-2 text-fg" onContextMenu={(e) => e.preventDefault()}>
-      {/* esquerda: avisos do Agenda e busca */}
-      <div className="flex w-[160px] shrink-0 items-center gap-1">
-        <button className="bar-btn h-10 gap-1.5 px-2.5 text-sm" title="Busca rápida do Agenda (Ctrl+K)" onClick={() => bridge.bar.toMain({ type: "palette" })}>
-          <Search size={16} /> {!compact && <span className="text-fg-muted">Pesquisar</span>}
-        </button>
-        <button className="bar-btn size-10" title="Assistente (IA)" onClick={() => bridge.bar.toMain({ type: "assistant" })}><Bot size={17} /></button>
-      </div>
+    <div className={cn("fixed inset-0 flex", vertical ? "flex-row" : "flex-col", align)} onContextMenu={(e) => e.preventDefault()}>
+      <motion.div
+        ref={dockRef}
+        className={cn("flex", !isDock && (vertical ? "h-full" : "w-full"), isDock && { bottom: "mb-3", top: "mt-3", left: "ml-3", right: "mr-3" }[pos])}
+        animate={hidden ? hideOffset : { x: 0, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        onPointerEnter={() => bridge.bar.hit(true)}
+        onPointerLeave={() => { bridge.bar.hit(false); setMouse(null) }}
+        onPointerMove={(e) => setMouse(vertical ? e.clientY : e.clientX)}
+        style={{ perspective: 600 }}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-1.5 text-fg",
+            isDock ? "surface" : "bar-bg",
+            vertical ? "flex-col py-2" : "flex-row px-2",
+            !isDock && (vertical ? "h-full w-full" : "h-full w-full"),
+            t.style === "floating" && "!rounded-full",
+            isDock && (vertical ? "px-0" : "px-2"),
+          )}
+          style={vertical ? { width: size + 16 } : { height: size + 16 }}
+        >
+          <Btn {...btn} label="Iniciar" active={menu === "start"} onClick={(el) => openMenu("start", el, 640, 660)}>
+            <Logo size={Math.round(size * 0.78)} />
+          </Btn>
+          <Divider vertical={vertical} />
 
-      {/* centro: Iniciar + programas */}
-      <div ref={center} className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-hidden">
-        <button className="bar-btn shrink-0" style={{ width: size, height: size }} data-on={menu === "start"} title="Iniciar" onClick={(e) => openMenu("start", e.currentTarget, 640, 660)}>
-          <Logo size={Math.round(size * 0.72)} />
-        </button>
-        {groups.map((g) => <AppBtn key={g.key} g={g} size={size} fg={fg} onClick={() => click(g)} onRight={() => pin(g)} />)}
-      </div>
+          {/* abas do Agenda */}
+          {sections.map((sec) => {
+            const w = secs.find((x) => x.id === sec.id)
+            return (
+              <Btn key={sec.id} {...btn} label={sec.label} showLabel={t.showLabels && !vertical} running={!!w} focused={!!w?.top} onClick={() => bridge.bar.toMain({ type: "section", id: sec.id })}>
+                <AppIconView id={sec.id as SectionId} size={Math.round(size * 0.8)} s={icons} />
+              </Btn>
+            )
+          })}
 
-      {/* direita: bandeja, som, rede, avisos, relógio, mostrar área de trabalho */}
-      <div className="flex shrink-0 items-center justify-end gap-0.5">
-        <button className="bar-btn size-9" data-on={peek} title={peek ? "Esconder a bandeja do Windows" : "Mostrar a bandeja do Windows (ícones perto do relógio)"} onClick={() => { setPeek(!peek); bridge.bar.peek(!peek) }}>
-          <ChevronUp size={16} className={cn("transition-transform", peek && "rotate-180")} />
-        </button>
-        {!compact && <button className="bar-btn size-9" title="Rede" onClick={() => bridge.bar.power("network")}><Wifi size={16} /></button>}
-        {!compact && <button className="bar-btn size-9" title="Som" onClick={() => bridge.bar.power("volume")}><Volume2 size={16} /></button>}
-        <button className="bar-btn size-9" title="Avisos do Agenda" onClick={() => bridge.bar.toMain({ type: "bell" })}>
-          <Bell size={16} />
-          {!!sync?.unread && <span className="absolute top-1 right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] px-0.5 font-num text-[9px] text-white">{sync.unread > 9 ? "9+" : sync.unread}</span>}
-        </button>
-        <button className="bar-btn h-10 flex-col !items-end px-2.5 font-num leading-tight" data-on={menu === "clock"} onClick={(e) => openMenu("clock", e.currentTarget, 340, 400)}>
-          <span className="text-[13px] font-semibold">{now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
-          <span className="text-[11px] text-fg-muted">{now.toLocaleDateString("pt-BR")}</span>
-        </button>
-        <button className="ml-1 h-10 w-1.5 rounded-sm hover:bg-[color-mix(in_srgb,var(--fg)_25%,transparent)]" title="Mostrar a área de trabalho" onClick={() => bridge.bar.desktop()} />
-      </div>
+          {/* programas do Windows */}
+          {groups.length > 0 && <Divider vertical={vertical} />}
+          {groups.map((g) => {
+            const isFg = g.wins.some((w) => w.h === fg)
+            return (
+              <Btn
+                key={g.key}
+                {...btn}
+                label={(g.wins.length ? g.wins.map((w) => w.title).join("\n") : g.name) + (g.pinned ? "\n(clique direito: desafixar)" : "\n(clique direito: fixar)")}
+                running={g.wins.length > 0}
+                focused={isFg}
+                count={g.wins.length}
+                onClick={() => clickApp(g)}
+                onRight={() => pin(g)}
+                onMiddle={() => bridge.bar.launch(g.exe)}
+              >
+                <ExeIcon g={g} size={Math.round(size * 0.62)} />
+              </Btn>
+            )
+          })}
+
+          {!isDock && !vertical && <div className="flex-1" />}
+          <Divider vertical={vertical} />
+          <Btn {...btn} label="Adicionar widget" onClick={() => bridge.bar.toMain({ type: "widgets" })}><Plus size={icon} /></Btn>
+          <Btn {...btn} label={sync?.locked ? "Destravar widgets" : "Travar widgets"} onClick={() => bridge.bar.toMain({ type: "lock" })}>
+            {sync?.locked ? <Lock size={icon * 0.8} /> : <Unlock size={icon * 0.8} />}
+          </Btn>
+          <Btn {...btn} label="Avisos" onClick={() => bridge.bar.toMain({ type: "bell" })}>
+            <span className="relative">
+              <Bell size={Math.round(icon * 0.8)} />
+              {!!sync?.unread && <span className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] px-0.5 font-num text-[9px] text-white">{sync.unread > 9 ? "9+" : sync.unread}</span>}
+            </span>
+          </Btn>
+
+          {/* bandeja do Windows, rede, som e relógio */}
+          <Btn {...btn} label={peek ? "Esconder os ícones do Windows" : "Ícones do Windows (perto do relógio)"} active={peek} onClick={() => { setPeek(!peek); bridge.bar.peek(!peek) }}>
+            <ChevronUp size={icon * 0.75} className={cn("transition-transform", peek && "rotate-180", vertical && (pos === "left" ? "rotate-90" : "-rotate-90"))} />
+          </Btn>
+          {!isDock && !vertical && (
+            <>
+              <Btn {...btn} label="Rede" onClick={() => bridge.bar.power("network")}><Wifi size={icon * 0.75} /></Btn>
+              <Btn {...btn} label="Som" onClick={() => bridge.bar.power("volume")}><Volume2 size={icon * 0.75} /></Btn>
+            </>
+          )}
+          <button
+            className={cn("bar-btn shrink-0 font-num leading-tight", vertical ? "w-full flex-col py-1" : "h-[calc(100%-8px)] flex-col !items-center px-2.5")}
+            data-on={menu === "clock"}
+            title={now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+            onClick={(e) => openMenu("clock", e.currentTarget, 340, 400)}
+          >
+            <span className="text-[13px] font-semibold">{time}</span>
+            {!isDock && !vertical && <span className="text-[11px] text-fg-muted">{now.toLocaleDateString("pt-BR")}</span>}
+          </button>
+          {!isDock && !vertical && <button className="ml-0.5 h-[calc(100%-12px)] w-1.5 shrink-0 rounded-sm hover:bg-[color-mix(in_srgb,var(--fg)_25%,transparent)]" title="Mostrar a área de trabalho" onClick={() => bridge.bar.desktop()} />}
+        </div>
+      </motion.div>
     </div>
+  )
+}
+
+function Divider({ vertical }: { vertical: boolean }) {
+  return <div className={cn("shrink-0 bg-line", vertical ? "mx-auto h-px w-2/3" : "my-auto h-2/3 w-px")} />
+}
+
+/** botão da barra: mesmo comportamento da barra do Agenda (lupa sem empurrar os vizinhos, legenda, pontinho) */
+function Btn({
+  children, label, size, onClick, onRight, onMiddle, running, focused, active, showLabel, count, magnify, vertical, pos, isDock,
+}: {
+  children: ReactNode; label: string; size: number; onClick: (el: HTMLButtonElement) => void; onRight?: () => void; onMiddle?: () => void
+  running?: boolean; focused?: boolean; active?: boolean; showLabel?: boolean; count?: number
+  magnify: (el: HTMLElement | null) => number; vertical: boolean; pos: Pos; isDock: boolean
+}) {
+  const ref = useRef<HTMLButtonElement>(null)
+  const [hover, setHover] = useState(false)
+  const scale = magnify(ref.current)
+  const lift = (scale - 1) * size * 0.9
+  const liftT = pos === "top" ? `translateY(${lift}px)` : pos === "left" ? `translateX(${lift}px)` : pos === "right" ? `translateX(${-lift}px)` : `translateY(${-lift}px)`
+  const origin = pos === "top" ? "top" : pos === "left" ? "left" : pos === "right" ? "right" : "bottom"
+  const first = label.split("\n")[0]
+  return (
+    <button
+      ref={ref}
+      onClick={() => ref.current && onClick(ref.current)}
+      onContextMenu={(e) => { e.preventDefault(); onRight?.() }}
+      onAuxClick={(e) => { if (e.button === 1) onMiddle?.() }}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+      title={isDock ? undefined : label}
+      className={cn("relative flex shrink-0 items-center justify-center gap-2 rounded-[calc(var(--r)*0.6)] transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_8%,transparent)]", (active || (showLabel && focused)) && "bg-[color-mix(in_srgb,var(--fg)_12%,transparent)]", showLabel && "px-2")}
+      style={{ height: size, minWidth: size }}
+    >
+      <div style={{ transform: `${liftT} scale(${scale})`, transformOrigin: origin, transition: "transform .14s ease-out", willChange: "transform" }}>
+        <motion.div whileTap={{ scale: 0.85, rotateX: 25 }} style={{ transformStyle: "preserve-3d" }}>{children}</motion.div>
+      </div>
+      {showLabel && <span className="max-w-[140px] truncate pr-1 text-sm">{first}</span>}
+      {!!count && count > 1 && <span className="absolute top-0.5 right-1 font-num text-[9px] text-fg-muted">{count}</span>}
+      {running && (
+        <span
+          className={cn("absolute rounded-full bg-brand transition-all", vertical ? "top-1/2 -translate-y-1/2" : "left-1/2 -translate-x-1/2")}
+          style={{
+            ...(pos === "top" ? { top: -2 } : pos === "left" ? { left: -4 } : pos === "right" ? { right: -4 } : { bottom: -4 }),
+            ...(vertical ? { width: 4, height: focused ? 18 : 6 } : { height: 4, width: focused ? 18 : 6 }),
+            boxShadow: "0 0 8px var(--accent)",
+          }}
+        />
+      )}
+      <AnimatePresence>
+        {hover && isDock && !showLabel && (
+          <motion.span
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className={cn("surface pointer-events-none absolute z-50 max-w-[260px] truncate px-2.5 py-1 text-xs whitespace-nowrap", {
+              bottom: "bottom-full mb-3", top: "top-full mt-3", left: "left-full ml-3", right: "right-full mr-3",
+            }[pos])}
+            style={{ borderRadius: 8 }}
+          >
+            {first}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </button>
   )
 }

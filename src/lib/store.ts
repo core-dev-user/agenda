@@ -1,3 +1,4 @@
+import { activeScreen } from "./screens"
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import { bridge } from "./bridge"
@@ -322,13 +323,15 @@ export const useStore = create<State>()(
           zTop++
           const ex = s.windows.find((w) => w.id === id)
           if (ex) return { windows: s.windows.map((w) => (w.id === id ? { ...w, minimized: false, z: zTop } : w)) }
-          const W = Math.min(1100, window.innerWidth - 48)
-          const H = Math.min(window.innerHeight > window.innerWidth ? 1100 : 720, window.innerHeight - 160)
+          // abre no monitor onde você está mexendo (com a área de trabalho em vários monitores)
+          const sc = activeScreen()
+          const W = Math.min(1100, sc.w - 48)
+          const H = Math.min(sc.h > sc.w ? 1100 : 720, sc.h - 160)
           const off = (s.windows.length % 5) * 30
           return {
             windows: [
               ...s.windows,
-              { id, z: zTop, minimized: false, maximized: false, w: W, h: H, x: Math.max(8, (window.innerWidth - W) / 2 + off - 60), y: Math.max(8, (window.innerHeight - H) / 2 + off - 50) },
+              { id, z: zTop, minimized: false, maximized: false, w: W, h: H, x: sc.x + Math.max(8, (sc.w - W) / 2 + off - 60), y: sc.y + Math.max(8, (sc.h - H) / 2 + off - 50) },
             ],
           }
         }),

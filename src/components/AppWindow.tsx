@@ -1,3 +1,4 @@
+import { screenAt, useScreenList } from "@/lib/screens"
 import React, { lazy, Suspense, useRef } from "react"
 import { motion } from "framer-motion"
 import { Copy, Minus, Square, X } from "lucide-react"
@@ -52,11 +53,14 @@ export function AppWindow({ win }: { win: WinState }) {
 
   // com a barra principal do Windows ligada, a barra interna não existe
   const reserve = tb.autoHide || useUiMode.getState().mainBar ? 0 : tb.size + 28
+  // monitor da janela (o do centro dela): maximizar e os limites valem só para ele
+  useScreenList()
+  const sc = screenAt(win.x + win.w / 2, win.y + Math.min(win.h, 80) / 2)
   const area = {
-    x: tb.position === "left" ? reserve : 0,
-    y: tb.position === "top" ? reserve : 0,
-    w: view.w - (tb.position === "left" || tb.position === "right" ? reserve : 0),
-    h: view.h - (tb.position === "top" || tb.position === "bottom" ? reserve : 0),
+    x: sc.x + (tb.position === "left" ? reserve : 0),
+    y: sc.y + (tb.position === "top" ? reserve : 0),
+    w: Math.min(sc.w, view.w) - (tb.position === "left" || tb.position === "right" ? reserve : 0),
+    h: Math.min(sc.h, view.h) - (tb.position === "top" || tb.position === "bottom" ? reserve : 0),
   }
   // janela sempre dentro da área visível (ex.: ao passar para o monitor em pé)
   const g = win.maximized

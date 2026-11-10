@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { ChevronRight, Image, Lock, LockOpen, Settings } from "lucide-react"
 import { useStore } from "@/lib/store"
@@ -14,7 +14,11 @@ import { Splash } from "@/components/Splash"
 import { AutoStylePrompt } from "@/components/AutoStylePrompt"
 import { Wallpaper, Overlays, GRADIENTS } from "@/components/Wallpaper"
 import { CursorLayer } from "@/components/CursorLayer"
-import { Taskbar } from "@/components/Taskbar"
+import { Taskbar, WidgetMenu } from "@/components/Taskbar"
+import { NotificationPanel } from "@/components/NotificationCenter"
+import { useScreenList, useActiveScreen, setActiveScreen } from "@/lib/screens"
+import type { ScreenRect } from "@/lib/bridge"
+import { create } from "zustand"
 import { AppWindow, preloadSections } from "@/components/AppWindow"
 import { WidgetFrame, WIDGET_CATS, WIDGET_CHOICES, hoveredWidget, type WidgetCat } from "@/widgets/WidgetFrame"
 import { useHistory } from "@/lib/history"
@@ -30,6 +34,45 @@ import { useUiMode } from "@/lib/uimode"
 import { Pet, PET_DEFAULT } from "@/pet/Pet"
 import { UpdatePrompt } from "@/components/Updates"
 import { PawPrint } from "lucide-react"
+
+/**
+ * Um monitor dentro da página: o que estiver aqui dentro com "fixed" fica preso a ele
+ * (o transform faz deste quadro a referência dos elementos fixos). Só os filhos recebem cliques.
+ */
+function ScreenFrame({ sc, children }: { sc: ScreenRect; children: ReactNode }) {
+  return (
+    <div className="screen-frame fixed" style={{ left: sc.x, top: sc.y, width: sc.w, height: sc.h, transform: "translateZ(0)" }}>
+      {children}
+    </div>
+  )
+}
+
+/** painéis pedidos pela barra do PC: adicionar widget e avisos */
+export const useBarPanels = create<{ panel: "" | "widgets" | "bell" }>(() => ({ panel: "" }))
+function BarPanels() {
+  const panel = useBarPanels((s) => s.panel)
+  const readAll = useStore((x) => x.markNotificationsRead)
+  const close = () => { if (panel === "bell") readAll(); useBarPanels.setState({ panel: "" }) }
+  return (
+    <AnimatePresence>
+      {panel && (
+        <>
+          <div className="fixed inset-0 z-[790]" onPointerDown={close} />
+          <motion.div
+            data-modal
+            className={cn("surface fixed bottom-6 left-1/2 z-[810] max-h-[calc(100%-48px)] -translate-x-1/2 overflow-y-auto p-4", panel === "widgets" ? "w-[min(640px,calc(100%-32px))]" : "w-[360px]")}
+            initial={{ opacity: 0, y: 20, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 380, damping: 28 }}
+          >
+            {panel === "widgets" ? <WidgetMenu close={close} /> : <NotificationPanel close={close} />}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  )
+}
 
 /** salvamento automático extra: regrava a cada 20 s e garante a gravação ao fechar a janela */
 export function useAutosave() {
@@ -49,15 +92,16 @@ function useDesktopLayer() {
     let up = false
     const sync = () => {
       const s = useStore.getState()
-      const want = s.windows.some((w) => !w.minimized) || s.paletteOpen || useAssistant.getState().open
+      const want = s.windows.some((w) => !w.minimized) || s.paletteOpen || useAssistant.getState().open || !!useBarPanels.getState().panel
       if (want !== up) { up = want; bridge.mode.raise(want) }
     }
     const off = useStore.subscribe(sync)
     const offA = useAssistant.subscribe(sync)
+    const offP = useBarPanels.subscribe(sync)
     // atalho global / bandeja: abre a busca rápida por cima de tudo
     const off2 = bridge.mode.onSummon(() => useStore.setState({ paletteOpen: true }))
     sync()
-    return () => { off(); offA(); off2() }
+    return () => { off(); offA(); offP(); off2() }
   }, [])
 }
 
@@ -77,6 +121,13 @@ function useMainBar() {
         pins: s.settings.pcPins ?? [], unread: s.notifications.filter((n) => !n.read).length,
         sections: SECTIONS.map((x) => ({ id: x.id, label: x.label, color: x.color })),
         wall: wallCss(s.settings.wallpaper),
+        tb: s.settings.taskbar,
+        locked: s.settings.widgetsLocked,
+        icons: { iconStyle: s.settings.iconStyle, theme: s.settings.theme, iconShape: s.settings.iconShape, iconColors: s.settings.iconColors as Record<string, string> | undefined },
+        secs: (() => {
+          const top = [...s.windows].filter((w) => !w.minimized).sort((a, b) => b.z - a.z)[0]
+          return s.windows.map((w) => ({ id: w.id, min: w.minimized, top: top?.id === w.id }))
+        })(),
       }
       const j = JSON.stringify(data)
       if (j !== last) { last = j; bridge.bar.sync(data) }
@@ -85,9 +136,21 @@ function useMainBar() {
     const off = useStore.subscribe(() => setTimeout(send, 50))
     const off2 = bridge.bar.onMain((m) => {
       const s = useStore.getState()
+      // pedido de uma barra: abre no monitor dela
+      const from = (m as { screen?: number }).screen
+      if (typeof from === "number") setActiveScreen(from)
       if (m.type === "open") s.openWindow(m.id as SectionId)
+      else if (m.type === "section") {
+        // como na barra do Agenda: clicar na aba que está na frente minimiza; senão abre/traz
+        const id = m.id as SectionId
+        const top = [...s.windows].filter((w) => !w.minimized).sort((a, b) => b.z - a.z)[0]
+        if (top?.id === id) s.patchWindow(id, { minimized: true })
+        else s.openWindow(id)
+      }
+      else if (m.type === "lock") s.setSettings({ widgetsLocked: !s.settings.widgetsLocked })
+      else if (m.type === "widgets") useBarPanels.setState({ panel: "widgets" })
       else if (m.type === "palette") useStore.setState({ paletteOpen: true })
-      else if (m.type === "bell") { s.openWindow("today") }
+      else if (m.type === "bell") useBarPanels.setState({ panel: "bell" })
       else if (m.type === "assistant") openAssistant()
       else if (m.type === "pin") { const pins = s.settings.pcPins ?? []; if (!pins.some((p) => p.path.toLowerCase() === m.app.path.toLowerCase())) s.setSettings({ pcPins: [...pins, m.app] }) }
       else if (m.type === "unpin") s.setSettings({ pcPins: (s.settings.pcPins ?? []).filter((p) => p.path.toLowerCase() !== m.path.toLowerCase()) })
@@ -164,10 +227,18 @@ export default function App() {
   const windows = useStore((s) => s.windows)
   const showSplash = splashOn && !splashDone
   const [ctx, setCtx] = useState<{ x: number; y: number } | null>(null)
+  const screens = useScreenList()
+  const active = useActiveScreen()
+  const home = screens.find((x) => x.home) ?? screens[0]
 
   return (
     <div className="fixed inset-0 overflow-hidden" onContextMenu={(e) => { e.preventDefault(); if ((e.target as Element).closest("[data-desktop]")) setCtx({ x: e.clientX, y: e.clientY }) }}>
-      <Wallpaper />
+      {/* papel de parede desenhado em cada monitor (não esticado entre eles) */}
+      {screens.map((sc) => (
+        <div key={sc.id} className="absolute overflow-hidden" style={sc.full ? { left: sc.full.x, top: sc.full.y, width: sc.full.w, height: sc.full.h } : { left: sc.x, top: sc.y, width: sc.w, height: sc.h }}>
+          <Wallpaper />
+        </div>
+      ))}
       <motion.div
         className="absolute inset-0"
         initial={{ opacity: 0, scale: 1.04 }}
@@ -179,17 +250,21 @@ export default function App() {
           {!showSplash && <Pet />}
         </div>
         <AnimatePresence>{windows.map((w) => <AppWindow key={w.id} win={w} />)}</AnimatePresence>
-        {!mainBar && <Taskbar />}
+        {!mainBar && <ScreenFrame sc={home}><Taskbar /></ScreenFrame>}
         <AnimatePresence>{ctx && <DesktopMenu at={ctx} close={() => setCtx(null)} />}</AnimatePresence>
       </motion.div>
-      <FocusBar />
-      <CommandPalette />
-      <Assistant />
-      <AutoStylePrompt />
+      {/* busca, assistente e avisos abrem no monitor onde você está mexendo */}
+      <ScreenFrame sc={active}>
+        <FocusBar />
+        <CommandPalette />
+        <Assistant />
+        <AutoStylePrompt />
+        <BarPanels />
+        <AnimatePresence>{showSplash && <Splash />}</AnimatePresence>
+        <Toast />
+        <UpdatePrompt />
+      </ScreenFrame>
       <Overlays />
-      <AnimatePresence>{showSplash && <Splash />}</AnimatePresence>
-      <Toast />
-      <UpdatePrompt />
       <CursorLayer />
     </div>
   )

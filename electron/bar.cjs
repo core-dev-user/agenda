@@ -31,13 +31,41 @@ let lastFg = ""
 let poll = null
 const hiddenOn = new Set() // monitores com jogo/vídeo em tela cheia: a barra some
 
+/** jeito da barra: vem de Configurações › Barra de tarefas do Agenda (guardado aqui para já abrir certo) */
+const TB = { position: "bottom", style: "dock", size: 56, autoHide: false, magnify: true, showLabels: false }
+const tb = () => ({ ...TB, ...(cfg.tb || {}) })
+/** a janela transparente (dock/pílula) ou acrílica (barra) muda o tipo da janela: precisa recriar */
+const clear = (t) => t.style !== "bar" || t.autoHide // janela transparente (dock, pílula ou barra que se esconde)
+const kindOf = (t) => (clear(t) ? "clear" : "glass") + ":" + (t.position === "left" || t.position === "right" ? "v" : "h")
+
 function rects(d) {
   const b = d.bounds
-  const H = Math.max(40, Math.min(120, Math.round(cfg.height)))
-  const top = cfg.position === "top"
-  const barRect = { x: b.x, y: top ? b.y : b.y + b.height - H, width: b.width, height: H }
-  const work = { x: b.x, y: top ? b.y + H : b.y, width: b.width, height: b.height - H }
-  return { H, top, barRect, work }
+  const t = tb()
+  const size = Math.max(28, Math.min(96, Math.round(t.size)))
+  const isDock = t.style !== "bar"
+  // espessura que a barra ocupa de verdade (reservada para as janelas não ficarem embaixo)
+  const band = size + 16 + (isDock ? 12 : 0)
+  const reserve = t.autoHide ? 0 : band
+  // espaço extra (transparente, deixa o clique passar) para a lupa e as legendas da dock
+  const T = band + (isDock ? Math.round(size * 0.35) + 44 : 0)
+  const pos = t.position
+  const barRect =
+    pos === "top" ? { x: b.x, y: b.y, width: b.width, height: T }
+    : pos === "left" ? { x: b.x, y: b.y, width: T, height: b.height }
+    : pos === "right" ? { x: b.x + b.width - T, y: b.y, width: T, height: b.height }
+    : { x: b.x, y: b.y + b.height - T, width: b.width, height: T }
+  const resRect =
+    pos === "top" ? { x: b.x, y: b.y, width: b.width, height: reserve }
+    : pos === "left" ? { x: b.x, y: b.y, width: reserve, height: b.height }
+    : pos === "right" ? { x: b.x + b.width - reserve, y: b.y, width: reserve, height: b.height }
+    : { x: b.x, y: b.y + b.height - reserve, width: b.width, height: reserve }
+  const work =
+    pos === "top" ? { x: b.x, y: b.y + reserve, width: b.width, height: b.height - reserve }
+    : pos === "left" ? { x: b.x + reserve, y: b.y, width: b.width - reserve, height: b.height }
+    : pos === "right" ? { x: b.x, y: b.y, width: b.width - reserve, height: b.height }
+    : { x: b.x, y: b.y, width: b.width, height: b.height - reserve }
+  const edge = { left: 0, top: 1, right: 2, bottom: 3 }[pos] ?? 3
+  return { pos, band, reserve, barRect, resRect, work, edge, top: pos === "top" }
 }
 const primaryBar = () => bars.get(screen.getPrimaryDisplay().id) || [...bars.values()][0] || null
 /** monitor de uma barra ou de um fundo */
@@ -49,21 +77,22 @@ const displayOfWin = (w) => {
 /** reserva a área da barra em cada monitor (em pixels reais) e reposiciona tudo */
 function layout() {
   for (const d of screen.getAllDisplays()) {
-    const { barRect, work, top } = rects(d)
+    const { barRect, resRect, reserve, work, edge } = rects(d)
     const b = bars.get(d.id)
     if (b && !b.isDestroyed()) {
       b.setBounds(barRect)
       // registra a barra como AppBar: o Windows tira o espaço dela da área livre daquele monitor
-      // (só quando muda: cada registro faz o Windows avisar que a tela mudou, o que chama layout de novo)
-      const p = screen.dipToScreenRect(null, barRect)
-      const cmd = `appbar ${winh.hwndOf(b)} ${p.x} ${p.y} ${p.x + p.width} ${p.y + p.height} ${top ? 1 : 3}`
+      // (só quando muda: cada registro faz o Windows avisar que a tela mudou, o que chama layout de novo).
+      // Ocultar automaticamente: não reserva nada.
+      const p = screen.dipToScreenRect(null, resRect)
+      const cmd = reserve ? `appbar ${winh.hwndOf(b)} ${p.x} ${p.y} ${p.x + p.width} ${p.y + p.height} ${edge}` : `unappbar ${winh.hwndOf(b)}`
       if (b.__appbar !== cmd) { b.__appbar = cmd; winh.call(cmd) }
     }
     const k = desks.get(d.id)
     if (k && !k.isDestroyed()) k.setBounds(work)
   }
   // a área de trabalho do Agenda acompanha a área livre nova
-  setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(rects(modes.target()).work) }, 150)
+  setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(modes.workArea()) }, 400)
 }
 
 /* ---------------- ícones dos programas ---------------- */
@@ -94,7 +123,10 @@ async function tick() {
   if (wins.some((w) => w.h === j.fg)) lastFg = j.fg
   else if (j.fg !== "0" && !j.full) lastFg = ""
   // jogo ou vídeo em tela cheia: a barra daquele monitor some (como a do Windows)
-  const fullId = j.full && !menu ? screen.getDisplayNearestPoint(screen.screenToDipPoint({ x: j.fl + 1, y: j.ft + 1 })).id : null
+  // (a própria área de trabalho do Agenda cobre os monitores inteiros, mas não é tela cheia)
+  const m = getMain()
+  const ownFg = m && !m.isDestroyed() && winh.hwndOf(m) === j.fg
+  const fullId = j.full && !menu && !ownFg ? screen.getDisplayNearestPoint(screen.screenToDipPoint({ x: j.fl + 1, y: j.ft + 1 })).id : null
   for (const [id, b] of bars) {
     if (b.isDestroyed()) continue
     // o Windows às vezes empurra a barra para dentro da área livre: devolve para a borda
@@ -114,13 +146,19 @@ const prefs = () => ({ preload: path.join(__dirname, "preload.cjs"), contextIsol
 
 function makeBar(d) {
   const { barRect } = rects(d)
+  const dock = clear(tb())
   const b = new BrowserWindow({
     ...barRect,
-    frame: false, transparent: false, backgroundMaterial: "acrylic", resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
+    frame: false, resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
     skipTaskbar: true, alwaysOnTop: true, focusable: false, hasShadow: false, show: false, roundedCorners: false,
-    backgroundColor: "#00000000", title: "Agenda — barra", webPreferences: prefs(),
+    // barra inteira: vidro acrílico do Windows; dock e pílula: janela transparente, só a dock aparece
+    ...(dock ? { transparent: true, backgroundColor: "#00000000" } : { transparent: false, backgroundMaterial: "acrylic", backgroundColor: "#00000000" }),
+    title: "Agenda — barra", webPreferences: prefs(),
   })
   b.setAlwaysOnTop(true, "pop-up-menu")
+  // a parte transparente deixa o clique passar para o que está atrás; a página avisa quando o mouse está na dock
+  if (dock) b.setIgnoreMouseEvents(true, { forward: true })
+  b.__dock = dock
   page(b, { view: "bar" })
   b.once("ready-to-show", () => { if (!b.isDestroyed() && !hiddenOn.has(d.id)) b.showInactive() })
   b.on("closed", () => { if (bars.get(d.id) === b) bars.delete(d.id) })
@@ -148,9 +186,12 @@ function makeDesk(d) {
 function create() {
   if (bars.size || !active()) return
   const main = modes.target().id
+  // com a área de trabalho em todos os monitores, o Agenda já cobre todos: não precisa de fundo
+  const span = modes.spans()
+  builtKind = kindOf(tb())
   for (const d of screen.getAllDisplays()) {
     makeBar(d)
-    if (d.id !== main) makeDesk(d)
+    if (!span && d.id !== main) makeDesk(d)
   }
   winh.call("hidetb").then((st) => { if (/^\d+$/.test(st) && cfg.abState == null) { cfg.abState = Number(st); save() } })
   cfg.hidTaskbar = true; save()
@@ -162,6 +203,7 @@ function create() {
   screen.on("display-metrics-changed", onMetrics)
   syncKeys()
 }
+let builtKind = ""
 let rebuildT = null
 function rebuild() {
   clearTimeout(rebuildT)
@@ -171,6 +213,7 @@ function onMetrics() { if (bars.size) layout() }
 
 /* ---------------- menus em cima da barra ---------------- */
 let menuKind = ""
+let menuDisplay = 0 // monitor do menu aberto (o que ele pedir abre nesse monitor)
 let menuClosedAt = 0
 let lastMenuKind = ""
 function closeMenu() {
@@ -188,13 +231,20 @@ function openMenu(kind, anchorX, w, h, barWin, fromKey) {
   closeMenu()
   const d = (barWin && !barWin.isDestroyed() && displayOfWin(barWin)) || screen.getPrimaryDisplay()
   const b = bars.get(d.id) || primaryBar()
-  const { barRect, top } = rects(d)
-  const room = top ? d.bounds.y + d.bounds.height - (barRect.y + barRect.height) - 16 : barRect.y - d.bounds.y - 16
-  const W = Math.max(280, Math.min(900, Math.round(w) || 560))
-  const H = Math.max(200, Math.min(room, Math.round(h) || 600))
-  const ax = anchorX == null ? barRect.width / 2 : anchorX
-  const x = Math.max(barRect.x + 8, Math.min(barRect.x + barRect.width - W - 8, Math.round(barRect.x + ax - W / 2)))
-  const y = top ? barRect.y + barRect.height + 8 : barRect.y - H - 8
+  const { barRect, band, pos } = rects(d)
+  const B = d.bounds
+  const vertical = pos === "left" || pos === "right"
+  // o menu abre encostado na dock (não no espaço transparente acima dela), virado para dentro da tela
+  const roomH = vertical ? B.height - 16 : B.height - band - 24
+  const roomW = vertical ? B.width - band - 24 : B.width - 16
+  const W = Math.max(280, Math.min(900, roomW, Math.round(w) || 560))
+  const H = Math.max(200, Math.min(roomH, Math.round(h) || 600))
+  const a = anchorX == null ? (vertical ? barRect.height : barRect.width) / 2 : anchorX
+  const clampX = (v) => Math.max(B.x + 8, Math.min(B.x + B.width - W - 8, Math.round(v)))
+  const clampY = (v) => Math.max(B.y + 8, Math.min(B.y + B.height - H - 8, Math.round(v)))
+  const x = pos === "left" ? B.x + band + 8 : pos === "right" ? B.x + B.width - band - W - 8 : clampX(barRect.x + a - W / 2)
+  const y = pos === "top" ? B.y + band + 8 : pos === "bottom" ? B.y + B.height - band - H - 8 : clampY(barRect.y + a - H / 2)
+  menuDisplay = d.id
   const m = new BrowserWindow({
     x, y, width: W, height: H,
     frame: false, transparent: false, backgroundMaterial: "acrylic", resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
@@ -292,12 +342,33 @@ function register(ipcMain, mainGetter) {
   // a janela principal manda tema, fixados, papel de parede e avisos; barras e fundos recebem
   ipcMain.on("bar:sync", (_e, data) => {
     lastSync = data
+    // jeito da barra mudou nas configurações: reposiciona (ou recria, se mudou de dock para barra/vertical)
+    if (data && data.tb) {
+      const t = { ...TB, ...data.tb }
+      const changed = JSON.stringify(t) !== JSON.stringify(tb())
+      if (changed) {
+        cfg.tb = t; save()
+        if (bars.size) { if (kindOf(t) !== builtKind) rebuild(); else { for (const b of bars.values()) b.__appbar = ""; layout() } }
+      }
+    }
     for (const w of [...bars.values(), ...desks.values()]) if (!w.isDestroyed()) w.webContents.send("bar:sync", data)
     if (menu && !menu.isDestroyed()) menu.webContents.send("bar:sync", data)
   })
   ipcMain.handle("bar:hello", () => lastSync)
   // pedidos da barra para a janela principal (abrir aba, busca, fixar…)
-  ipcMain.on("bar:main", (_e, msg) => { const m = getMain(); if (m && !m.isDestroyed()) m.webContents.send("bar:main", msg) })
+  ipcMain.on("bar:main", (e, msg) => {
+    const m = getMain()
+    if (!m || m.isDestroyed() || !msg) return
+    // de qual monitor veio o pedido (abas e painéis abrem nele)
+    const w = BrowserWindow.fromWebContents(e.sender)
+    const d = w === menu ? { id: menuDisplay } : displayOfWin(w)
+    m.webContents.send("bar:main", { ...msg, screen: d ? d.id : undefined })
+  })
+  // dock transparente: o clique só é pego quando o mouse está em cima da dock (fora dela, passa para trás)
+  ipcMain.on("bar:hit", (e, on) => {
+    const w = BrowserWindow.fromWebContents(e.sender)
+    if (w && w.__dock && !w.isDestroyed()) w.setIgnoreMouseEvents(!on, { forward: true })
+  })
   // menus (Iniciar, relógio…): janelinha acrílica em cima da barra que pediu, fecha ao clicar fora
   ipcMain.handle("bar:menu", (e, kind, anchorX, w, h) => openMenu(kind, anchorX, w, h, BrowserWindow.fromWebContents(e.sender)))
   ipcMain.handle("bar:closeMenu", () => closeMenu())

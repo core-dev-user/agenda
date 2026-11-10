@@ -6,6 +6,7 @@ import App from "./App"
 import { useStore } from "@/lib/store"
 import { bridge } from "@/lib/bridge"
 import { useUiMode } from "@/lib/uimode"
+import { initScreens } from "@/lib/screens"
 
 ;(window as any).__agenda = useStore
 import("@/lib/webapps").then((m) => { (window as any).__webapps = m.useWebApps })
@@ -26,6 +27,7 @@ Promise.all([
 ]).then(([m, bar]) => {
   useUiMode.setState({ ...m, mainBar: !!bar?.on && m.mode === "desktop" })
   document.documentElement.dataset.mode = m.mode || "welcome"
+  if (m.mode === "desktop") initScreens()
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <Root />

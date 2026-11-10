@@ -275,6 +275,8 @@ export function ModeTab() {
   const [shows, setShows] = useState<DisplayInfo[] | null>(null)
   const [disp, setDisp] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  const [span, setSpan] = useState(true)
+  useEffect(() => { bridge.mode.span().then(setSpan).catch(() => {}) }, [])
   useEffect(() => {
     bridge.mode.displays().then((d) => { setShows(d); setDisp(d.find((x) => x.current)?.id ?? null) }).catch(() => setShows([]))
   }, [])
@@ -313,10 +315,20 @@ export function ModeTab() {
         </div>
       </Section>
 
-      <Section title="Monitor" desc={mode === "app" ? "Em qual monitor a janela abre." : mode === "desktop" ? "Em qual monitor ficam os widgets do Agenda. Com a barra do Agenda ligada, os outros monitores ganham o papel de parede e o relógio do Agenda." : "Em qual monitor fica a tela própria do Agenda — por exemplo, o segundo monitor."}>
+      <Section title="Monitor" desc={mode === "app" ? "Em qual monitor a janela abre." : mode === "desktop" ? (span && (shows?.length ?? 0) > 1 ? "O Agenda ocupa todos os monitores. O monitor escolhido aqui é o principal do Agenda (onde abrem as coisas na primeira vez)." : "Em qual monitor ficam os widgets do Agenda.") : "Em qual monitor fica a tela própria do Agenda — por exemplo, o segundo monitor."}>
         {!shows && <div className="flex items-center gap-2 py-2 text-sm text-fg-muted"><Loader2 size={14} className="animate-spin" /> Procurando monitores…</div>}
         {shows && shows.length <= 1 && <div className="py-1 text-sm text-fg-muted">Só um monitor ligado agora. Se ligar outro, ele aparece aqui.</div>}
         {shows && shows.length > 1 && <MonitorMap list={shows} value={disp} onPick={setDisp} />}
+        {mode === "desktop" && cur === "desktop" && shows && shows.length > 1 && (
+          <>
+            <Switch
+              label="Usar todos os monitores como uma área de trabalho só"
+              checked={span}
+              onChange={async (v) => { bridge.store.flush?.(); setSpan(v); await bridge.mode.span(v) }}
+            />
+            <div className="text-xs text-fg-muted">Arraste widgets e abas de um monitor para o outro livremente. Cada monitor tem o papel de parede inteiro, e a busca, os avisos e as abas abrem no monitor onde você clicou por último. Mudar isso reabre o Agenda.</div>
+          </>
+        )}
       </Section>
 
       <div className="flex items-center justify-end gap-3">
@@ -381,7 +393,7 @@ function MainBarSwitch() {
         checked={on}
         onChange={async (v) => { bridge.store.flush?.(); await bridge.bar.set({ on: v }); location.reload() }}
       />
-      <div className="text-xs text-fg-muted">Esconde a barra do Windows e põe a do Agenda no lugar em cada monitor: Iniciar, programas abertos e fixados, relógio. Nos outros monitores, o papel de parede do Agenda cobre a área de trabalho do Windows. Se o Agenda fechar, a barra do Windows volta sozinha. A seta perto do relógio mostra os ícones da bandeja do Windows.</div>
+      <div className="text-xs text-fg-muted">Esconde a barra do Windows e põe a do Agenda no lugar em cada monitor, com as abas do Agenda e também os programas do Windows abertos e fixados. Ela segue o jeito escolhido em Configurações › Barra e ícones (Dock, Pílula ou Barra, posição, tamanho, lupa, nomes, ocultar sozinha). Se o Agenda fechar, a barra do Windows volta sozinha. A seta perto do relógio mostra os ícones da bandeja do Windows.</div>
       {on && (
         <>
           <Switch

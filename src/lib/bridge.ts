@@ -46,6 +46,11 @@ export interface AgendaBridge {
     displays(): Promise<DisplayInfo[]>
     /** modo área de trabalho: true = vem para a frente (aba aberta), false = volta para o fundo */
     raise(on: boolean): Promise<void>
+    /** cada monitor dentro da janela principal (em px da página) */
+    screens(): Promise<ScreenRect[]>
+    onScreens(cb: (s: ScreenRect[]) => void): Unsub
+    /** área de trabalho em todos os monitores (sem argumento: só lê). Mudar reabre o app. */
+    span(on?: boolean): Promise<boolean>
     detectApps(): Promise<{ apps: PcApp[]; monitors: number }>
     onSummon(cb: () => void): Unsub
   }
@@ -62,6 +67,8 @@ export interface AgendaBridge {
     sync(data: BarSync): void
     hello(): Promise<BarSync | null>
     toMain(msg: BarToMain): void
+    /** dock transparente: true = o mouse está em cima da dock (pega o clique) */
+    hit(on: boolean): void
     /** abre um menu acima da barra (x = centro do botão, em px da barra) */
     menu(kind: BarMenu, anchorX: number, w: number, h: number): Promise<void>
     closeMenu(): Promise<void>
@@ -189,6 +196,12 @@ export interface BarSync {
   sections: { id: string; label: string; color: string }[]
   /** papel de parede (para o fundo dos outros monitores) */
   wall?: { bg: string; filter?: string }
+  /** a barra de tarefas do Agenda (Configurações › Barra de tarefas) */
+  tb?: { position: "bottom" | "top" | "left" | "right"; style: "dock" | "bar" | "floating"; size: number; autoHide: boolean; magnify: boolean; showLabels: boolean }
+  locked?: boolean
+  icons?: { iconStyle: string; theme: string; iconShape?: string; iconColors?: Record<string, string> }
+  /** abas do Agenda abertas (para o pontinho e o destaque na barra) */
+  secs?: { id: string; min: boolean; top: boolean }[]
 }
 export type BarToMain =
   | { type: "open"; id: string }
@@ -198,9 +211,12 @@ export type BarToMain =
   | { type: "assistant" }
   | { type: "pin"; app: PinnedApp }
   | { type: "unpin"; path: string }
+  | { type: "section"; id: string }
+  | { type: "lock" }
 export interface ShareSource { id: string; name: string; screen: boolean; thumb: string; icon: string }
 export type BarMenu ="start" | "power" | "clock"
 export type UiMode = "app" | "desktop" | "screen"
+export interface ScreenRect { id: number; x: number; y: number; w: number; h: number; full?: { x: number; y: number; w: number; h: number }; primary: boolean; home: boolean }
 export interface DisplayInfo { id: number; label: string; n: number; primary: boolean; current: boolean; w: number; h: number; hz: number; bounds: { x: number; y: number; width: number; height: number } }
 export type PcApp = "spotify" | "deezer" | "applemusic" | "amazonmusic" | "tidal" | "discord" | "whatsapp" | "steam" | "cs2" | "valorant" | "lol" | "epic"
 export interface PcMedia {
@@ -305,12 +321,12 @@ const browserFallback: AgendaBridge = {
   sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
   games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop, valorantAgent: async () => null, onValorantAgent: noop },
   sysmon: { sub: async () => false, unsub: async () => false, onData: noop },
-  mode: { get: async () => ({ mode: "screen", monitors: 1 }), set: async () => false, displays: async () => [], raise: async () => {}, detectApps: async () => ({ apps: [], monitors: 1 }), onSummon: noop },
+  mode: { get: async () => ({ mode: "screen", monitors: 1 }), set: async () => false, displays: async () => [], raise: async () => {}, screens: async () => [], onScreens: noop, span: async () => false, detectApps: async () => ({ apps: [], monitors: 1 }), onSummon: noop },
   pcmedia: { sub: async () => null, unsub: async () => {}, cmd: async () => {}, onState: noop },
   share: { sources: async () => [], pick: async () => {}, audioStart: async () => ({ ok: false, excluded: "agenda" }), audioStop: async () => {}, onAudio: noop, onAudioEnd: noop },
   bar: (() => {
     const c: BarConfig = { on: false, height: 64, position: "bottom", keys: true, available: false, active: false }
-    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, web: async () => { window.open("https://www.google.com/search") }, onWins: noop, onSync: noop, onMain: noop }
+    return { get: async () => c, set: async () => c, sync() {}, hello: async () => null, toMain() {}, hit() {}, menu: async () => {}, closeMenu: async () => {}, onMenuState: noop, click: async () => "", win: async () => "", desktop: async () => "", peek: async () => "", apps: async () => [], icon: async () => "", launch: async () => "", power: async () => {}, web: async () => { window.open("https://www.google.com/search") }, onWins: noop, onSync: noop, onMain: noop }
   })(),
   finance: {
     status: async () => ({ exists: !!localStorage.getItem("agenda-finance"), hasPin: false, unlocked: true, secure: false, waitMs: 0 }),
