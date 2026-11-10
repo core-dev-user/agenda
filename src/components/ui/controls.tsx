@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSettings } from "@/lib/store"
+import { useActiveScreen } from "@/lib/screens"
 import { LiquidButton, MetalButton } from "./liquid-glass-button"
 
 /** Botão de ação principal que se adapta ao tema: vidro líquido, metal, retrô ou terminal. */
@@ -118,28 +119,67 @@ export function Segmented<T extends string>({
   )
 }
 
+/**
+ * Janela de diálogo. Com vários monitores a página cobre todos eles, então o diálogo abre centralizado no monitor
+ * ativo (não na divisa entre eles) e pode ser arrastado pela barra do título — inclusive para o outro monitor.
+ */
 export function Modal({ open, onClose, title, children, width = 520 }: { open: boolean; onClose: () => void; title?: React.ReactNode; children: React.ReactNode; width?: number }) {
+  const sc = useActiveScreen()
+  const [off, setOff] = React.useState({ x: 0, y: 0 })
+  const boxRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => { if (open) setOff({ x: 0, y: 0 }) }, [open])
+  const w = Math.min(width, sc.w - 32)
+  const maxH = Math.round(sc.h * 0.85)
+
+  const startDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest("button, input, select, textarea, a")) return
+    const box = boxRef.current?.getBoundingClientRect()
+    if (!box) return
+    e.preventDefault()
+    const el = e.currentTarget
+    el.setPointerCapture(e.pointerId)
+    const sx = e.clientX, sy = e.clientY, base = off
+    const move = (ev: PointerEvent) => {
+      let dx = ev.clientX - sx, dy = ev.clientY - sy
+      // a barra do título nunca sai da janela: sempre dá para pegar de volta
+      const left = box.left + dx, top = box.top + dy
+      if (left + box.width < 80) dx += 80 - (left + box.width)
+      if (left > innerWidth - 80) dx -= left - (innerWidth - 80)
+      if (top < 0) dy -= top
+      if (top > innerHeight - 48) dy -= top - (innerHeight - 48)
+      setOff({ x: base.x + dx, y: base.y + dy })
+    }
+    const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up) }
+    el.addEventListener("pointermove", move)
+    el.addEventListener("pointerup", up)
+    el.addEventListener("pointercancel", up)
+  }
+
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div data-modal data-dim className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/55" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }} onMouseDown={onClose}>
-          <motion.div
-            className="surface max-h-[85vh] overflow-hidden"
-            style={{ width }}
-            initial={{ y: 14, scale: 0.95, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: 8, scale: 0.97, opacity: 0, transition: { duration: 0.12 } }}
-            transition={{ default: { type: "spring", stiffness: 520, damping: 38, mass: 0.7 }, opacity: { duration: 0.12 } }}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            {title && (
-              <div className="titlebar flex items-center justify-between px-5 py-3">
-                <div className="font-display text-lg font-semibold">{title}</div>
-                <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={16} /></button>
-              </div>
-            )}
-            <div className="max-h-[calc(85vh-60px)] overflow-auto p-5">{children}</div>
-          </motion.div>
+        <motion.div data-modal data-dim className="fixed inset-0 z-[5000] bg-black/55" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }} onMouseDown={onClose}>
+          <div className="pointer-events-none absolute flex items-center justify-center" style={{ left: sc.x, top: sc.y, width: sc.w, height: sc.h }}>
+            <div className="pointer-events-auto" style={{ transform: `translate(${off.x}px, ${off.y}px)` }} onMouseDown={(e) => e.stopPropagation()}>
+              <motion.div
+                ref={boxRef}
+                className="surface overflow-hidden"
+                style={{ width: w, maxHeight: maxH }}
+                initial={{ y: 14, scale: 0.95, opacity: 0 }}
+                animate={{ y: 0, scale: 1, opacity: 1 }}
+                exit={{ y: 8, scale: 0.97, opacity: 0, transition: { duration: 0.12 } }}
+                transition={{ default: { type: "spring", stiffness: 520, damping: 38, mass: 0.7 }, opacity: { duration: 0.12 } }}
+              >
+                {title && (
+                  <div className="titlebar flex cursor-grab touch-none items-center justify-between px-5 py-3 select-none active:cursor-grabbing" onPointerDown={startDrag}>
+                    <div className="font-display text-lg font-semibold">{title}</div>
+                    <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={16} /></button>
+                  </div>
+                )}
+                <div className="overflow-auto p-5" style={{ maxHeight: maxH - (title ? 60 : 0) }}>{children}</div>
+              </motion.div>
+            </div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>,
