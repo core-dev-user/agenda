@@ -221,6 +221,7 @@ export interface BarSync {
   secs?: { id: string; min: boolean; top: boolean }[]
 }
 export type BarToMain =
+  | { type: "shell-failed" }
   | { type: "open"; id: string }
   | { type: "palette" }
   | { type: "widgets" }

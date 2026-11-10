@@ -3,7 +3,7 @@
 // reserva o espaço dela (as janelas maximizadas param em cima da barra) e mostra os programas abertos.
 // Nos monitores onde o Agenda principal não está, um fundo do Agenda (papel de parede + relógio) cobre
 // a área de trabalho do Windows. A tecla Windows e Win+S abrem o Iniciar/pesquisa do Agenda (keys.cjs).
-const { app, BrowserWindow, screen, shell, nativeImage } = require("electron")
+const { app, BrowserWindow, screen, shell, nativeImage, globalShortcut } = require("electron")
 const path = require("node:path")
 const fs = require("node:fs")
 const fsp = require("node:fs/promises")
@@ -16,6 +16,8 @@ const games = require("./games.cjs")
 const cfgFile = () => path.join(app.getPath("userData"), "bar.json")
 let cfg = { on: false, height: 64, position: "bottom", keys: true }
 try { cfg = { ...cfg, ...JSON.parse(fs.readFileSync(cfgFile(), "utf8")) } } catch {}
+// Explicit migration to Agenda keyboard control; preferences remain editable afterward.
+if (!cfg.controlVersion) { cfg.winKey = "agenda"; cfg.keys = true; cfg.controlVersion = 1 }
 const save = () => { try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null, 2)) } catch {} }
 
 const isDev = !!process.env.AGENDA_DEV
@@ -29,6 +31,8 @@ let menu = null // janela do menu aberto (Iniciar, relógio…)
 let lastSync = null
 let lastFg = ""
 let poll = null
+let recoveryShortcut = false
+let settleT = null, warmupT = null, peekT = null
 const hiddenOn = new Set() // monitores com jogo/vídeo em tela cheia: a barra some
 
 /** jeito da barra: vem de Configurações › Barra de tarefas do Agenda (guardado aqui para já abrir certo) */
@@ -149,7 +153,8 @@ const nice = (exe) => path.basename(exe || "", ".exe").replace(/[-_.]/g, " ").re
 async function tick() {
   if (!bars.size) return
   const raw = await winh.call("list")
-  if (!raw) return
+  if (!bars.size) return
+  if (!raw) { cfg.on = false; save(); teardown(); return }
   let j
   try { j = JSON.parse(raw) } catch { return }
   const own = process.execPath.toLowerCase()
@@ -211,7 +216,10 @@ function makeBar(d) {
   page(b, { view: "bar" })
   b.once("ready-to-show", () => { if (!b.isDestroyed() && !hiddenOn.has(d.id)) b.showInactive() })
   b.webContents.on("did-finish-load", () => { if (!b.isDestroyed()) b.webContents.send("bar:max", maxOn.has(d.id)) })
-  b.on("closed", () => { if (bars.get(d.id) === b) bars.delete(d.id) })
+  const failed = () => { if (bars.get(d.id) === b) { cfg.on = false; save(); teardown() } }
+  b.webContents.on("render-process-gone", failed)
+  b.on("unresponsive", failed)
+  b.on("closed", () => { if (bars.get(d.id) === b) { bars.delete(d.id); cfg.on = false; save(); teardown() } })
   bars.set(d.id, b)
 }
 
@@ -235,6 +243,7 @@ function makeDesk(d) {
 
 function create() {
   if (bars.size || !active()) return
+  recoveryShortcut = globalShortcut.register("Control+Alt+Backspace", () => { cfg.on = false; save(); teardown() })
   const main = modes.target().id
   // com a área de trabalho em todos os monitores, o Agenda já cobre todos: não precisa de fundo
   const span = modes.spans()
@@ -247,10 +256,10 @@ function create() {
   cfg.hidTaskbar = true; save()
   layout()
   // a barra do Windows leva um instante para se esconder: registra de novo depois, já sem ela ocupando espaço
-  setTimeout(() => { for (const b of bars.values()) b.__appbar = ""; layout() }, 2500)
+  settleT = setTimeout(() => { for (const b of bars.values()) b.__appbar = ""; layout() }, 2500)
   poll = setInterval(tick, 1000)
   // deixa a prévia pronta (janela carregada e o ajudante das miniaturas aberto): aparece sem esperar na 1ª vez
-  setTimeout(() => { previewWin(); winh.call("phide") }, 3000)
+  warmupT = setTimeout(() => { previewWin(); winh.call("phide") }, 3000)
   for (const ev of ["display-added", "display-removed"]) screen.on(ev, rebuild)
   screen.on("display-metrics-changed", onMetrics)
   syncKeys()
@@ -426,11 +435,26 @@ function leavePreview() {
 function syncKeys() { keys.winKey(cfg.winKey === "agenda"); keys.enable(!!bars.size && cfg.keys !== false && games.playing() === false) }
 keys.onKey((ev) => {
   if (!bars.size) return
-  openMenu("start", null, 640, 660, primaryBar(), ev)
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  const target = bars.get(display.id) || primaryBar()
+  if (ev === "start" || ev === "search") { openMenu("start", null, 640, 660, target, ev); return }
+  if (ev.startsWith("pin:")) {
+    const pin = lastSync?.pins?.[Number(ev.slice(4))]
+    if (pin?.path) shell.openPath(pin.path)
+    return
+  }
+  const main = getMain()
+  if (!main || main.isDestroyed()) return
+  const message = ev === "settings" ? { type: "open", id: "settings" } : { type: ev === "notifications" ? "bell" : "assistant" }
+  main.webContents.send("bar:main", { ...message, screen: display.id })
+  main.show(); main.focus(); winh.call("activate " + winh.hwndOf(main))
 })
 games.onPlaying(() => syncKeys())
 
 function teardown(restore = true) {
+  clearTimeout(settleT); clearTimeout(warmupT); clearTimeout(rebuildT); clearTimeout(peekT)
+  if (recoveryShortcut) globalShortcut.unregister("Control+Alt+Backspace")
+  recoveryShortcut = false
   if (poll) { clearInterval(poll); poll = null }
   for (const ev of ["display-added", "display-removed"]) screen.removeListener(ev, rebuild)
   screen.removeListener("display-metrics-changed", onMetrics)
@@ -438,11 +462,13 @@ function teardown(restore = true) {
   closeMenu()
   hidePreview()
   if (preview && !preview.isDestroyed()) preview.destroy()
-  for (const b of bars.values()) if (!b.isDestroyed()) { winh.call("unappbar " + winh.hwndOf(b)); b.destroy() }
+  const oldBars = [...bars.values()]; bars.clear()
+  for (const b of oldBars) if (!b.isDestroyed()) { winh.call("unappbar " + winh.hwndOf(b)); b.destroy() }
   for (const k of desks.values()) if (!k.isDestroyed()) k.destroy()
   bars.clear(); desks.clear(); hiddenOn.clear()
   keys.enable(false)
   if (!restore) return
+  const main = getMain(); if (main && !main.isDestroyed()) main.webContents.send("bar:main", { type: "shell-failed" })
   winh.call("restore " + (cfg.abState ?? -1))
   cfg.hidTaskbar = false; delete cfg.abState; save()
   setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(modes.workArea()) }, 300)
@@ -553,7 +579,12 @@ function register(ipcMain, mainGetter) {
   ipcMain.handle("bar:win", (_e, cmd, h) => { if (["activate", "minimize", "close"].includes(cmd) && /^\d+$/.test(String(h))) return winh.call(cmd + " " + h) })
   ipcMain.handle("bar:desktop", () => winh.call("desktop"))
   ipcMain.handle("bar:winstart", () => { closeMenu(); hidePreview(); return winh.call("winstart") })
-  ipcMain.handle("bar:peek", (_e, on) => winh.call("peek " + (on ? 1 : 0)))
+  ipcMain.handle("bar:peek", (_e, on) => {
+    clearTimeout(peekT)
+    if (!bars.size) return ""
+    if (on) peekT = setTimeout(() => { if (bars.size) winh.call("peek 0") }, 10000)
+    return winh.call("peek " + (on ? 1 : 0))
+  })
   ipcMain.handle("bar:apps", () => startApps())
   ipcMain.handle("bar:icon", (_e, file) => iconOf(String(file || "")))
   ipcMain.handle("bar:launch", (_e, file) => { if (typeof file === "string" && file) return shell.openPath(file) })

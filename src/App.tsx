@@ -139,6 +139,7 @@ function useMainBar() {
       // pedido de uma barra: abre no monitor dela
       const from = (m as { screen?: number }).screen
       if (typeof from === "number") setActiveScreen(from)
+      if (m.type === "shell-failed") { useUiMode.setState({ mainBar: false }); return }
       if (m.type === "open") s.openWindow(m.id as SectionId)
       else if (m.type === "section") {
         // como na barra do Agenda: clicar na aba que está na frente minimiza; senão abre/traz

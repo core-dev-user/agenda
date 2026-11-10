@@ -100,10 +100,10 @@ public static class AgWin {
     long k = t.ToInt64();
     long ex = GetWindowLongPtr(t, -20).ToInt64();
     if (on) {
-      if ((ex & 0x80020) == 0x80020) return;
-      if (!exOrig.ContainsKey(k)) exOrig[k] = ex;
+      if (!exOrig.ContainsKey(k) && (ex & 0x80020) != 0x80020) exOrig[k] = ex;
       SetWindowLongPtr(t, -20, new IntPtr(ex | 0x80000 | 0x20));
       SetLayeredWindowAttributes(t, 0, 0, 2);
+      ShowWindow(t, 0);
     } else {
       long o;
       // Agenda fechou à força numa vez anterior: tira o "invisível" mesmo sem saber o estilo de antes
@@ -111,6 +111,7 @@ public static class AgWin {
       SetLayeredWindowAttributes(t, 0, 255, 2);
       SetWindowLongPtr(t, -20, new IntPtr(o));
       exOrig.Remove(k);
+      ShowWindow(t, 5);
     }
   }
   static void Tray(bool show) {
@@ -394,8 +395,6 @@ while ($true) {
 `
 
 let proc = null
-let buf = ""
-const waiting = []
 let ready = null
 
 function start() {
@@ -405,7 +404,13 @@ function start() {
   try {
     proc = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", file], { windowsHide: true })
   } catch { proc = null; return }
+  const child = proc
+  let buf = ""
+  const waiting = child.pending = []
+  const stop = () => { if (proc === child) proc = null; while (waiting.length) waiting.shift()(""); child.kill() }
+  child.stop = stop
   let resolveReady
+  const startupTimer = setTimeout(() => { resolveReady(false); stop() }, 20000)
   ready = new Promise((r) => (resolveReady = r))
   proc.stdout.on("data", (d) => {
     buf += d.toString("utf8")
@@ -413,28 +418,36 @@ function start() {
     buf = lines.pop() ?? ""
     for (const l of lines) {
       if (!l.trim()) continue
-      if (l.startsWith('{"ready"')) { resolveReady(true); continue }
-      if (l.startsWith('{"error"')) { console.error("winhelper:", l); resolveReady(false); continue }
+      if (l.startsWith('{"ready"')) { clearTimeout(startupTimer); resolveReady(true); continue }
+      if (l.startsWith('{"error"')) { console.error("winhelper:", l); clearTimeout(startupTimer); resolveReady(false); continue }
       const w = waiting.shift()
       if (w) w(l)
     }
   })
   proc.stderr.on("data", (d) => console.error("winhelper:", d.toString()))
+  proc.on("error", () => { clearTimeout(startupTimer); resolveReady(false); if (proc === child) proc = null; while (waiting.length) waiting.shift()("") })
   proc.on("exit", () => {
-    proc = null
+    clearTimeout(startupTimer); resolveReady(false)
+    if (proc === child) proc = null
     while (waiting.length) waiting.shift()("")
   })
-  app.on("will-quit", () => { try { proc && proc.stdin.end() } catch {} })
+
 }
+
+app.on("will-quit", () => { try { proc && proc.stdin.end() } catch {} })
 
 /** manda um comando e espera a resposta (uma linha) */
 async function call(cmd) {
   start()
-  if (!proc) return ""
-  if (!(await ready)) return ""
+  const child = proc
+  if (!child) return ""
+  if (!(await ready) || proc !== child) return ""
   return new Promise((res) => {
-    waiting.push(res)
-    try { proc.stdin.write(cmd + "\n") } catch { waiting.pop(); res("") }
+    const waiting = child.pending
+    const timer = setTimeout(() => child.stop(), 5000)
+    const done = (value) => { clearTimeout(timer); res(value) }
+    waiting.push(done)
+    try { child.stdin.write(cmd + "\n") } catch { waiting.pop(); done("") }
   })
 }
 
