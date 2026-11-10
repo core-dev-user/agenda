@@ -1,0 +1,43 @@
+# Publicação pontual da versão com biblioteca de fontes e pacote de ícones.
+# Não interfere nas futuras releases normais disparadas por tags v*.
+name: Publicar Agenda 0.3.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    if: startsWith(github.event.head_commit.message, 'release: v0.3.1')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Validar versão
+        shell: bash
+        run: test "$(node -p "require('./package.json').version")" = "0.3.1"
+      - name: Instalar dependências
+        run: npm ci
+      - name: Gerar ícone e compilar todas as funcionalidades
+        run: |
+          npm run icon
+          npm run build
+      - name: Criar release com notas
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.1 >/dev/null 2>&1 || gh release create v0.3.1 --target "$GITHUB_SHA" --title "Agenda 0.3.1 — fontes e ícones" --notes "Atualização: biblioteca com 301 fontes e seletor em roda com pesquisa; pacote visual offline com 845 ícones SVG em cinco estilos; integração aos relógios, widgets, barra e menu Iniciar; preservação dos 17 fundos padrão e das preferências existentes."
+      - name: Publicar instalador e arquivos do atualizador
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis --publish always
