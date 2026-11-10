@@ -73,7 +73,7 @@ export const DEFAULT_SETTINGS: Settings = {
     image: null,
     blur: 0,
     dim: 0.15,
-    parallax: true,
+    parallax: false,
   },
   sakura: { ambient: true, density: 0.5, splash: true, splashSeconds: 4 },
   overlay: { scanlines: false, grain: true, vignette: true },

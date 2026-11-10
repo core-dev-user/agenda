@@ -52,8 +52,8 @@ export function Wallpaper({ screenId }: { screenId?: number }) {
       if (!raf) raf = requestAnimationFrame(tick)
     }
     const tick = () => {
-      cx += (tx - cx) * 0.06
-      cy += (ty - cy) * 0.06
+      cx += (tx - cx) * 0.2
+      cy += (ty - cy) * 0.2
       if (layer.current) layer.current.style.transform = `translate3d(${cx}px, ${cy}px, 0) scale(1.05)`
       raf = Math.abs(tx - cx) + Math.abs(ty - cy) > 0.05 ? requestAnimationFrame(tick) : 0
     }
