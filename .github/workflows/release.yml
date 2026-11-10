@@ -29,6 +29,14 @@ jobs:
           npm run icon
           npm run build
 
+      # cria a Release antes: se o electron-builder criar sozinho, os envios em paralelo
+      # acabam abrindo duas Releases com a mesma etiqueta
+      - name: Criar a Release
+        shell: bash
+        run: gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "${GITHUB_REF_NAME#v}" --notes ""
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Gerar o instalador e publicar a Release
         run: npx electron-builder --win nsis --publish always
         env:
