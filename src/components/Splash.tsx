@@ -47,7 +47,8 @@ export function Splash() {
           initial={reduceMotion ? false : { opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: .6, delay: reduceMotion ? 0 : .35 }}
-          className="mt-7 font-display text-[42px] font-semibold tracking-[-0.045em] text-[#F5F9FF]"
+          className="mt-7 text-[42px] font-semibold tracking-[-0.045em] text-[#F5F9FF]"
+          style={{ fontFamily: "'Outfit Variable', 'Inter Variable', sans-serif" }}
         >
           Widgy
         </motion.h1>

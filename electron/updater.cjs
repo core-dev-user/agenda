@@ -1,6 +1,6 @@
 // Atualização automática: procura uma versão nova nas Releases do GitHub (core-dev-user/agenda),
-// baixa em segundo plano e instala ao fechar o Agenda (ou na hora, se a pessoa pedir).
-// Só funciona no app instalado (Agenda-Setup-x.y.z.exe); rodando pelo código, fica desligado.
+// baixa em segundo plano e instala ao fechar o Widgy (ou na hora, se a pessoa pedir).
+// Só funciona no app instalado (Widgy-Setup-x.y.z.exe); rodando pelo código, fica desligado.
 const { app } = require("electron")
 
 let state = { status: "idle", version: "", percent: 0, error: "", current: app.getVersion(), enabled: false }

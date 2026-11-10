@@ -49,7 +49,7 @@ export default function Today() {
           <MoneyToday />
         </div>
       </div>
-      <div className="max-w-sm"><Switch label="Abrir esta tela quando o Agenda abrir" checked={!!s.todayOnStart} onChange={(v) => setSettings({ todayOnStart: v })} /></div>
+      <div className="max-w-sm"><Switch label="Abrir esta tela quando o Widgy abrir" checked={!!s.todayOnStart} onChange={(v) => setSettings({ todayOnStart: v })} /></div>
     </div>
   )
 }

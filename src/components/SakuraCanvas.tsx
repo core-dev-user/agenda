@@ -197,7 +197,7 @@ export function SakuraCanvas({
         ctx.fill(path)
         // nervura central / brilho
         ctx.globalAlpha = alpha * 0.35
-        ctx.strokeStyle = flip > 0 ? "rgba(255,255,255,0.9)" : "rgba(200,80,130,0.6)"
+        ctx.strokeStyle = flip > 0 ? "rgba(255,255,255,0.9)" : palette === "pink" ? "rgba(200,80,130,0.6)" : "rgba(63,145,238,0.55)"
         ctx.lineWidth = 0.6
         ctx.beginPath()
         ctx.moveTo(0, 9)
