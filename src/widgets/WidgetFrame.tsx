@@ -1,4 +1,4 @@
-import { memo, useRef, useState, type ReactNode } from "react"
+import { memo, useEffect, useRef, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import {
   CalendarClock, CalendarDays, Hourglass, ChartColumn, Clapperboard, Clock, CloudSun, Cpu, Crop, Crosshair, Gamepad2, GripHorizontal, Headphones, Image, ImagePlus, Images, Link,
@@ -13,7 +13,8 @@ import type { Geo, MediaItem, PhotoGallery, Widget, WidgetType } from "@/lib/typ
 import { cn, uid } from "@/lib/utils"
 import { copyWidget, pasteWidget, widgetClip } from "@/lib/widgetClip"
 import { toast } from "@/lib/toast"
-import { FONTS } from "@/lib/fonts"
+import { ensureFont, fontFamily } from "@/lib/fonts"
+import { FontPicker } from "@/components/FontPicker"
 import { ColorPicker, Modal, Segmented, Slider, Switch } from "@/components/ui/controls"
 import { MediaPicker } from "@/components/MediaPicker"
 import { DEFAULT_FRAME, frameImgStyle, ImageFramer, type Frame } from "@/components/ImageFramer"
@@ -139,6 +140,11 @@ export const WidgetFrame = memo(function WidgetFrame({ w }: { w: Widget }) {
   const front = useStore((s) => s.bringWidgetFront)
   const locked = useStore((s) => s.settings.widgetsLocked)
   const layoutRef = useStore((s) => s.settings.layoutRef)
+  useEffect(() => {
+    for (const id of [w.config.look?.font, w.config.font, w.config.lyFont]) {
+      if (typeof id === "string") void ensureFont(id)
+    }
+  }, [w.config.look?.font, w.config.font, w.config.lyFont])
   const bgId: string | undefined = w.config.bg?.id
   // só a imagem de fundo deste widget (não re-desenha todos os widgets quando a galeria muda)
   const bgMedia = useStore((s) => (bgId ? s.media.find((m) => m.id === bgId) : undefined))
@@ -621,13 +627,7 @@ function LyricsLookSettings({ c, set }: { c: Record<string, any>; set: (p: Recor
   return (
     <div className="space-y-2 rounded-xl border border-line p-3">
       <div className="text-sm font-semibold">Aparência da letra</div>
-      <label className="block text-sm">
-        Fonte
-        <select className="field mt-1 w-full" value={c.lyFont ?? ""} onChange={(e) => set({ lyFont: e.target.value || undefined })}>
-          <option value="">Padrão do tema</option>
-          {FONTS.map((f) => <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>{f.label}</option>)}
-        </select>
-      </label>
+      <FontPicker label="Fonte da letra da música" value={c.lyFont ?? ""} onChange={(id) => set({ lyFont: id || undefined })} allowDefault defaultLabel="Padrão do tema" sample="Minha música favorita" />
       <div className="text-sm">Cor</div>
       <div className="flex items-center gap-3">
         <ColorPicker value={c.lyColor ?? "#ffffff"} onChange={(v) => set({ lyColor: v })} swatches={["#ffffff", "#ffd6e8", "#ff8fb8", "#ffd36e", "#8cf0b0", "#7cc8ff", "#c49bff"]} />
@@ -636,7 +636,7 @@ function LyricsLookSettings({ c, set }: { c: Record<string, any>; set: (p: Recor
       <Slider label="Tamanho" value={c.lyScale ?? 1} min={0.7} max={1.8} step={0.05} onChange={(v) => set({ lyScale: v })} format={(v) => Math.round(v * 100) + "%"} />
       <div
         className="rounded-lg p-2 text-center font-semibold"
-        style={{ background: "rgb(0 0 0 / .25)", fontFamily: c.lyFont ? FONTS.find((f) => f.id === c.lyFont)?.family : "var(--font-display)", color: c.lyColor || "var(--fg)", fontSize: Math.round(16 * (c.lyScale ?? 1)) }}
+        style={{ background: "rgb(0 0 0 / .25)", fontFamily: c.lyFont ? fontFamily(c.lyFont) : "var(--font-display)", color: c.lyColor || "var(--fg)", fontSize: Math.round(16 * (c.lyScale ?? 1)) }}
       >
         Never gonna give you up ♪
       </div>
@@ -645,13 +645,5 @@ function LyricsLookSettings({ c, set }: { c: Record<string, any>; set: (p: Recor
 }
 
 function FontSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <label className="block text-sm">
-      Fonte dos números
-      <select className="field mt-1 w-full" value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">Padrão do tema</option>
-        {FONTS.map((f) => <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>{f.label}</option>)}
-      </select>
-    </label>
-  )
+  return <FontPicker label="Fonte dos números" value={value} onChange={onChange} allowDefault defaultLabel="Padrão do tema" sample="12:45" />
 }

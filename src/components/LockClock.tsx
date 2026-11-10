@@ -1,4 +1,5 @@
-import { fontFamily } from "@/lib/fonts"
+import { fontFamily, ensureFont } from "@/lib/fonts"
+import { useEffect } from "react"
 import type { LockClock as LC } from "@/lib/types"
 import { useNow } from "@/widgets/Clock"
 
@@ -12,6 +13,7 @@ const z = (n: number) => String(n).padStart(2, "0")
 /** Relógio grande desenhado no papel de parede (pode ficar atrás do assunto da foto). */
 export function LockClock({ c, preview }: { c: LC; preview?: boolean }) {
   const now = useNow(c.seconds ? 1000 : 5000)
+  useEffect(() => { if (c.font) void ensureFont(c.font) }, [c.font])
   let h = now.getHours()
   if (c.h12) h = h % 12 || 12
   const time = `${c.h12 ? h : z(h)}:${z(now.getMinutes())}`

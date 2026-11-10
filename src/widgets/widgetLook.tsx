@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react"
 import { Copy, RotateCcw } from "lucide-react"
 import { useStore } from "@/lib/store"
-import { FONTS, fontFamily } from "@/lib/fonts"
+import { fontFamily } from "@/lib/fonts"
+import { FontPicker } from "@/components/FontPicker"
 import { ColorPicker, Segmented, Slider } from "@/components/ui/controls"
 import { cn } from "@/lib/utils"
 
@@ -166,12 +167,7 @@ export function LookSettings({ id, config }: { id: string; config: Record<string
           {l.text && <button className="text-xs text-fg-muted hover:text-fg" onClick={() => set({ text: undefined })}>do tema</button>}
         </div>
       </div>
-      <label className="block text-sm">Fonte
-        <select className="field mt-1 w-full" value={l.font ?? ""} onChange={(e) => set({ font: e.target.value || undefined })}>
-          <option value="">Do tema</option>
-          {FONTS.map((f) => <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>{f.label}</option>)}
-        </select>
-      </label>
+      <FontPicker label="Fonte deste widget" value={l.font ?? ""} onChange={(id) => set({ font: id || undefined })} allowDefault defaultLabel="Do tema" sample="Meu widget" />
     </div>
   )
 }
