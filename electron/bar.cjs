@@ -82,17 +82,22 @@ function layout() {
     const { barRect, resRect, reserve, work, edge } = rects(d)
     const b = bars.get(d.id)
     if (b && !b.isDestroyed()) {
+      if (process.env.AGENDA_DEBUG_BOUNDS) console.log("[bounds]", (performance.now() / 1000).toFixed(3), "bar setBounds", d.id, JSON.stringify(barRect))
       b.setBounds(barRect)
+      if (process.env.AGENDA_DEBUG_BOUNDS) console.log("[bounds]", (performance.now() / 1000).toFixed(3), "bar setBounds done", d.id)
       // registra a barra como AppBar: o Windows tira o espaço dela da área livre daquele monitor
       // (só quando muda: cada registro faz o Windows avisar que a tela mudou, o que chama layout de novo).
       // Ocultar automaticamente: não reserva nada.
       const p = screen.dipToScreenRect(null, resRect)
       const cmd = reserve ? `appbar ${winh.hwndOf(b)} ${p.x} ${p.y} ${p.x + p.width} ${p.y + p.height} ${edge}` : `unappbar ${winh.hwndOf(b)}`
-      if (b.__appbar !== cmd) { b.__appbar = cmd; winh.call(cmd) }
+      if (b.__appbar !== cmd) { b.__appbar = cmd; appbarQ.set(winh.hwndOf(b), cmd) }
     }
     const k = desks.get(d.id)
     if (k && !k.isDestroyed()) k.setBounds(work)
   }
+  // um monitor de cada vez: mudando o espaço dos dois juntos, o Windows empurra a área de trabalho do Agenda
+  // (que cobre os dois monitores) para o canto do principal, e a imagem "pula"
+  if (!appbarT) runAppbars()
   // a área de trabalho do Agenda acompanha a área livre nova
   setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(modes.workArea()) }, 400)
 }
@@ -251,6 +256,20 @@ function create() {
   syncKeys()
 }
 let builtKind = ""
+// registros de barra pendentes (um por janela, o mais novo vale), aplicados um a cada 300 ms
+const appbarQ = new Map()
+let appbarT = null
+function runAppbars() {
+  appbarT = null
+  const first = appbarQ.entries().next()
+  if (first.done) return
+  const [h, cmd] = first.value
+  appbarQ.delete(h)
+  if (process.env.AGENDA_DEBUG_BOUNDS) console.log("[bounds]", (performance.now() / 1000).toFixed(3), "appbar", cmd)
+  winh.call(cmd).then(() => { if (process.env.AGENDA_DEBUG_BOUNDS) console.log("[bounds]", (performance.now() / 1000).toFixed(3), "appbar done") })
+  if (appbarQ.size) appbarT = setTimeout(runAppbars, 300)
+}
+let tbT = null
 let rebuildT = null
 function rebuild() {
   clearTimeout(rebuildT)
@@ -415,6 +434,7 @@ function teardown(restore = true) {
   if (poll) { clearInterval(poll); poll = null }
   for (const ev of ["display-added", "display-removed"]) screen.removeListener(ev, rebuild)
   screen.removeListener("display-metrics-changed", onMetrics)
+  appbarQ.clear(); clearTimeout(appbarT); appbarT = null
   closeMenu()
   hidePreview()
   if (preview && !preview.isDestroyed()) preview.destroy()
@@ -490,7 +510,12 @@ function register(ipcMain, mainGetter) {
       const changed = JSON.stringify(t) !== JSON.stringify(tb())
       if (changed) {
         cfg.tb = t; save()
-        if (bars.size) { if (kindOf(t) !== builtKind) rebuild(); else { for (const b of bars.values()) b.__appbar = ""; layout() } }
+        // arrastando o tamanho: espera parar (cada mudança no espaço reservado faz o Windows reorganizar a tela)
+        clearTimeout(tbT)
+        tbT = setTimeout(() => {
+          if (!bars.size) return
+          if (kindOf(tb()) !== builtKind) rebuild(); else { for (const b of bars.values()) b.__appbar = ""; layout() }
+        }, 350)
       }
     }
     for (const w of [...bars.values(), ...desks.values()]) if (!w.isDestroyed()) w.webContents.send("bar:sync", data)

@@ -31,7 +31,11 @@ function union() {
   const all = screen.getAllDisplays().map((d) => d.bounds)
   const x = Math.min(...all.map((r) => r.x)), y = Math.min(...all.map((r) => r.y))
   const r = Math.max(...all.map((a) => a.x + a.width)), b = Math.max(...all.map((a) => a.y + a.height))
-  return { x, y, width: r - x, height: b - y }
+  // 1 pixel a menos à direita e embaixo: assim a janela fica "mais" no monitor do canto de cima à esquerda.
+  // O Chromium, quando a área livre do monitor em que a janela está muda, empurra a janela para dentro dele;
+  // com metade em cada monitor ele escolhia o principal e a área de trabalho pulava um monitor para o lado.
+  // Estando no monitor da origem, o "empurrão" cai exatamente onde ela já está.
+  return { x, y, width: r - x - 1, height: b - y - 1 }
 }
 /** retângulo da janela principal: o monitor escolhido, ou todos juntos */
 const workArea = () => (spans() ? union() : target().workArea)
@@ -73,7 +77,9 @@ function displays() {
 function windowOptions() {
   if (cfg.mode === "desktop") {
     const wa = workArea()
-    return { ...wa, skipTaskbar: true, resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false, hasShadow: false, roundedCorners: false }
+    // thickFrame: false = sem a borda invisível de redimensionar (com ela o Windows trata a janela como uma
+    // janela comum de tela cheia e a empurra para o canto do monitor principal quando a área livre muda)
+    return { ...wa, skipTaskbar: true, resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false, hasShadow: false, roundedCorners: false, thickFrame: false }
   }
   const wa = workArea()
   if (cfg.mode === "app") {
@@ -107,6 +113,32 @@ function attach(win) {
   win.on("show", () => setTimeout(sink, 50))
   // resolução, escala ou barra do Windows mudaram: acompanha a área livre da tela
   for (const ev of ["display-metrics-changed", "display-added", "display-removed"]) screen.on(ev, fit)
+  if (process.env.AGENDA_DEBUG_BOUNDS) {
+    const orig = win.setBounds.bind(win)
+    win.setBounds = (b, ...r) => { console.log("[bounds]", (performance.now() / 1000).toFixed(3), "setBounds", JSON.stringify(b), new Error().stack.split(String.fromCharCode(10)).slice(2, 5).join(" | ")); return orig(b, ...r) }
+    const T = () => (performance.now() / 1000).toFixed(3)
+    win.on("move", () => console.log("[bounds]", T(), "move ->", JSON.stringify(win.getBounds())))
+    screen.on("display-metrics-changed", (_e, d, m) => console.log("[bounds]", T(), "metrics", d.id, m.join(","), JSON.stringify(d.workArea)))
+    const { ipcMain: ipm } = require("electron")
+    ipm.on("bar:sync", () => console.log("[bounds]", T(), "bar:sync"))
+    win.on("resize", () => console.log("[bounds] resize ->", JSON.stringify(win.getBounds())))
+    for (const [m, name] of [[0x1a, "WM_SETTINGCHANGE"], [0x7e, "WM_DISPLAYCHANGE"], [0x46, "WM_WINDOWPOSCHANGING"], [0x47, "WM_WINDOWPOSCHANGED"], [0x2e0, "WM_DPICHANGED"]]) {
+      try { win.hookWindowMessage(m, (w, l) => console.log("[bounds]", (performance.now() / 1000).toFixed(3), name, w.length >= 8 ? w.readBigUInt64LE(0).toString(16) : "")) } catch {}
+    }
+  }
+  // se o Windows empurrar a área de trabalho do Agenda (acontece quando a área livre da tela muda), volta na hora
+  // (no meio da reorganização do Windows a ordem é ignorada: manda de novo logo em seguida, até ficar no lugar)
+  const putBack = () => {
+    if (win.isDestroyed()) return false
+    const want = workArea(), cur = win.getBounds()
+    if (cur.x === want.x && cur.y === want.y && cur.width === want.width && cur.height === want.height) return false
+    win.setBounds(want)
+    return true
+  }
+  win.on("move", () => {
+    if (!putBack()) return
+    for (const ms of [0, 16, 40, 80, 140]) setTimeout(putBack, ms)
+  })
   win.__agendaRaise = (on) => {
     raised = !!on
     // vir para a frente: o Windows não deixa um programa tomar o foco sozinho (ex.: Chrome maximizado na frente);
