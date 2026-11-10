@@ -153,7 +153,8 @@ const nice = (exe) => path.basename(exe || "", ".exe").replace(/[-_.]/g, " ").re
 async function tick() {
   if (!bars.size) return
   const raw = await winh.call("list")
-  if (!raw) return
+  if (!bars.size) return
+  if (!raw) { cfg.on = false; save(); teardown(); return }
   let j
   try { j = JSON.parse(raw) } catch { return }
   const own = process.execPath.toLowerCase()

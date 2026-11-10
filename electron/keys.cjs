@@ -69,7 +69,7 @@ public static class AgKeys {
           else {
             winHeld = false;
             // Windows sozinha e o Iniciar é o do Windows: deixa passar normal
-            if (!ate && (!WinAlone || !clean)) { clean = false; return CallNextHookEx(hook, code, w, l); }
+            if (!ate && (!WinAlone || !clean || ctrl || shift || alt)) { clean = false; return CallNextHookEx(hook, code, w, l); }
             // segura o soltar de verdade e manda: tecla neutra + soltar Windows (o Iniciar do Windows não abre)
             var seq = new[] { Key((ushort)MASK, false), Key((ushort)MASK, true), Key((ushort)k.vk, true) };
             SendInput(3, seq, Marshal.SizeOf(typeof(INPUT)));
