@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useState } from "react"
 import { X } from "lucide-react"
 import { bridge, type PreviewTile } from "@/lib/bridge"
 import { useBarSync } from "./sync"
@@ -10,12 +10,19 @@ import { useBarSync } from "./sync"
  */
 export function Preview() {
   useBarSync()
-  const [tiles, setTiles] = useState<PreviewTile[]>([])
-  useEffect(() => bridge.bar.onPreview((d) => {
-    setTiles(d.tiles)
-    // depois de desenhar (dois quadros): avisa para mostrar a janela e as miniaturas juntas
-    requestAnimationFrame(() => requestAnimationFrame(() => bridge.bar.previewReady(d.seq)))
-  }), [])
+  const [data, setData] = useState<{ tiles: PreviewTile[]; seq: number }>({ tiles: [], seq: 0 })
+  useEffect(() => {
+    const unsubscribe = bridge.bar.onPreview(setData)
+    // Confirma a assinatura, inclusive quando a primeira solicitação chega durante o carregamento.
+    bridge.bar.previewReady(0)
+    return unsubscribe
+  }, [])
+  useLayoutEffect(() => {
+    // O DOM já foi atualizado. rAF pode ficar suspenso enquanto a janela está oculta;
+    // esperar um quadro antes de mostrá-la impede reabrir a prévia.
+    if (data.seq) bridge.bar.previewReady(data.seq)
+  }, [data])
+  const { tiles } = data
   return (
     <div
       className="bar-bg fixed inset-0 text-fg"

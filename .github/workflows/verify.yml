@@ -21,7 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run test:media
       - run: npm run build
-      - run: node --test tests/taskbar-control.test.cjs
+      - run: node --test tests/taskbar*.test.cjs
 
   powershell-syntax:
     name: Windows media worker (PowerShell)
@@ -47,6 +47,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
       - name: Compile native helpers with Windows PowerShell
         shell: powershell
         run: |
@@ -61,3 +65,7 @@ jobs:
               Add-Type -TypeDefinition $match.Groups[1].Value
             }
           }
+      - run: npm ci
+      - run: npm run build
+      - name: Verify Electron and native DWM previews
+        run: npm run test:taskbar:windows

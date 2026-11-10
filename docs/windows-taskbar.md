@@ -18,7 +18,13 @@ A barra original é ocultada em todos os monitores e a ocultação é reaplicada
 
 ## Validação
 
-Execute `node --test tests/taskbar-control.test.cjs` e `npm run build`. O workflow também compila os dois auxiliares C# no Windows PowerShell.
+Execute `npm run test:taskbar` e `npm run build`. O workflow também compila os dois auxiliares C# no Windows PowerShell.
+
+Depois do build, execute `npm run test:taskbar:windows` em uma sessão Windows. Esse teste abre uma janela de teste e as prévias reais (Electron/React e miniaturas DWM), verifica a primeira abertura, reabertura com `requestAnimationFrame` suspenso, janela minimizada e remoção dos overlays. Ele usa um perfil temporário, não oculta a barra do sistema e não instala ganchos de teclado.
+
+As prévias confirmam a assinatura do canal IPC antes de receber os dados e confirmam a atualização do DOM sem esperar quadros de animação de uma janela oculta. Pedidos antigos são descartados ao fechar ou trocar a prévia; o monitor também faz parte da identificação do pedido.
+
+No modo Área de trabalho, o fundo cobre os limites inteiros de cada monitor, inclusive atrás da dock transparente. A área útil dos widgets e a reserva AppBar continuam separadas do fundo. A recuperação periódica também restaura a auto-ocultação caso o Explorer perca esse estado.
 
 Antes de publicar um instalador, validar em Windows 10/11:
 
