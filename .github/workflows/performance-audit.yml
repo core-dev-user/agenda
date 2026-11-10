@@ -25,6 +25,15 @@ jobs:
           node --test tests/taskbar-control.test.cjs
       - name: Compilar para Electron
         run: npm run build
+      - name: Disponibilizar runtime Electron para o benchmark
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "node_modules/electron/dist/electron.exe")) {
+            node node_modules/electron/install.js
+          }
+          if (-not (Test-Path "node_modules/electron/dist/electron.exe")) {
+            throw "Electron runtime unavailable after explicit installation"
+          }
       - name: Medir processos em três cenários
         shell: pwsh
         run: ./tests/performance-audit.ps1 -OutputDir perf-results -HoldSeconds 23
