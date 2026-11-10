@@ -1,7 +1,7 @@
 {
   "name": "agenda",
   "productName": "Agenda",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Agenda — sua área de trabalho personalizada",
   "main": "electron/main.cjs",
   "type": "module",
