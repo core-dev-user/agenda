@@ -31,14 +31,12 @@ function union() {
   const all = screen.getAllDisplays().map((d) => d.bounds)
   const x = Math.min(...all.map((r) => r.x)), y = Math.min(...all.map((r) => r.y))
   const r = Math.max(...all.map((a) => a.x + a.width)), b = Math.max(...all.map((a) => a.y + a.height))
-  // 1 pixel a menos à direita e embaixo: assim a janela fica "mais" no monitor do canto de cima à esquerda.
-  // O Chromium, quando a área livre do monitor em que a janela está muda, empurra a janela para dentro dele;
-  // com metade em cada monitor ele escolhia o principal e a área de trabalho pulava um monitor para o lado.
-  // Estando no monitor da origem, o "empurrão" cai exatamente onde ela já está.
-  return { x, y, width: r - x - 1, height: b - y - 1 }
+  // Não subtrair pixels: a dock é transparente e exporia o desktop nas bordas.
+  // attach/putBack já corrige deslocamentos impostos pelo Windows.
+  return { x, y, width: r - x, height: b - y }
 }
 /** retângulo da janela principal: o monitor escolhido, ou todos juntos */
-const workArea = () => (spans() ? union() : target().workArea)
+const workArea = () => (spans() ? union() : cfg.mode === "desktop" ? target().bounds : target().workArea)
 /** cada monitor dentro da janela principal (coordenadas da página), para o papel de parede, abas e avisos */
 function screensInWindow() {
   const o = workArea()
@@ -50,7 +48,7 @@ function screensInWindow() {
     // x/y/w/h: área livre (abas, avisos, chão do bichinho); full: o monitor inteiro (papel de parede)
     .map((d) => ({
       id: d.id, x: d.workArea.x - o.x, y: d.workArea.y - o.y, w: d.workArea.width, h: d.workArea.height,
-      full: spans() ? { x: d.bounds.x - o.x, y: d.bounds.y - o.y, w: d.bounds.width, h: d.bounds.height } : undefined,
+      full: cfg.mode === "desktop" ? { x: d.bounds.x - o.x, y: d.bounds.y - o.y, w: d.bounds.width, h: d.bounds.height } : undefined,
       primary: d.id === prim, home: d.id === main,
     }))
 }

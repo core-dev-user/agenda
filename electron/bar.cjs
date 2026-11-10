@@ -83,7 +83,7 @@ const displayOfWin = (w) => {
 /** reserva a área da barra em cada monitor (em pixels reais) e reposiciona tudo */
 function layout() {
   for (const d of screen.getAllDisplays()) {
-    const { barRect, resRect, reserve, work, edge } = rects(d)
+    const { barRect, resRect, reserve, edge } = rects(d)
     const b = bars.get(d.id)
     if (b && !b.isDestroyed()) {
       if (process.env.AGENDA_DEBUG_BOUNDS) console.log("[bounds]", (performance.now() / 1000).toFixed(3), "bar setBounds", d.id, JSON.stringify(barRect))
@@ -97,7 +97,7 @@ function layout() {
       if (b.__appbar !== cmd) { b.__appbar = cmd; appbarQ.set(winh.hwndOf(b), cmd) }
     }
     const k = desks.get(d.id)
-    if (k && !k.isDestroyed()) k.setBounds(work)
+    if (k && !k.isDestroyed()) k.setBounds(d.bounds)
   }
   // um monitor de cada vez: mudando o espaço dos dois juntos, o Windows empurra a área de trabalho do Agenda
   // (que cobre os dois monitores) para o canto do principal, e a imagem "pula"
@@ -225,11 +225,10 @@ function makeBar(d) {
 
 /** fundo do Agenda nos monitores sem o Agenda principal: fica atrás de tudo, como a área de trabalho */
 function makeDesk(d) {
-  const { work } = rects(d)
   const k = new BrowserWindow({
-    ...work,
+    ...d.bounds,
     frame: false, resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
-    skipTaskbar: true, hasShadow: false, show: false, roundedCorners: false, backgroundColor: "#000000",
+    skipTaskbar: true, hasShadow: false, show: false, roundedCorners: false, thickFrame: false, backgroundColor: "#000000",
     title: "Widgy — fundo", webPreferences: prefs(),
   })
   page(k, { view: "desk" })
@@ -357,24 +356,28 @@ function previewWin() {
   })
   preview.setAlwaysOnTop(true, "pop-up-menu")
   page(preview, { view: "preview" })
-  preview.on("closed", () => { preview = null; previewKey = "" })
+  preview.webContents.on("did-start-loading", () => { previewLoaded = false })
+  preview.on("closed", () => { hidePreview(); preview = null; previewLoaded = false })
   return preview
 }
 function hidePreview() {
   clearTimeout(previewT); previewT = null
-  if (!previewKey) return
+  clearInterval(fadeT); fadeT = null
+  const hadPreview = !!previewKey
+  previewHover = false
+  previewData = null
   previewKey = ""
   previewGo = null
-  winh.call("phide")
+  if (hadPreview) winh.call("phide")
   if (preview && !preview.isDestroyed()) preview.hide()
 }
 /** items: janelas do programa; anchor: centro do botão (px da barra) */
 function showPreview(barWin, items, anchor) {
   clearTimeout(previewT); previewT = null
   if (menu || !items || !items.length) return hidePreview()
-  const key = items.map((i) => i.h).join(",")
-  if (key === previewKey && preview && preview.isVisible()) return
   const d = (barWin && displayOfWin(barWin)) || screen.getPrimaryDisplay()
+  const key = `${d.id}:${anchor}:` + items.map((i) => i.h).join(",")
+  if (key === previewKey && preview && preview.isVisible()) return
   const { band, pos } = rects(d)
   const B = d.bounds
   const n = Math.min(items.length, Math.max(1, Math.floor((B.width - 40) / TILE_W)))
@@ -408,12 +411,14 @@ function showPreview(barWin, items, anchor) {
       winh.call(`pshow ${t.h} ${p.x} ${p.y} ${p.width} ${p.height} ${fade ? 1 : 0}`)
     }
   }
-  const send = () => w.webContents.send("preview:data", { tiles, seq })
-  if (w.webContents.isLoading()) w.webContents.once("did-finish-load", send)
-  else send()
+  previewData = { tiles, seq }
+  // did-finish-load não garante que o efeito React já assinou o canal IPC.
+  if (previewLoaded) w.webContents.send("preview:data", previewData)
 }
 let previewSeq = 0
 let previewGo = null
+let previewLoaded = false
+let previewData = null
 let fadeT = null
 function fadeIn(w) {
   clearInterval(fadeT)
@@ -569,7 +574,13 @@ function register(ipcMain, mainGetter) {
   ipcMain.on("bar:previewLeave", () => leavePreview())
   ipcMain.on("preview:hover", (_e, on) => { previewHover = !!on; if (on) clearTimeout(previewT); else leavePreview() })
   ipcMain.on("preview:hide", () => hidePreview())
-  ipcMain.on("preview:ready", (_e, seq) => { if (previewGo) previewGo(seq) })
+  ipcMain.on("preview:ready", (e, seq) => {
+    if (!preview || preview.isDestroyed() || e.sender !== preview.webContents) return
+    if (seq === 0) {
+      previewLoaded = true
+      if (previewData) preview.webContents.send("preview:data", previewData)
+    } else if (previewGo) previewGo(seq)
+  })
   ipcMain.handle("bar:click", (_e, h, wasMin) => {
     hidePreview()
     if (h === lastFg && !wasMin) return winh.call("minimize " + h)

@@ -161,7 +161,13 @@ public static class AgWin {
   }
   /** o Explorer às vezes recria a barra ou devolve a área: reaplica */
   static void Heal() {
-    if (tbHidden) foreach (var t in Trays()) Ghost(t, true);
+    if (tbHidden) {
+      // O Explorer pode recriar a barra e perder o estado de auto-ocultação.
+      // Reaplica só se mudou, evitando notificações de layout a cada consulta.
+      int hiddenState = (abOrig < 0 ? AbState() : abOrig) | 1;
+      if (AbState() != hiddenState) AbSet(hiddenState);
+      foreach (var t in Trays()) Ghost(t, true);
+    }
     foreach (var kv in wants) {
       RECT cur = WorkOf(new IntPtr(kv.Key)); RECT w = kv.Value;
       if (cur.L != w.L || cur.T != w.T || cur.R != w.R || cur.B != w.B) Work(ref w);
