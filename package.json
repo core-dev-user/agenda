@@ -1,7 +1,7 @@
 {
   "name": "widgy",
   "productName": "Widgy",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Widgy — sua área de trabalho personalizada",
   "main": "electron/main.cjs",
   "type": "module",
