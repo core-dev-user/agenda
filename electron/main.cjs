@@ -7,8 +7,7 @@ const os = require("node:os")
 const { spawn, execFile } = require("node:child_process")
 const { pathToFileURL, fileURLToPath } = require("node:url")
 const music = require("./music.cjs")
-const system = require("./system.cjs")
-const modes = require("./mode.cjs")
+// Módulos que consultam userData só podem ser carregados após fixar o caminho legado.
 
 const isDev = !!process.env.AGENDA_DEV
 // timers no horário certo em segundo plano (avisos, leituras) e o YouTube Music nunca pausa sozinho em segundo plano.
@@ -18,7 +17,13 @@ app.commandLine.appendSwitch("disable-features", "BackgroundVideoTrackOptimizati
 if (process.env.AGENDA_SHOT) {
   app.setPath("userData", path.join(process.env.AGENDA_SHOT, "userdata"))
   app.disableHardwareAcceleration()
+} else {
+  // Compatibilidade: mantém as configurações e os dados das instalações do Agenda.
+  // Não alterar este caminho ao trocar o nome visual/shortcut para Widgy.
+  app.setPath("userData", path.join(app.getPath("appData"), "Agenda"))
 }
+const system = require("./system.cjs")
+const modes = require("./mode.cjs")
 const userDir = app.getPath("userData")
 const mediaDir = path.join(userDir, "media")
 const toolsDir = path.join(userDir, "tools")
@@ -48,8 +53,8 @@ function createWindow() {
     minHeight: 600,
     frame: false,
     show: false,
-    backgroundColor: "#0b0710",
-    title: "Agenda",
+    backgroundColor: "#071428",
+    title: "Widgy",
     icon: path.join(__dirname, "..", "build", process.platform === "win32" ? "icon.ico" : "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -156,7 +161,7 @@ function createWindow() {
   else win.loadFile(path.join(__dirname, "..", "dist", "index.html"))
 }
 
-app.setName("Agenda")
+app.setName("Widgy")
 // só uma cópia aberta: abrir de novo traz a janela que já está rodando (inclusive da bandeja)
 if (!process.env.AGENDA_SHOT && !app.requestSingleInstanceLock()) { app.quit(); process.exit(0) }
 app.on("second-instance", () => system.show())
@@ -640,6 +645,6 @@ ipcMain.handle("media:saveAnimation", async (_e, { width, height, frames, delay,
 /* ---------------- Notícias (RSS sem CORS) ---------------- */
 ipcMain.handle("net:text", async (_e, url) => {
   if (!/^https?:\/\//.test(url)) throw new Error("URL inválida")
-  const r = await net.fetch(url, { headers: { "User-Agent": "Agenda/0.1 (desktop app)" } })
+  const r = await net.fetch(url, { headers: { "User-Agent": "Widgy/0.3 (desktop app)" } })
   return await r.text()
 })
