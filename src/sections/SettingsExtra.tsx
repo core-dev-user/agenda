@@ -10,6 +10,7 @@ import { Card, Switch } from "@/components/ui/controls"
 import { cn, uid } from "@/lib/utils"
 import type { NotifySource, SportKind } from "@/lib/types"
 import { SPORTS } from "@/lib/favs"
+import { performanceBudget, type PerfPreset, type PreloadMode } from "@/lib/perf-policy"
 
 function Section({ title, children, desc }: { title: string; desc?: ReactNode; children: ReactNode }) {
   return (
@@ -425,6 +426,8 @@ export function SystemExtra() {
   if (!cfg) return null
   const upd = async (p: Parameters<typeof bridge.sys.set>[0]) => setCfg(await bridge.sys.set(p))
   const hib = s.hibernateMin ?? 15
+  const profile = s.perfPreset ?? "auto"
+  const budget = performanceBudget(s, useStore.getState().gamesRunning.length > 0)
   return (
     <>
       <Section title="Bandeja e atalho" desc="O Widgy pode ficar rodando perto do relógio do Windows: o YouTube Music, as calls e os avisos continuam funcionando.">
@@ -458,9 +461,48 @@ export function SystemExtra() {
         <div className="text-xs text-fg-muted">Vai para a pasta “Agenda backup”. As Finanças vão criptografadas: só abrem nesta conta do Windows.</div>
       </Section>
 
-      <Section title="Desempenho" desc="O Widgy já para as animações sozinho quando está minimizado ou na bandeja.">
-        <Switch label="Pausar as animações enquanto um jogo está aberto (o Widgy em segundo plano não pesa no jogo)" checked={s.perfPauseInGame ?? true} onChange={(v) => set({ perfPauseInGame: v })} />
-        <Switch label="Modo leve: sem vidro desfocado, pétalas e partículas do cursor (para PCs mais fracos)" checked={!!s.perfLite} onChange={(v) => set({ perfLite: v })} />
+      <Section title="Desempenho e consumo" desc="Defina quanto CPU as animações e a posição dos painéis web podem usar. Música, notificações e relógios continuam funcionando.">
+        <div className="flex flex-wrap items-center justify-between gap-2 py-1 text-sm">
+          <label htmlFor="perf-profile">Perfil de desempenho</label>
+          <select id="perf-profile" className="field !w-auto" value={profile} onChange={(e) => set({ perfPreset: e.target.value as PerfPreset })}>
+            <option value="auto">Automático (recomendado)</option>
+            <option value="quality">Qualidade máxima / referência pura</option>
+            <option value="balanced">Equilibrado — 30 FPS</option>
+            <option value="economy">Economia de recursos — 15 FPS</option>
+            <option value="gaming">Jogos / Valorant — 12 FPS</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-fg-muted">
+          Limite atual: <strong className="text-fg">{budget.fps} FPS</strong> nas animações do Widgy, <strong className="text-fg">{budget.embedHz} verificações/s</strong> para posicionar Discord, WhatsApp e iFood.
+          Pré-carregamento: <strong className="text-fg">{budget.preload === "all" ? "todas as abas" : budget.preload === "none" ? "somente quando abrir" : "somente essenciais"}</strong>.
+          {profile === "auto" && <div className="mt-1">Detecta jogo aberto e reduz o trabalho visual automaticamente; ao interagir com o Widgy, ele continua responsivo.</div>}
+          {profile === "quality" && <div className="mt-1">Mantém limites semelhantes aos anteriores. O benchmark A/B puro continua usando separadamente a versão original 0.3.12.</div>}
+        </div>
+        {profile === "custom" && (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <label className="flex items-center justify-between gap-2 text-xs">Animações
+              <select className="field !w-auto" value={s.perfFps ?? 30} onChange={(e) => set({ perfFps: Number(e.target.value) })}>
+                {[5, 10, 12, 15, 20, 24, 30, 45, 60].map((v) => <option key={v} value={v}>{v} FPS</option>)}
+              </select>
+            </label>
+            <label className="flex items-center justify-between gap-2 text-xs">Painéis web
+              <select className="field !w-auto" value={s.perfEmbedHz ?? 12} onChange={(e) => set({ perfEmbedHz: Number(e.target.value) })}>
+                {[2, 4, 6, 8, 12, 15, 20, 30].map((v) => <option key={v} value={v}>{v} vezes/s</option>)}
+              </select>
+            </label>
+            <label className="flex items-center justify-between gap-2 text-xs sm:col-span-2">Pré-carregar abas
+              <select className="field !w-auto" value={s.perfPreload ?? "essential"} onChange={(e) => set({ perfPreload: e.target.value as PreloadMode })}>
+                <option value="all">Todas (mais RAM)</option><option value="essential">Só essenciais</option><option value="none">Não pré-carregar</option>
+              </select>
+            </label>
+          </div>
+        )}
+        <div className="mt-2">
+          <Switch label="Pausar animações do Widgy quando um jogo estiver em primeiro plano" checked={s.perfPauseInGame ?? true} onChange={(v) => set({ perfPauseInGame: v })} />
+          <Switch label="Modo leve: sem desfoques, pétalas e partículas de cursor" checked={!!s.perfLite} onChange={(v) => set({ perfLite: v })} />
+        </div>
+        <p className="mt-2 text-xs text-fg-muted">O pré-carregamento é aplicado na próxima inicialização. Limites de animação e painéis funcionam imediatamente. Estes controles não limitam o FPS do Valorant ou do Discord.</p>
       </Section>
 
       <Section title="Economia de memória" desc="Discord, WhatsApp e iFood são, cada um, um navegador inteiro. Os que você não usa por um tempo “dormem” e acordam sozinhos quando você abre ou um widget precisa. O Discord numa call nunca dorme.">
