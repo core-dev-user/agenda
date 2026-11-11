@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld("agenda", {
     get: () => ipcRenderer.sendSync("store:get"),
     set: (data) => ipcRenderer.send("store:set", data),
     flush: () => ipcRenderer.sendSync("store:flushSync"),
+    drain: () => ipcRenderer.invoke("store:drain"),
   },
   win: {
     minimize: () => ipcRenderer.send("win:minimize"),
