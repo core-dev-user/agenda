@@ -81,7 +81,7 @@ function usePcMedia(id: string, app: string) {
 
   useEffect(() => {
     if (!media?.playing) return
-    const timer = window.setInterval(() => setNow(performance.now()), 500)
+    const timer = window.setInterval(() => { if (!document.hidden) setNow(performance.now()) }, 1000)
     return () => window.clearInterval(timer)
   }, [media?.playing])
 
