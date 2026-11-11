@@ -20,6 +20,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:media
+      - run: npm run test:wallpaper
       - run: npm run build
       - run: node --test tests/taskbar*.test.cjs
 
