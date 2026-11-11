@@ -250,8 +250,8 @@ function ensure(id) {
   if (id === "discord") {
     // Capturar uma tela sempre requer confirmação explícita do usuário.
     ses.setDisplayMediaRequestHandler(async (request, cb) => {
-      const origin = request?.frame?.url || ""
-      if (!canPermission("discord", "display-capture", origin)) { cb({}); return }
+      const origin = request?.securityOrigin || request?.frame?.url || ""
+      if (!canPermission("discord", "display-capture", origin)) { cb(null); return }
       try {
         const { response } = await dialog.showMessageBox({
           type: "question", title: "Widgy · Discord",
@@ -259,10 +259,10 @@ function ensure(id) {
           detail: "A tela e o áudio do PC, quando disponível, serão enviados para a chamada do Discord.",
           buttons: ["Cancelar", "Compartilhar tela"], defaultId: 0, cancelId: 0, noLink: true,
         })
-        if (response !== 1) { cb({}); return }
+        if (response !== 1) { cb(null); return }
         const screens = await desktopCapturer.getSources({ types: ["screen"] })
-        cb(screens[0] ? { video: screens[0], audio: "loopback" } : {})
-      } catch { cb({}) }
+        cb(screens[0] ? { video: screens[0], ...(request?.audioRequested ? { audio: "loopback" } : {}) } : null)
+      } catch { cb(null) }
     })
   }
   // WhatsApp não precisa ser desenhado quando não está na tela (economiza processador e placa de vídeo)
@@ -443,9 +443,11 @@ function register(ipcMain, mainGetter, app) {
     }
   }
   ipcMain.handle("webapp:watch", (_e, id, on) => {
-    if (id !== "discord") return
-    discordWatchers = Math.max(0, discordWatchers + (on ? 1 : -1))
-    syncDiscordTimer()
+    if (!APPS[id]) return
+    if (id === "discord") {
+      discordWatchers = Math.max(0, discordWatchers + (on ? 1 : -1))
+      syncDiscordTimer()
+    }
     if (on) ensure(id)
   })
   ipcMain.handle("webapp:ifoodOrders", () => ifoodOrders())
