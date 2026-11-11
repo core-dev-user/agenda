@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Check, Pencil, Plus, RefreshCw, RotateCcw, Trash2, Undo2 } from "lucide-react"
+import { Check, Pencil, Plus, RefreshCw, RotateCcw, Trash2, Undo2, Share2 } from "lucide-react"
 import { DEFAULT_SETTINGS, useStore } from "@/lib/store"
 import { mediaUrl } from "@/lib/bridge"
 import type { LookTemplate, Settings } from "@/lib/types"
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { fontFamily } from "@/lib/fonts"
 import { Card, Switch, ThemedButton } from "@/components/ui/controls"
 import { GRADIENTS } from "@/components/Wallpaper"
+import { TemplateSharing } from "./TemplateSharing"
 
 const THEME_LABEL: Record<string, string> = { glass: "Vidro líquido", metal: "Metal", retro: "Retrô 95", terminal: "Terminal CRT", minimal: "Minimal" }
 
@@ -55,6 +56,7 @@ export function TemplatesTab() {
   const [name, setName] = useState("")
   const [withWidgets, setWithWidgets] = useState(true)
   const [editing, setEditing] = useState<string | null>(null)
+  const [sharing, setSharing] = useState<LookTemplate | null>(null)
   const [flash, setFlash] = useState<string | null>(null)
   const ping = (id: string) => { setFlash(id); setTimeout(() => setFlash((f) => (f === id ? null : f)), 1400) }
 
@@ -83,6 +85,8 @@ export function TemplatesTab() {
         </div>
       </Card>
 
+      <TemplateSharing selected={sharing} onClose={() => setSharing(null)} />
+
       <AnimatePresence>
         {undo && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
@@ -104,6 +108,7 @@ export function TemplatesTab() {
             editing={editing === t.id}
             onEdit={() => setEditing(t.id)}
             onRename={(n) => { renameTemplate(t.id, n); setEditing(null) }}
+            onShare={() => setSharing(t)}
             onApply={() => { applyTemplate(t.id); ping(t.id) }}
             onUpdate={() => { if (confirm(`Substituir "${t.name}" pelo estilo que está agora na tela?`)) { updateTemplate(t.id); ping(t.id) } }}
             onDelete={() => confirm(`Excluir o template "${t.name}"?`) && deleteTemplate(t.id)}
@@ -126,9 +131,9 @@ export function TemplatesTab() {
   )
 }
 
-function TemplateCard({ t, flash, editing, onEdit, onRename, onApply, onUpdate, onDelete }: {
+function TemplateCard({ t, flash, editing, onEdit, onRename, onApply, onUpdate, onDelete, onShare }: {
   t: LookTemplate; flash: boolean; editing: boolean
-  onEdit: () => void; onRename: (n: string) => void; onApply: () => void; onUpdate: () => void; onDelete: () => void
+  onEdit: () => void; onRename: (n: string) => void; onApply: () => void; onUpdate: () => void; onDelete: () => void; onShare: () => void
 }) {
   return (
     <motion.div layout className={cn("group flex flex-col gap-2 rounded-2xl border p-3 transition-colors", flash ? "border-brand" : "border-line")} style={{ background: "color-mix(in srgb, var(--fg) 4%, transparent)" }}>
@@ -149,11 +154,12 @@ function TemplateCard({ t, flash, editing, onEdit, onRename, onApply, onUpdate, 
           ) : (
             <div className="truncate font-semibold" onDoubleClick={onEdit}>{t.name}</div>
           )}
-          <div className="text-xs text-fg-muted">{new Date(t.updatedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}{t.widgets ? " · com widgets" : ""}</div>
+          <div className="text-xs text-fg-muted">{new Date(t.updatedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}{(t.widgets ? " · com widgets" : "") + (t.source === "shared" ? " · importado" : "")}</div>
         </div>
         <button className="btn !py-1.5 text-xs" onClick={onApply}>Aplicar</button>
       </div>
-      <div className="flex gap-1 opacity-60 transition-opacity group-hover:opacity-100">
+      <div className="flex flex-wrap gap-1 opacity-60 transition-opacity group-hover:opacity-100">
+        <button className="btn btn-ghost flex-1 !py-1 text-xs" title="Compartilhar" onClick={onShare}><Share2 size={12} /> Compartilhar</button>
         <button className="btn btn-ghost flex-1 !py-1 text-xs" title="Renomear" onClick={onEdit}><Pencil size={12} /> Renomear</button>
         <button className="btn btn-ghost flex-1 !py-1 text-xs" title="Guardar o estilo atual neste template" onClick={onUpdate}><RefreshCw size={12} /> Atualizar</button>
         <button className="btn btn-ghost !py-1 text-xs hover:!text-red-400" title="Excluir" onClick={onDelete}><Trash2 size={12} /></button>

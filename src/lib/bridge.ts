@@ -21,6 +21,7 @@ export interface AgendaBridge {
     onState(cb: (s: { maximized: boolean }) => void): Unsub
   }
   app: { autostart(v?: boolean): Promise<boolean>; openExternal(url: string): Promise<void>; screenInfo(): Promise<{ long: number }>; show(): Promise<void>; quit(): Promise<void> }
+  templates: { take(): Promise<string>; onLink(cb: (link: string) => void): Unsub }
   sys: {
     get(): Promise<SysConfig>
     set(p: Partial<Pick<SysConfig, "closeToTray" | "hotkey" | "cloudDir" | "cloudOn">>): Promise<SysConfig>
@@ -363,6 +364,7 @@ const browserFallback: AgendaBridge = {
   store: { get: () => localStorage.getItem("agenda-data"), set: (d) => localStorage.setItem("agenda-data", d), drain: async () => true },
   win: { minimize() {}, toggleMaximize() {}, fullscreen(on) { on ? document.documentElement.requestFullscreen() : document.exitFullscreen() }, close() {}, onState: noop },
   app: { autostart: async () => false, openExternal: async (u) => void window.open(u, "_blank"), screenInfo: async () => ({ long: Math.max(screen.width, screen.height) * devicePixelRatio }), show: async () => {}, quit: async () => {} },
+  templates: { take: async () => "", onLink: noop },
   sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
   games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop, valorantAgent: async () => null, onValorantAgent: noop },
   sysmon: { sub: async () => false, unsub: async () => false, rate: async () => false, onData: noop },

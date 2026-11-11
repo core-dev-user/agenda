@@ -26,6 +26,7 @@ import { WidgetFrame, WIDGET_CATS, WIDGET_CHOICES, hoveredWidget, type WidgetCat
 import { useHistory } from "@/lib/history"
 import { copyWidget, pasteWidget, widgetClip } from "@/lib/widgetClip"
 import { toast } from "@/lib/toast"
+import { queueShareLink } from "@/lib/templateShare"
 import { useBackground } from "@/lib/watchers"
 import { usePerf } from "@/lib/perf"
 import { performanceBudget } from "@/lib/perf-policy"
@@ -214,6 +215,15 @@ export function useThemeVars() {
 
 export default function App() {
   useThemeVars()
+  useEffect(() => {
+    const accept = (link: string) => {
+      queueShareLink(link)
+      useStore.getState().openWindow("settings")
+    }
+    const off = bridge.templates.onLink(accept)
+    void bridge.templates.take().then((value) => { if (value) accept(value) }).catch(() => {})
+    return off
+  }, [])
   const musicAuto = useStore((s) => s.settings.musicAutostart)
   useEffect(() => { if (musicAuto) bridge.music.open() }, [])
   useEffect(() => {

@@ -19,7 +19,8 @@
     "test:perf": "node --test tests/perf-policy.test.cjs",
     "test:wallpaper": "node --test tests/wallpaper-engine.test.cjs",
     "test:taskbar": "node --test tests/taskbar*.test.cjs",
-    "test:taskbar:windows": "electron tests/taskbar-preview-smoke.cjs"
+    "test:taskbar:windows": "electron tests/taskbar-preview-smoke.cjs",
+    "test:templates": "node --experimental-strip-types --test tests/template-share.test.mjs"
   },
   "build": {
     "appId": "com.agenda.desktop",
@@ -58,6 +59,14 @@
         "owner": "core-dev-user",
         "repo": "agenda",
         "releaseType": "release"
+      }
+    ],
+    "protocols": [
+      {
+        "name": "Widgy Template",
+        "schemes": [
+          "widgy"
+        ]
       }
     ]
   },

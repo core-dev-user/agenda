@@ -217,6 +217,8 @@ export interface LookTemplate {
   updatedAt: number
   settings: Partial<Settings>
   widgets?: Widget[]
+  /** template recebido por código compartilhado */
+  source?: "shared"
 }
 export interface Widget extends Geo {
   id: string
