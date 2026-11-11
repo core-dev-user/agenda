@@ -13,6 +13,10 @@ on:
       - ".github/workflows/performance-comparison.yml"
   workflow_dispatch:
 
+concurrency:
+  group: widgy-performance-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
