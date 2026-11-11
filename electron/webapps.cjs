@@ -1,15 +1,16 @@
 // Apps web dentro do Agenda (Discord e iFood): login salvo, painel que encaixa na janela do app
 // ou vai para uma janela separada, e continuam rodando em segundo plano (a call não cai ao fechar).
-const { BrowserWindow, WebContentsView, session, shell, desktopCapturer } = require("electron")
+const { BrowserWindow, WebContentsView, session, shell, desktopCapturer, dialog } = require("electron")
+const { canPermission, canPopup } = require("./webapp-security.cjs")
 const path = require("node:path")
 const { execFile } = require("node:child_process")
 
 const APPS = {
-  discord: { home: "https://discord.com/app", title: "Discord", partition: "persist:discord", bg: "#313338", allowPopup: /discord\.com|discordapp\.com|hcaptcha\.com/ },
+  discord: { home: "https://discord.com/app", title: "Discord", partition: "persist:discord", bg: "#313338" },
   // iFood usa a identificação original do navegador: alterar só o user-agent (e não os outros sinais)
   // deixa a verificação "sou humano" inconsistente e ela fica pedindo de novo
-  ifood: { home: "https://www.ifood.com.br/", title: "iFood", partition: "persist:ifood", bg: "#ffffff", keepUA: true, allowPopup: /ifood\.com\.br|google\.com|facebook\.com|apple\.com|challenges\.cloudflare\.com/ },
-  whatsapp: { home: "https://web.whatsapp.com/", title: "WhatsApp", partition: "persist:whatsapp", bg: "#111b21", allowPopup: /whatsapp\.(com|net)/ },
+  ifood: { home: "https://www.ifood.com.br/", title: "iFood", partition: "persist:ifood", bg: "#ffffff", keepUA: true },
+  whatsapp: { home: "https://web.whatsapp.com/", title: "WhatsApp", partition: "persist:whatsapp", bg: "#111b21" },
 }
 
 /** @type {Record<string, { view: any, popup: any, embedded: boolean }>} */
@@ -239,14 +240,29 @@ function ensure(id) {
     ses.setUserAgent(session.defaultSession.getUserAgent())
     resetChallengeCookiesOnce(id, ses)
   }
-  // Discord precisa de microfone/câmera; os dois podem mandar notificação
-  const ALLOW = ["media", "notifications", "clipboard-read", "clipboard-sanitized-write", "fullscreen", "pointerLock", "display-capture", "speaker-selection"]
-  ses.setPermissionRequestHandler((_wc, perm, cb) => cb(ALLOW.includes(perm)))
-  ses.setPermissionCheckHandler((_wc, perm) => ALLOW.includes(perm))
+  // Permissões por aplicativo e domínio: a sessão não concede acesso global.
+  ses.setPermissionRequestHandler((wc, perm, cb, details) => {
+    cb(canPermission(id, perm, details?.requestingUrl || wc?.getURL?.() || ""))
+  })
+  ses.setPermissionCheckHandler((wc, perm, origin) => {
+    return canPermission(id, perm, origin || wc?.getURL?.() || "")
+  })
   if (id === "discord") {
-    // compartilhar tela no Discord: usa a tela principal
-    ses.setDisplayMediaRequestHandler((_req, cb) => {
-      desktopCapturer.getSources({ types: ["screen"] }).then((s) => cb({ video: s[0], audio: "loopback" })).catch(() => cb({}))
+    // Capturar uma tela sempre requer confirmação explícita do usuário.
+    ses.setDisplayMediaRequestHandler(async (request, cb) => {
+      const origin = request?.frame?.url || ""
+      if (!canPermission("discord", "display-capture", origin)) { cb({}); return }
+      try {
+        const { response } = await dialog.showMessageBox({
+          type: "question", title: "Widgy · Discord",
+          message: "Permitir compartilhamento da tela principal?",
+          detail: "A tela e o áudio do PC, quando disponível, serão enviados para a chamada do Discord.",
+          buttons: ["Cancelar", "Compartilhar tela"], defaultId: 0, cancelId: 0, noLink: true,
+        })
+        if (response !== 1) { cb({}); return }
+        const screens = await desktopCapturer.getSources({ types: ["screen"] })
+        cb(screens[0] ? { video: screens[0], audio: "loopback" } : {})
+      } catch { cb({}) }
     })
   }
   // WhatsApp não precisa ser desenhado quando não está na tela (economiza processador e placa de vídeo)
@@ -254,7 +270,7 @@ function ensure(id) {
   view.setBackgroundColor(cfg.bg)
   view.webContents.setWindowOpenHandler(({ url }) => {
     if (id === "whatsapp" && updateBrowserLink(url)) return { action: "deny" }
-    if (cfg.allowPopup.test(url)) return { action: "allow" }
+    if (canPopup(id, url)) return { action: "allow" }
     if (/^https?:/.test(url)) shell.openExternal(url)
     return { action: "deny" }
   })
