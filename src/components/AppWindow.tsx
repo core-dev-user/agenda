@@ -10,6 +10,7 @@ import { AppIcon } from "./AppIcon"
 import { useViewport } from "@/lib/viewport"
 import { ErrorBoundary } from "./ErrorBoundary"
 import { useUiMode } from "@/lib/uimode"
+import type { PreloadMode } from "@/lib/perf-policy"
 
 const LOADERS = {
   today: () => import("@/sections/Today"),
@@ -29,13 +30,17 @@ const LOADERS = {
 }
 export const VIEWS = Object.fromEntries(Object.entries(LOADERS).map(([k, f]) => [k, lazy(f)])) as unknown as Record<keyof typeof LOADERS, React.LazyExoticComponent<() => React.JSX.Element>>
 
-/** Carrega o código de todas as abas logo depois da abertura: clicar abre na hora, sem "Carregando…". */
-export function preloadSections() {
-  const all = Object.values(LOADERS)
+/** Pré-carregamento condicionado por orçamento: evita baixar/parsing de todas as abas no boot. */
+export function preloadSections(mode: PreloadMode = "essential") {
+  if (mode === "none") return
+  const all = mode === "all" ? Object.values(LOADERS) : [LOADERS.today, LOADERS.settings, LOADERS.music]
   const next = () => {
     const f = all.shift()
-    if (!f) return
-    f().finally(() => requestIdleCallback(next, { timeout: 800 }))
+    if (!f || document.hidden) return
+    void f().then(
+      () => requestIdleCallback(next, { timeout: 1600 }),
+      () => requestIdleCallback(next, { timeout: 1600 }),
+    )
   }
   next()
 }
