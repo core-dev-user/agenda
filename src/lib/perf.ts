@@ -5,6 +5,7 @@
 import { useEffect } from "react"
 import { useStore } from "./store"
 import { performanceBudget } from "./perf-policy"
+import { bridge } from "./bridge"
 
 let paused = false
 export const perfPaused = () => paused
@@ -40,6 +41,8 @@ export function usePerf() {
   const gaming = useStore((s) => s.gamesRunning.length > 0)
   const pauseInGame = useStore((s) => s.settings.perfPauseInGame ?? true)
   const lite = useStore((s) => !!s.settings.perfLite)
+  const monitorMs = useStore((s) => performanceBudget(s.settings, s.gamesRunning.length > 0).monitorMs)
+  useEffect(() => { void bridge.sysmon.rate(monitorMs).catch(() => {}) }, [monitorMs])
   useEffect(() => {
     let lastMove = 0
     let timer: ReturnType<typeof setTimeout> | undefined
