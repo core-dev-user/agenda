@@ -29,13 +29,18 @@ function decrypt(buf) {
   return safeStorage.decryptString(buf.subarray(4))
 }
 function readData() {
-  const cands = [dataFile(), dataFile() + ".tmp"]
+  // Um fechamento durante gravação assíncrona pode ter deixado a última
+  // versão sincronizada em .exit.tmp. Ela tem precedência sobre o arquivo antigo.
+  const cands = [dataFile() + ".exit.tmp", dataFile(), dataFile() + ".tmp"]
   try { cands.push(...fs.readdirSync(backupDir()).filter((f) => /^finance-.*\.dat$/.test(f)).sort().reverse().map((f) => path.join(backupDir(), f))) } catch {}
   for (const f of cands) {
     try {
       if (!fs.existsSync(f)) continue
       const txt = decrypt(fs.readFileSync(f))
       JSON.parse(txt)
+      if (f === dataFile() + ".exit.tmp") {
+        try { fs.copyFileSync(f, dataFile()); fs.unlinkSync(f) } catch {}
+      }
       return txt
     } catch {}
   }
@@ -64,6 +69,11 @@ async function flush() {
       for (const f of olds) fsp.unlink(path.join(backupDir(), f)).catch(() => {})
       if (onBackup) onBackup(dataFile(), "finance.dat")
     }
+    // Apagar checkpoint de saída somente após uma gravação mais recente
+    // terminar e sem novos dados na fila.
+    if (pending == null) {
+      try { fs.unlinkSync(dataFile() + ".exit.tmp") } catch {}
+    }
   } catch (e) {
     console.error("finanças: falha ao salvar", e)
     if (pending == null) pending = txt
@@ -79,8 +89,17 @@ function flushSync() {
     const tmp = dataFile() + ".exit.tmp"
     const fd = fs.openSync(tmp, "w")
     try { fs.writeFileSync(fd, encrypt(pending)); fs.fsyncSync(fd) } finally { fs.closeSync(fd) }
-    fs.renameSync(tmp, dataFile())
-    if (!writing) pending = null
+    if (!writing) {
+      // Sem gravação anterior em andamento, publica o checkpoint diretamente.
+      try { fs.renameSync(tmp, dataFile()); pending = null }
+      catch (e) {
+        // Em Windows, antivírus pode segurar o destino: o checkpoint
+        // fsync em .exit.tmp permite recuperar no próximo início.
+        console.warn("Finanças: checkpoint salvo para recuperação", e)
+      }
+    }
+    // Se já havia um flush assíncrono, não substitui sua fila: ele pode
+    // terminar com uma versão antiga, então a nova fica em .exit.tmp e pending.
     return true
   } catch (e) { console.error("finanças: falha ao salvar na saída", e); return false }
 }
