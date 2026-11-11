@@ -7,9 +7,12 @@
 
 import { B, E, G, GH, GW, Grid, K, L, LID, O, P, S, T, X, type Pal } from "./grid"
 import { drawGoat, GOAT_COATS } from "./goat"
+import { drawDog, DOG_COATS } from "./dog"
+import { drawFrog, FROG_COATS } from "./frog"
+import { drawDragon, DRAGON_COATS } from "./dragon"
 export { GH, GW }
 
-export type Species = "cat" | "goat"
+export type Species = "cat" | "goat" | "dog" | "frog" | "dragon"
 export interface Coat { label: string; pal: Pal; stripes?: boolean; points?: boolean; patches?: boolean }
 
 export const COATS: Record<string, Coat> = {
@@ -198,13 +201,38 @@ export function draw(p: Pose, look: Look): Uint8Array {
 
 /* ---------------------------------------------------- quadros em cache ---------------------------------------------------- */
 
-export const SPECIES: Record<Species, { label: string; coats: Record<string, Coat>; name: string }> = {
+/** os bichinhos que dá para escolher; `sound` são os balõezinhos que ele solta de vez em quando */
+export const SPECIES: Record<Species, { label: string; coats: Record<string, Coat>; name: string; sound?: string[]; soundColor?: string; jumpy?: number }> = {
   cat: { label: "Gatinho", coats: COATS, name: "Gatinho" },
-  goat: { label: "Cabrinha", coats: GOAT_COATS, name: "Cabrinha" },
+  goat: { label: "Cabrinha", coats: GOAT_COATS, name: "Cabrinha", sound: ["Méé!", "Mééé"], soundColor: "#fff4d6", jumpy: 1.7 },
+  dog: { label: "Cachorrinho", coats: DOG_COATS, name: "Cachorrinho", sound: ["Au!", "Au au!", "Auu"], soundColor: "#ffe6c2", jumpy: 1.2 },
+  frog: { label: "Sapinho", coats: FROG_COATS, name: "Sapinho", sound: ["Croac", "Ribbit"], soundColor: "#d9f7b0", jumpy: 2.2 },
+  dragon: { label: "Dragãozinho", coats: DRAGON_COATS, name: "Dragãozinho", sound: ["Rawr!", "Grr"], soundColor: "#ffb15a", jumpy: 1.5 },
 }
+export const isSpecies = (v: unknown): v is Species => typeof v === "string" && v in SPECIES
 export const coatOf = (species: Species, coat: string) => {
   const all = SPECIES[species]?.coats ?? COATS
   return all[coat] ?? Object.values(all)[0]
+}
+
+/** desenha a pose do bicho na grade (sem canvas: dá para testar no Node) */
+export function drawSpecies(p: Pose, coat: Coat, species: Species): Uint8Array {
+  return species === "goat" ? drawGoat(p, coat) : species === "dog" ? drawDog(p, coat) : species === "frog" ? drawFrog(p, coat) : species === "dragon" ? drawDragon(p, coat) : draw(p, coat)
+}
+
+/** retângulo ocupado pelo desenho (em pixels da grade): vira a área de clique e a altura do nome */
+const boxCache = new Map<string, { l: number; t: number; w: number; h: number }>()
+export function frameBox(p: Pose, coat: string, species: Species) {
+  const key = species + JSON.stringify(p)
+  let b = boxCache.get(key)
+  if (b) return b
+  if (boxCache.size > 900) boxCache.clear()
+  const d = drawSpecies(p, coatOf(species, coat), species)
+  let l = GW, t = GH, r = 0, bt = 0
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (d[y * GW + x]) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); bt = Math.max(bt, y) }
+  b = r >= l ? { l, t, w: r - l + 1, h: bt - t + 1 } : { l: 0, t: 0, w: GW, h: GH }
+  boxCache.set(key, b)
+  return b
 }
 
 const cache = new Map<string, HTMLCanvasElement>()
@@ -214,7 +242,7 @@ export function frame(p: Pose, coat: string, species: Species = "cat"): HTMLCanv
   if (c) return c
   if (cache.size > 900) cache.clear()
   const def = coatOf(species, coat)
-  const d = species === "goat" ? drawGoat(p, def) : draw(p, def)
+  const d = drawSpecies(p, def, species)
   c = document.createElement("canvas")
   c.width = GW; c.height = GH
   const ctx = c.getContext("2d")!

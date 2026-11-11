@@ -109,10 +109,23 @@ export interface Settings {
 export type SportKind = "football" | "cs2" | "valorant"
 /** pelagem (gato: orange, gray, black, white, siamese, tabby, calico · cabra: white, brown, black, spotted, alpine) */
 export type PetColor = string
+export type PetSpecies = "cat" | "goat" | "dog" | "frog" | "dragon"
+/** um bichinho da área de trabalho (podem ser vários, até do mesmo tipo) */
+export interface PetOne {
+  id: string
+  species: PetSpecies
+  color: PetColor
+  /** nome mostrado numa plaquinha em cima dele */
+  name?: string
+}
 export interface PetPrefs {
   on: boolean
-  /** qual bichinho */
-  species?: "cat" | "goat"
+  /** os bichinhos na tela (quando ausente, vem dos campos antigos species/color/name) */
+  list?: PetOne[]
+  /** mostrar o nome em cima de cada bichinho (padrão: sim) */
+  showNames?: boolean
+  /** (antigo, um bichinho só) qual bichinho */
+  species?: PetSpecies
   /** última pelagem usada em cada bicho */
   coatBy?: Record<string, string>
   color: PetColor
