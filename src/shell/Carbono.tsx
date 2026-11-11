@@ -307,7 +307,12 @@ function PcIcon({ path }: { path: string }) {
   useEffect(() => {
     let alive = true
     let p = iconCache.get(path)
-    if (!p) { p = bridge.bar.icon(path).catch(() => ""); iconCache.set(path, p) }
+    if (!p) {
+      p = bridge.bar.icon(path).catch(() => "")
+      iconCache.set(path, p)
+      // Ícones em base64 são pesados; cache LRU simples com limite de 96.
+      while (iconCache.size > 96) iconCache.delete(iconCache.keys().next().value!)
+    }
     void p.then((s) => alive && setSrc(s || ""))
     return () => { alive = false }
   }, [path])
