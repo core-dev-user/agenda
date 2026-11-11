@@ -8,8 +8,12 @@ import { bridge } from "@/lib/bridge"
 import { useUiMode } from "@/lib/uimode"
 import { initScreens } from "@/lib/screens"
 
-;(window as any).__agenda = useStore
-import("@/lib/webapps").then((m) => { (window as any).__webapps = m.useWebApps })
+// Ferramentas de inspeção só em desenvolvimento: não carregar stores extras
+// nem expor controles globais do app na versão instalada.
+if (import.meta.env.DEV) {
+  ;(window as any).__agenda = useStore
+  void import("@/lib/webapps").then((m) => { (window as any).__webapps = m.useWebApps })
+}
 
 const Onboarding = lazy(() => import("@/components/Onboarding"))
 const AppShell = lazy(() => import("@/components/AppShell"))
