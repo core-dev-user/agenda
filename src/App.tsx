@@ -163,7 +163,8 @@ function useMainBar() {
 /** papel de parede como CSS (o fundo dos outros monitores desenha igual) */
 function wallCss(wp: ReturnType<typeof useStore.getState>["settings"]["wallpaper"]) {
   const bg =
-    wp.type === "image" && wp.image ? `center / cover no-repeat url("${mediaUrl(wp.image)}")`
+    wp.type === "engine" ? "transparent"
+    : wp.type === "image" && wp.image ? `center / cover no-repeat url("${mediaUrl(wp.image)}")`
     : wp.type === "color" ? wp.color
     : (GRADIENTS[wp.gradient] ?? GRADIENTS.dusk).css
   const filter = [wp.blur ? `blur(${wp.blur}px)` : "", wp.dim ? `brightness(${1 - wp.dim})` : ""].filter(Boolean).join(" ")
@@ -175,6 +176,8 @@ export function useThemeVars() {
   useEffect(() => {
     const r = document.documentElement
     r.dataset.theme = s.theme
+    // Native desktop is transparent only when an external wallpaper is selected.
+    r.dataset.wallpaperEngine = String(useUiMode.getState().mode === "desktop" && (s.wallpaper.type === "engine" || Object.values(s.wallpaperBy ?? {}).some((v) => v.type === "engine")))
     r.classList.toggle("dark", s.dark)
     r.classList.toggle("no-anim", !s.animations)
     const set = (k: string, v: string) => r.style.setProperty(k, v)
