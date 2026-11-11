@@ -182,13 +182,20 @@ function fromBase64Url(raw: string): Uint8Array {
   return Uint8Array.from(binary, (c) => c.charCodeAt(0))
 }
 
+function blobFromBytes(bytes: Uint8Array): Blob {
+  // TS 5.9 distingue ArrayBufferLike de ArrayBuffer (SharedArrayBuffer).
+  const buffer = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(buffer).set(bytes)
+  return new Blob([buffer])
+}
+
 async function gzip(bytes: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"))
+  const stream = blobFromBytes(bytes).stream().pipeThrough(new CompressionStream("gzip"))
   return new Uint8Array(await new Response(stream).arrayBuffer())
 }
 
 async function ungzip(bytes: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))
+  const stream = blobFromBytes(bytes).stream().pipeThrough(new DecompressionStream("gzip"))
   const reader = stream.getReader()
   const chunks: Uint8Array[] = []
   let total = 0
@@ -256,7 +263,7 @@ export function importedTemplate(source: SharedTemplate, makeId: () => string): 
   const safe = sanitized(source)
   const now = Date.now()
   return {
-    id: makeId(), name: safe.name, createdAt: now, updatedAt: now,
+    id: makeId(), name: safe.name, createdAt: now, updatedAt: now, source: "shared",
     settings: safe.settings,
     ...(safe.widgets ? { widgets: safe.widgets.map((w) => ({ ...w, id: makeId() })) } : {}),
   }
