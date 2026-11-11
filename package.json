@@ -16,6 +16,7 @@
     "test:media": "node --test tests/pcmedia.test.cjs",
     "test:security": "node --test tests/security-network.test.cjs",
     "test:finance": "node --test tests/finance-save.test.cjs",
+    "test:perf": "node --test tests/perf-policy.test.cjs",
     "test:wallpaper": "node --test tests/wallpaper-engine.test.cjs",
     "test:taskbar": "node --test tests/taskbar*.test.cjs",
     "test:taskbar:windows": "electron tests/taskbar-preview-smoke.cjs"
