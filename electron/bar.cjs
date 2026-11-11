@@ -14,6 +14,7 @@ const modes = require("./mode.cjs")
 const keys = require("./keys.cjs")
 const games = require("./games.cjs")
 const { foregroundInfo, shouldCaptureKeys } = require("./taskbar-key-policy.cjs")
+const { createRecoveryBudget } = require("./taskbar-recovery.cjs")
 const { collectStartApps, isAppsFolderTarget } = require("./startapps.cjs")
 
 const cfgFile = () => path.join(app.getPath("userData"), "bar.json")
@@ -85,6 +86,8 @@ let poll = null
 let polling = false
 let helperFailures = 0
 let helperGeneration = 0
+let recoveryTimer = null
+const recoveryBudget = createRecoveryBudget()
 let recoveryShortcut = false
 let desktopShortcut = false
 let foreground = null // updated from the real foreground window, not from any background game process
@@ -225,8 +228,9 @@ async function tickWindows() {
   const raw = await winh.call("list")
   if (!bars.size) return
   if (!raw) {
-    // One stalled helper must not turn off the replacement taskbar forever.
-    if (++helperFailures >= 5) { cfg.on = false; save(); teardown() }
+    // A helper may be restarting after Explorer changes, a suspended game or a timeout.
+    // Temporarily restore native taskbar then retry without clearing the preference.
+    if (++helperFailures >= 5) recoverTaskbar("auxiliar Win32 sem resposta")
     return
   }
   helperFailures = 0
@@ -308,9 +312,8 @@ function makeBar(d) {
     const now = Date.now()
     barFailureTimes.push(now)
     while (barFailureTimes.length && barFailureTimes[0] < now - 45000) barFailureTimes.shift()
-    if (barFailureTimes.length >= 5) {
-      cfg.on = false; save(); teardown()
-    } else rebuild()
+    if (barFailureTimes.length >= 5) recoverTaskbar("renderizador da barra instável")
+    else rebuild()
   }
   let freezeTimer = null
   b.webContents.on("render-process-gone", failed)
@@ -391,6 +394,25 @@ let rebuildT = null
 function rebuild() {
   clearTimeout(rebuildT)
   rebuildT = setTimeout(() => { teardown(false); create() }, 800)
+}
+/** Safe fallback while restarting: show the native taskbar, retry at most 3
+ * times per 5-minute window, and keep the user's on/off choice unchanged.
+ */
+function recoverTaskbar(reason) {
+  if (!active()) return
+  const plan = recoveryBudget.failure()
+  console.warn("Widgy taskbar recovery:", reason, "attempt", plan.attempt)
+  if (!plan.retry) {
+    cfg.on = false; save()
+    teardown() // Multiple consecutive crashes: native Windows stays available.
+    return
+  }
+  teardown(true, false)
+  recoveryTimer = setTimeout(() => {
+    recoveryTimer = null
+    if (active() && !bars.size) create()
+  }, plan.delayMs)
+  recoveryTimer.unref?.()
 }
 function onMetrics() { if (bars.size) layout() }
 
@@ -579,8 +601,11 @@ keys.onKey((ev) => {
 // Running games are not a reason to disable shortcuts in another foreground app.
 // Foreground changes are detected by tickWindows() above.
 
-function teardown(restore = true) {
-  clearTimeout(settleT); clearTimeout(warmupT); clearTimeout(rebuildT); clearTimeout(peekT)
+function teardown(restore = true, notify = true) {
+  clearTimeout(settleT); clearTimeout(warmupT); clearTimeout(rebuildT); clearTimeout(peekT); clearTimeout(recoveryTimer)
+  recoveryTimer = null
+  helperFailures = 0
+  barFailureTimes.length = 0
   if (recoveryShortcut) globalShortcut.unregister("Control+Alt+Backspace")
   if (desktopShortcut) globalShortcut.unregister("Control+Alt+D")
   recoveryShortcut = false
@@ -599,7 +624,8 @@ function teardown(restore = true) {
   bars.clear(); desks.clear(); hiddenOn.clear()
   keys.enable(false)
   if (!restore) return
-  const main = getMain(); if (main && !main.isDestroyed()) main.webContents.send("bar:main", { type: "shell-failed" })
+  const main = getMain()
+  if (notify && main && !main.isDestroyed()) main.webContents.send("bar:main", { type: "shell-failed" })
   winh.call("restore " + (cfg.abState ?? -1))
   cfg.hidTaskbar = false; delete cfg.abState; save()
   setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(modes.workArea()) }, 300)
@@ -628,7 +654,10 @@ function register(ipcMain, mainGetter) {
     if (cfg.hidTaskbar && !active()) { winh.call("restore " + (cfg.abState ?? 0)); cfg.hidTaskbar = false; delete cfg.abState; save() }
     setTimeout(create, 1200)
   })
-  app.on("before-quit", () => { if (bars.size) teardown() })
+  app.on("before-quit", () => {
+    clearTimeout(recoveryTimer); recoveryTimer = null
+    if (bars.size) teardown()
+  })
 
   ipcMain.handle("bar:get", () => state())
   ipcMain.handle("bar:set", (_e, p) => {

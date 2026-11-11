@@ -78,6 +78,7 @@ function barHarness(t) {
     './keys.cjs': { onKey() {}, enable() {}, winKey() {} }, './games.cjs': { onPlaying() {}, playing: () => false },
     './taskbar-key-policy.cjs': require('../electron/taskbar-key-policy.cjs'),
     './startapps.cjs': { collectStartApps: async () => [], isAppsFolderTarget: () => false },
+    './taskbar-recovery.cjs': require('../electron/taskbar-recovery.cjs'),
   })
   api.register(ipc, () => null)
   ipc.handlers.get('bar:set')({}, { on: true })
