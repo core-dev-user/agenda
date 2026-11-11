@@ -517,7 +517,7 @@ function WallpaperEnginePanel() {
           Prefira essa regra específica a desativar globalmente as pausas durante jogos.
         </div>
       )}
-      {error && <div className="text-xs text-[#ff8f8f]">{error}</div>
+      {error && <div className="text-xs text-[#ff8f8f]">{error}</div>}
       <div className="text-[11px] leading-relaxed text-fg-muted">
         Não precisa exportar seus wallpapers do Workshop. O Wallpaper Engine deve continuar aberto, e a interação direta com o fundo depende do Windows e do próprio Wallpaper Engine.
       </div>
