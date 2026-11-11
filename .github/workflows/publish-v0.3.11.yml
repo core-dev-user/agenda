@@ -1,0 +1,56 @@
+name: Publicar Widgy 0.3.11
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v0.3.11.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    if: "startsWith(github.event.head_commit.message, 'release: publicar v0.3.11')"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Conferir versao
+        shell: bash
+        run: test "$(node -p "require('./package.json').version")" = "0.3.11"
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Validar integrações Electron
+        run: node --check electron/webapps.cjs && node --check electron/media.cjs && node --check electron/wallpaper-engine.cjs
+      - name: Testar Spotify e player do PC
+        run: npm run test:media
+      - name: Testar integração com Wallpaper Engine
+        run: npm run test:wallpaper
+      - name: Testar atalhos e barra do Widgy
+        run: npm run test:taskbar
+      - name: Compilar aplicativo
+        run: npm run build
+      - name: Validar previas da barra com Windows e DWM
+        run: npm run test:taskbar:windows
+      - name: Criar release Widgy 0.3.11
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.11 >/dev/null 2>&1 || gh release create v0.3.11 --target "$GITHUB_SHA" --title "Widgy 0.3.11 — Novo clima e abertura animada" --notes "Novo widget de clima com cartão azul atmosférico, ícones preenchidos e previsão completa de horas e cinco dias. Inclui a nova animação de abertura e mantém a integração Wallpaper Engine para fundos animados por trás dos widgets. Suporte ao Wallpaper Engine deve ser verificado no computador do usuário."
+      - name: Gerar instalador Windows e publicar atualizacao
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis --publish always
+      - name: Confirmar arquivos do instalador
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.11 --json assets --jq '.assets[].name' | grep -Fx 'Widgy-Setup-0.3.11.exe'
+          gh release view v0.3.11 --json assets --jq '.assets[].name' | grep -Fx 'Widgy-Setup-0.3.11.exe.blockmap'
+          gh release view v0.3.11 --json assets --jq '.assets[].name' | grep -Fx 'latest.yml'
