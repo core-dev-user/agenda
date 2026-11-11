@@ -42,7 +42,9 @@ export function usePerf() {
   const pauseInGame = useStore((s) => s.settings.perfPauseInGame ?? true)
   const lite = useStore((s) => !!s.settings.perfLite)
   const monitorMs = useStore((s) => performanceBudget(s.settings, s.gamesRunning.length > 0).monitorMs)
+  const fps = useStore((s) => performanceBudget(s.settings, s.gamesRunning.length > 0).fps)
   useEffect(() => { void bridge.sysmon.rate(monitorMs).catch(() => {}) }, [monitorMs])
+  useEffect(() => { window.dispatchEvent(new Event("widgy:perf-settings")) }, [fps])
   useEffect(() => {
     let lastMove = 0
     let timer: ReturnType<typeof setTimeout> | undefined
