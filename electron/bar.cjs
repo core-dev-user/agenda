@@ -184,14 +184,20 @@ function iconSource(file) {
   } catch {}
   return { file, index: 0 }
 }
-async function iconOf(file) {
+async function iconOf(file, useNative = true) {
   if (!file) return ""
   const k = file.toLowerCase()
-  if (icons.has(k)) return icons.get(k)
+  if (icons.has(k) && icons.get(k)) return icons.get(k)
   let url = ""
-  // primeiro, o ícone exatamente como o Explorer desenha (resolve atalhos, .msc, jogos…)
-  const b64 = await winh.call("icon " + file)
-  if (b64 && b64 !== "none" && b64 !== "ok" && /^[A-Za-z0-9+/=]+$/.test(b64)) { icons.set(k, "data:image/png;base64," + b64); return icons.get(k) }
+  // Menu Iniciar can render dozens of icons at once. Never fill the single
+  // Win32 helper FIFO with thumbnail requests, as this stalls taskbar polling.
+  if (useNative) {
+    const b64 = await winh.call("icon " + file)
+    if (b64 && b64 !== "none" && b64 !== "ok" && /^[A-Za-z0-9+/=]+$/.test(b64)) {
+      icons.set(k, "data:image/png;base64," + b64)
+      return icons.get(k)
+    }
+  }
   const src = iconSource(file)
   try {
     // arquivo .ico: lê direto (fica nítido); .exe/.dll: o Windows dá o ícone dele
@@ -700,7 +706,7 @@ function register(ipcMain, mainGetter) {
     return winh.call("peek " + (on ? 1 : 0))
   })
   ipcMain.handle("bar:apps", () => startApps())
-  ipcMain.handle("bar:icon", (_e, file) => iconOf(String(file || "")))
+  ipcMain.handle("bar:icon", (_e, file) => iconOf(String(file || ""), false))
   ipcMain.handle("bar:launch", (_e, file) => {
     if (typeof file !== "string" || !file) return
     if (isAppsFolderTarget(file)) {

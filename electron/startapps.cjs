@@ -105,4 +105,4 @@ async function collectStartApps({ roots = shortcutRoots(), fsApi = fs, query = q
   }
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
 }
-module.exports = { collectStartApps, shortcutRoots, isAppsFolderTarget, scanShortcuts, queryWindowsApps }
+module.exports = { collectStartApps, shortcutRoots, isAppsFolderTarget, scanShortcuts, queryWindowsApps, PS }
