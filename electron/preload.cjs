@@ -112,6 +112,7 @@ contextBridge.exposeInMainWorld("agenda", {
   sysmon: {
     sub: (id) => ipcRenderer.invoke("sysmon:sub", id),
     unsub: (id) => ipcRenderer.invoke("sysmon:unsub", id),
+    rate: (ms) => ipcRenderer.invoke("sysmon:rate", ms),
     onData: on("sysmon:data"),
   },
   finance: {

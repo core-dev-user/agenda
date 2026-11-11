@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import { Clapperboard } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge } from "@/lib/bridge"
+import { perfEmbedHz } from "@/lib/perf"
 import { Artwork, useMusic } from "@/components/MusicPlayer"
 import type { Widget } from "@/lib/types"
 
@@ -14,10 +15,12 @@ export const CLIP_BAR = 26
  */
 function useClipSlot(slot: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
-    let raf = 0
+    let alive = true
+    let pending: ReturnType<typeof setTimeout> | undefined
+    let frame = 0
     let last = ""
     const overlaps = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
-    const loop = () => {
+    const check = () => {
       const el = slot.current
       let key = "off"
       let b: { x: number; y: number; w: number; h: number; radius: number } | null = null
@@ -26,15 +29,38 @@ function useClipSlot(slot: React.RefObject<HTMLDivElement | null>) {
         const covered = [...document.querySelectorAll<HTMLElement>("[data-appwin]")].some((w) => w.style.pointerEvents !== "none" && overlaps(w.getBoundingClientRect(), r))
         if (!covered && r.width > 40 && r.height > 30) {
           b = { x: r.left, y: r.top, w: r.width, h: r.height, radius: parseFloat(getComputedStyle(el).borderBottomLeftRadius) || 0 }
-          key = [b.x, b.y, b.w, b.h].map(Math.round).join(",")
+          key = [b.x, b.y, b.w, b.h, b.radius].map(Math.round).join(",")
         }
       }
-      if (key !== last) { last = key; bridge.music.clip(b) }
-      raf = requestAnimationFrame(loop)
+      if (key !== last) { last = key; void bridge.music.clip(b) }
     }
-    loop()
-    return () => { cancelAnimationFrame(raf); bridge.music.clip(null) }
-  }, [])
+    const tick = () => {
+      if (!alive) return
+      check()
+      pending = setTimeout(tick, Math.round(1000 / perfEmbedHz()))
+    }
+    // Arrastar o widget usa atualizações imediatas, mas parado não precisa de RAF.
+    const moving = (ev: PointerEvent) => {
+      if (!ev.buttons || frame) return
+      frame = requestAnimationFrame(() => { frame = 0; check() })
+    }
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(check) : null
+    if (slot.current) observer?.observe(slot.current)
+    tick()
+    window.addEventListener("pointermove", moving, { passive: true })
+    window.addEventListener("resize", check)
+    document.addEventListener("visibilitychange", check)
+    return () => {
+      alive = false
+      clearTimeout(pending)
+      cancelAnimationFrame(frame)
+      observer?.disconnect()
+      window.removeEventListener("pointermove", moving)
+      window.removeEventListener("resize", check)
+      document.removeEventListener("visibilitychange", check)
+      void bridge.music.clip(null)
+    }
+  }, [slot])
 }
 
 /** Widget só do clipe, no formato do vídeo, liso como no app (o próprio player, não uma cópia quadro a quadro). */

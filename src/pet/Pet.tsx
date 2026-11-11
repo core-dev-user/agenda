@@ -9,7 +9,7 @@
 import { screenList } from "@/lib/screens"
 import { useEffect, useRef } from "react"
 import { useStore } from "@/lib/store"
-import { perfPaused } from "@/lib/perf"
+import { perfPaused, perfVisualFps } from "@/lib/perf"
 import { fontFamily } from "@/lib/fonts"
 import type { PetOne, PetPrefs } from "@/lib/types"
 import { frame, frameBox, GH, GW, isSpecies, SPECIES, type Pose, type Species } from "./sprites"
@@ -40,7 +40,8 @@ function petLoop(step: () => void, keepGoing: () => boolean) {
     if (dead) return
     const paused = perfPaused()
     if (document.hidden || (paused && !keepGoing())) { t = window.setTimeout(() => (raf = requestAnimationFrame(run)), 500); return }
-    if (!paused || ts - lastRun >= 31) { lastRun = ts; step() }
+    const fps = Math.min(perfVisualFps(), paused ? 30 : 60)
+    if (ts - lastRun >= 1000 / fps) { lastRun = ts; step() }
     raf = requestAnimationFrame(run)
   }
   raf = requestAnimationFrame(run)
@@ -317,7 +318,8 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
     let scanAt = 0
     const stop = petLoop(() => {
       const now = performance.now()
-      const dt = Math.min(0.05, (now - last) / 1000)
+      // Preserva a velocidade física mesmo em 12–15 FPS; limite evita saltos grandes.
+      const dt = Math.min(0.1, (now - last) / 1000)
       last = now
       const s = sc()
       const g = 900 * s

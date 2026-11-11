@@ -1,7 +1,8 @@
 param(
  [Parameter(Mandatory)][string]$BaselineDir,
  [Parameter(Mandatory)][string]$CandidateDir,
- [Parameter(Mandatory)][string]$OutputDir
+ [Parameter(Mandatory)][string]$OutputDir,
+ [ValidateSet("quality", "auto", "gaming")][string]$CandidateProfile = "quality"
 )
 $ErrorActionPreference = "Stop"
 $BaselineDir = (Resolve-Path $BaselineDir).Path
@@ -18,7 +19,7 @@ function Median([double[]]$values) {
  return $sorted[$i]
 }
 
-function New-Fixture([string]$dir, [string]$layout) {
+function New-Fixture([string]$dir, [string]$layout, [string]$profile) {
  $userDir = Join-Path $dir "userdata"
  New-Item -ItemType Directory -Force $userDir | Out-Null
  [ordered]@{ mode = "screen"; display = 0; span = $false } |
@@ -31,6 +32,7 @@ function New-Fixture([string]$dir, [string]$layout) {
    musicAutostart = $false
    weatherCity = "Sao Paulo"
    todayOnStart = $false
+   perfPreset = $profile
  }
  $widgets = @(
    [ordered]@{ id = "bench-clock"; type = "clock"; x = 42; y = 42; w = 360; h = 180; config = [ordered]@{ style = "digital"; seconds = $true } },
@@ -63,7 +65,7 @@ function Get-Tree([int]$rootPid) {
 function Measure-Run([string]$label, [string]$appDir, [string]$layout, [int]$iteration) {
  $caseDir = Join-Path $OutputDir "$label-$layout-$iteration"
  New-Item -ItemType Directory -Force $caseDir | Out-Null
- New-Fixture -dir $caseDir -layout $layout
+ New-Fixture -dir $caseDir -layout $layout -profile $(if ($label -eq "baseline") { "quality" } else { $CandidateProfile })
  $exe = Join-Path $appDir "node_modules\electron\dist\electron.exe"
  if (-not (Test-Path $exe)) { throw "Electron nao instalado: $exe" }
  $env:AGENDA_SHOT = $caseDir
@@ -150,8 +152,10 @@ foreach ($layout in @("classic", "carbono")) {
 $report = [ordered]@{
  baseline = "v0.3.12"
  candidate = $env:GITHUB_SHA
+ candidateProfile = $CandidateProfile
+ benchmarkKind = $(if ($CandidateProfile -eq "quality") { "pure" } else { "profile" })
  dateUTC = (Get-Date).ToUniversalTime().ToString("o")
- method = "Windows GitHub-hosted runner; screenshot-mode Electron; GPU acceleration disabled; two runs per layout and version"
+ method = "Windows GitHub-hosted runner; screenshot-mode Electron; GPU acceleration disabled; baseline uses v0.3.12; pure means candidate quality with no FPS caps; two runs per layout and version"
  caveats = "Spotify session and Wallpaper Engine are not installed; this is a short-duration startup benchmark, not steady-state or real-user GPU profiling"
  gpuMeasured = $false
  comparison = $comparison

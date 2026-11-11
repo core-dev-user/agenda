@@ -102,10 +102,15 @@ function AnimWall({ file, filter }: { file: string; filter?: string }) {
     const v = ref.current
     if (!v) return
     const sync = () => { if (perfPaused() || document.hidden) v.pause(); else v.play().catch(() => {}) }
-    const id = setInterval(sync, 1500)
+    // O vídeo só precisa reagir quando a visibilidade/desempenho muda.
+    // Um setInterval por monitor ficava acordando o renderer sem necessidade.
     document.addEventListener("visibilitychange", sync)
+    window.addEventListener("widgy:perf-state", sync)
     sync()
-    return () => { clearInterval(id); document.removeEventListener("visibilitychange", sync) }
+    return () => {
+      document.removeEventListener("visibilitychange", sync)
+      window.removeEventListener("widgy:perf-state", sync)
+    }
   }, [file, isGif])
   if (isGif) return <img src={mediaUrl(file)} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" style={{ filter }} />
   return <video ref={ref} src={mediaUrl(file)} autoPlay loop muted playsInline disablePictureInPicture className="absolute inset-0 h-full w-full object-cover" style={{ filter }} />

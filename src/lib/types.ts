@@ -1,4 +1,5 @@
 import type { ShellPrefs } from "@/shell/pack"
+import type { PerfPreset, PreloadMode } from "@/lib/perf-policy"
 
 export type ThemeId = "glass" | "metal" | "retro" | "terminal" | "minimal"
 export type CursorStyle = "system" | "dot" | "ring" | "sakura" | "pixel" | "crosshair" | "arrow" | "heart" | "star" | "neon" | "diamond" | "bubble" | "paw"
@@ -92,6 +93,13 @@ export interface Settings {
   focus?: FocusPrefs
   /** abrir a tela Hoje quando o Agenda abre */
   todayOnStart?: boolean
+  /** Perfil de desempenho; automático reduz animações quando há jogo aberto. */
+  perfPreset?: PerfPreset
+  /** Limites para o perfil personalizado. */
+  perfFps?: number
+  perfEmbedHz?: number
+  perfMonitorMs?: number
+  perfPreload?: PreloadMode
   /** modo leve: sem efeito de vidro desfocado, pétalas e partículas do cursor */
   perfLite?: boolean
   /** pausar as animações enquanto um jogo está aberto (padrão: sim) */

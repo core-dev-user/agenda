@@ -5,8 +5,17 @@ on:
     branches: [main]
     paths:
       - "scripts/perf-compare.ps1"
+      - "src/lib/perf.ts"
+      - "src/lib/perf-policy.ts"
+      - "src/lib/webapps.ts"
+      - "src/App.tsx"
+      - "src/components/AppWindow.tsx"
       - ".github/workflows/performance-comparison.yml"
   workflow_dispatch:
+
+concurrency:
+  group: widgy-performance-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -14,7 +23,11 @@ permissions:
 jobs:
   performance-windows:
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [quality, auto, gaming]
     steps:
       - name: Obter Widgy otimizado
         uses: actions/checkout@v4
@@ -70,12 +83,12 @@ jobs:
         run: npm run build
       - name: Medir RAM, CPU e inicialização nos dois visuais
         shell: pwsh
-        run: ./candidate/scripts/perf-compare.ps1 -BaselineDir ./baseline -CandidateDir ./candidate -OutputDir ./results
+        run: ./candidate/scripts/perf-compare.ps1 -BaselineDir ./baseline -CandidateDir ./candidate -OutputDir ./results -CandidateProfile "${{ matrix.profile }}"
       - name: Salvar relatório e capturas mesmo quando a GUI não estiver disponível
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: widgy-perf-windows
+          name: widgy-perf-windows-${{ matrix.profile }}
           path: results/
           if-no-files-found: warn
           retention-days: 7

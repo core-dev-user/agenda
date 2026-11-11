@@ -37,7 +37,7 @@ export interface AgendaBridge {
     valorantAgent(): Promise<ValAgentNow | null>
     onValorantAgent(cb: (a: ValAgentNow | null) => void): Unsub
   }
-  sysmon: { sub(id: string): Promise<boolean>; unsub(id: string): Promise<boolean>; onData(cb: (d: SysStats) => void): Unsub }
+  sysmon: { sub(id: string): Promise<boolean>; unsub(id: string): Promise<boolean>; rate(ms: number): Promise<boolean>; onData(cb: (d: SysStats) => void): Unsub }
   mode: {
     get(): Promise<{ mode: UiMode | ""; monitors: number; display?: number }>
     /** salva e reabre o app no novo modo (e/ou no monitor escolhido) */
@@ -352,7 +352,7 @@ const browserFallback: AgendaBridge = {
   app: { autostart: async () => false, openExternal: async (u) => void window.open(u, "_blank"), screenInfo: async () => ({ long: Math.max(screen.width, screen.height) * devicePixelRatio }), show: async () => {}, quit: async () => {} },
   sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
   games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop, valorantAgent: async () => null, onValorantAgent: noop },
-  sysmon: { sub: async () => false, unsub: async () => false, onData: noop },
+  sysmon: { sub: async () => false, unsub: async () => false, rate: async () => false, onData: noop },
   wallpaperEngine: { status: async () => ({ supported: false, installed: false, running: false, wallpaper: "" }), open: async () => false, restart: async () => false },
   mode: { get: async () => ({ mode: "screen", monitors: 1 }), set: async () => false, displays: async () => [], raise: async () => {}, screens: async () => [], onScreens: noop, span: async () => false, detectApps: async () => ({ apps: [], monitors: 1 }), onSummon: noop },
   pcmedia: { sub: async () => ({ none: true, unsupported: true }), unsub: async () => {}, cmd: async () => false, onState: noop },
