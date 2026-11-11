@@ -43,12 +43,28 @@ jobs:
       - name: Instalar dependências da versão original
         working-directory: baseline
         run: npm ci
+      - name: Garantir binário Electron original (npm pode bloquear postinstall)
+        working-directory: baseline
+        shell: pwsh
+        run: |
+          if (-not (Test-Path ./node_modules/electron/dist/electron.exe)) {
+            node ./node_modules/electron/install.js
+          }
+          if (-not (Test-Path ./node_modules/electron/dist/electron.exe)) { throw "Electron original indisponível" }
       - name: Compilar versão original
         working-directory: baseline
         run: npm run build
       - name: Instalar dependências da versão otimizada
         working-directory: candidate
         run: npm ci
+      - name: Garantir binário Electron otimizado
+        working-directory: candidate
+        shell: pwsh
+        run: |
+          if (-not (Test-Path ./node_modules/electron/dist/electron.exe)) {
+            node ./node_modules/electron/install.js
+          }
+          if (-not (Test-Path ./node_modules/electron/dist/electron.exe)) { throw "Electron otimizado indisponível" }
       - name: Compilar versão otimizada
         working-directory: candidate
         run: npm run build
