@@ -24,6 +24,7 @@ if (process.env.AGENDA_SHOT) {
 }
 const system = require("./system.cjs")
 const modes = require("./mode.cjs")
+const wallpaperEngine = require("./wallpaper-engine.cjs")
 const userDir = app.getPath("userData")
 const mediaDir = path.join(userDir, "media")
 const toolsDir = path.join(userDir, "tools")
@@ -46,6 +47,10 @@ protocol.registerSchemesAsPrivileged([
 let win = null
 
 function createWindow() {
+  // Electron requires native transparency when creating the desktop window.
+  // Only enable it when Wallpaper Engine is selected; other users retain the
+  // existing opaque, low-overhead desktop.
+  const externalWallpaper = modes.mode() === "desktop" && wallpaperEngine.requiresTransparency(userDir)
   win = new BrowserWindow({
     width: 1600,
     height: 950,
@@ -53,7 +58,8 @@ function createWindow() {
     minHeight: 600,
     frame: false,
     show: false,
-    backgroundColor: "#071428",
+    transparent: externalWallpaper,
+    backgroundColor: externalWallpaper ? "#00000000" : "#071428",
     title: "Widgy",
     icon: path.join(__dirname, "..", "build", process.platform === "win32" ? "icon.ico" : "icon.png"),
     webPreferences: {
@@ -199,6 +205,7 @@ require("./sports.cjs").register(ipcMain)
 require("./webapps.cjs").register(ipcMain, () => win, app)
 system.register(ipcMain, () => win)
 modes.register(ipcMain, () => win, () => system.quit())
+wallpaperEngine.register(ipcMain, () => system.quit())
 require("./media.cjs").register(ipcMain, () => win)
 require("./bar.cjs").register(ipcMain, () => win)
 require("./share.cjs").register(ipcMain)
