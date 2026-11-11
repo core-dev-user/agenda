@@ -28,6 +28,7 @@ import { copyWidget, pasteWidget, widgetClip } from "@/lib/widgetClip"
 import { toast } from "@/lib/toast"
 import { useBackground } from "@/lib/watchers"
 import { usePerf } from "@/lib/perf"
+import { performanceBudget } from "@/lib/perf-policy"
 import { CommandPalette } from "@/components/CommandPalette"
 import { Assistant, openAssistant, useAssistant } from "@/components/Assistant"
 import { FocusBar, useFocusActive } from "@/components/FocusBar"
@@ -76,14 +77,16 @@ function BarPanels() {
   )
 }
 
-/** salvamento automático extra: regrava a cada 20 s e garante a gravação ao fechar a janela */
+/** O middleware persist grava nas alterações reais; não force setState({}) a cada 20s. */
 export function useAutosave() {
   useEffect(() => {
-    const save = () => useStore.setState({})
-    const id = setInterval(save, 20000)
-    const bye = () => { save(); bridge.store.flush?.() }
-    window.addEventListener("beforeunload", bye)
-    return () => { clearInterval(id); window.removeEventListener("beforeunload", bye) }
+    const flush = () => { void bridge.store.flush?.() }
+    window.addEventListener("beforeunload", flush)
+    document.addEventListener("visibilitychange", flush)
+    return () => {
+      window.removeEventListener("beforeunload", flush)
+      document.removeEventListener("visibilitychange", flush)
+    }
   }, [])
 }
 
@@ -137,7 +140,16 @@ function useMainBar() {
       if (j !== last) { last = j; bridge.bar.sync(data) }
     }
     const t = setTimeout(send, 300)
-    const off = useStore.subscribe(() => setTimeout(send, 50))
+    let pending: ReturnType<typeof setTimeout> | null = null
+    const schedule = () => {
+      if (pending) return
+      pending = setTimeout(() => { pending = null; send() }, 90)
+    }
+    // A barra só depende destas 3 partes do estado. Não reagir a relógios,
+    // status de jogos, downloads ou outros widgets sem relação com ela.
+    const off = useStore.subscribe((s, old) => {
+      if (s.settings !== old.settings || s.windows !== old.windows || s.notifications !== old.notifications) schedule()
+    })
     const off2 = bridge.bar.onMain((m) => {
       const s = useStore.getState()
       // pedido de uma barra: abre no monitor dela
@@ -160,7 +172,7 @@ function useMainBar() {
       else if (m.type === "pin") { const pins = s.settings.pcPins ?? []; if (!pins.some((p) => p.path.toLowerCase() === m.app.path.toLowerCase())) s.setSettings({ pcPins: [...pins, m.app] }) }
       else if (m.type === "unpin") s.setSettings({ pcPins: (s.settings.pcPins ?? []).filter((p) => p.path.toLowerCase() !== m.path.toLowerCase()) })
     })
-    return () => { clearTimeout(t); off(); off2() }
+    return () => { clearTimeout(t); if (pending) clearTimeout(pending); off(); off2() }
   }, [])
 }
 
@@ -203,7 +215,25 @@ export default function App() {
   useThemeVars()
   const musicAuto = useStore((s) => s.settings.musicAutostart)
   useEffect(() => { if (musicAuto) bridge.music.open() }, [])
-  useEffect(() => { const t = setTimeout(preloadSections, 600); return () => clearTimeout(t) }, [])
+  useEffect(() => {
+    const profile = performanceBudget(useStore.getState().settings, useStore.getState().gamesRunning.length > 0)
+    if (profile.preload === "none") return
+    let canceled = false
+    let pendingIdle = 0
+    const start = () => {
+      if (canceled || document.hidden) return
+      pendingIdle = requestIdleCallback(() => { if (!canceled) preloadSections(profile.preload) }, { timeout: 3500 })
+      document.removeEventListener("visibilitychange", start)
+    }
+    const delay = useStore.getState().settings.perfPreset === "quality" ? 600 : 12000
+    const timer = setTimeout(() => { document.addEventListener("visibilitychange", start); start() }, delay)
+    return () => {
+      canceled = true
+      clearTimeout(timer)
+      cancelIdleCallback(pendingIdle)
+      document.removeEventListener("visibilitychange", start)
+    }
+  }, [])
   // avisos, agendas, foco, hibernação: tudo em segundo plano
   useBackground()
   usePerf()
