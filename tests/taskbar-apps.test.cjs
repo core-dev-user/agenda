@@ -9,8 +9,9 @@ test("enumerates deeply nested Windows shortcuts and adds modern AppsFolder apps
     "R/Editors/Tools": [{ name: "Tool.lnk" }, { name: "uninstall.lnk" }],
   }
   const fsApi = { async readdir(p) {
-    if (!data[p]) throw Error("missing")
-    return data[p].map((x) => ({
+    const key = p.replace(/\\/g, "/")
+    if (!data[key]) throw Error("missing")
+    return data[key].map((x) => ({
       name: x.name, isDirectory: () => !!x.dir, isFile: () => !x.dir,
     }))
   }}
