@@ -69,6 +69,20 @@ function wing(g: Grid, x: number, y: number, open: number) {
   }
 }
 
+/** asa batendo no voo: a = 1 lá em cima, a = -1 lá embaixo */
+function wingFly(g: Grid, x: number, y: number, a: number) {
+  const up = 10 * a
+  const sg = a >= 0 ? 1 : -1
+  // membrana em leque: do ombro até a borda de trás, que fica mais perto do corpo
+  for (let k = 0; k <= 8; k++) {
+    const t = k / 8
+    g.line(x + 1.5, y, x - 1 - 7 * t, y - up * (1 - t * 0.55), 1, T)
+  }
+  // osso da frente (mais escuro) com garrinha na ponta
+  g.line(x + 1, y, x - 1, y - up, 1, S)
+  g.set(x - 1, y - up - sg, X)
+}
+
 function leg(g: Grid, x0: number, y0: number, x1: number, y1: number, c: number) {
   g.line(x0, y0, x1, y1 - 1, 2, c)
   g.set(Math.round(x1) - 1, Math.round(y1), c); g.set(Math.round(x1), Math.round(y1), c); g.set(Math.round(x1) + 1, Math.round(y1), X)
@@ -138,6 +152,25 @@ export function drawDragon(p: Pose, _c: Coat): Uint8Array {
     leg(g, 20, by + 1.5, p.k === "jump" ? 24 : 21, by + 5.5, B)
     wing(g, 15, by - 2.5, flap)
     head(g, 24, by - 5.5, { eyes: p.k === "jump" ? "happy" : "open", mouth: p.k === "jump" })
+  } else if (p.k === "fly") {
+    // voando: corpo na horizontal, patinhas encolhidas para trás, rabo ondulando
+    const by = 11.5
+    const a = 1 - p.flap * 1.8
+    // asa de lá (mais escura) atrás do corpo, um pouco defasada
+    if (a < 0.3) wingFly(g, 13, by - 2.5, Math.min(1, a + 0.6))
+    tail(g, 8, by, 3.5, by + 1.5 + p.tail, 1, by - 1.5 + p.tail * 2)
+    g.line(12, by + 2, 9.5, by + 4, 2, S); g.set(8.5, by + 4.5, X)
+    g.oval(15, by, 7.8, 3.5, B, -0.04)
+    g.oval(15.5, by + 2, 5, 1.1, L, -0.04)
+    spikes(g, 9, 19, (x) => by - 3.4 + Math.abs(x - 15) * 0.1)
+    g.line(20, by + 2.5, 21.5, by + 4.5, 2, B); g.set(22.5, by + 4.5, X)
+    g.line(18, by + 2.5, 19, by + 4.5, 2, S)
+    wingFly(g, 15.5, by - 2.5, a)
+    const hy = by - 5.5
+    g.line(20.5, by - 1, 23, hy + 1, 3, B)
+    head(g, 24, hy, { eyes: p.fire ? "squint" : "open", mouth: !p.fire })
+    // boca aberta para soltar o fogo
+    if (p.fire) { g.set(26, hy + 2.6, P); g.set(27, hy + 2.6, P); g.set(28, hy + 2.6, P); g.set(26, hy + 3.4, B); g.set(27, hy + 3.4, B) }
   } else if (p.k === "stretch") {
     const a = p.amt
     tail(g, 8, 13 - a, 4, 9 - a, 2.5 + p.tail, 6 - a)

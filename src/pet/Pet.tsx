@@ -16,7 +16,7 @@ import { frame, frameBox, GH, GW, isSpecies, SPECIES, type Pose, type Species } 
 
 export const PET_DEFAULT: PetPrefs = { on: true, species: "cat", color: "orange", scale: 3, widgets: true, energy: 1 }
 
-type Act = "idle" | "walk" | "sit" | "groom" | "sleep" | "stretch" | "crouch" | "air" | "land" | "drag"
+type Act = "idle" | "fire" | "walk" | "sit" | "groom" | "sleep" | "stretch" | "crouch" | "air" | "land" | "drag"
 interface Plat { id: string; x1: number; x2: number; y: number; el?: Element }
 interface JumpPlan { plat: Plat; x: number }
 
@@ -113,6 +113,8 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
       phase: 0, tailT: 0, blinkAt: 2, blinkUntil: 0, happyUntil: 0,
       sq: 1, sqv: 0, targetX: 0, then: null as JumpPlan | null, run: false,
       hold: 0, zAt: 0, groomPaw: 0, swing: 0,
+      // dragão: altura do voo, batida das asas e fogo
+      hov: 0, flapT: 0, fireUntil: 0, emberAt: 0,
     }
     scan()
 
@@ -136,6 +138,29 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
       if (!snd) return heart()
       puff(snd[Math.floor(Math.random() * snd.length)], SPECIES[species()].soundColor ?? "#ffffff", st.dir * 9, -GH + 1, 2.6, 50, 1400)
     }
+
+    /* ---------------- fogo do dragão ---------------- */
+    const isDragon = () => species() === "dragon"
+    const FIRE = ["#fff6b0", "#ffd23f", "#ffb02e", "#ff7a1a", "#ff4d1a"]
+    /** uma brasinha quadrada saindo da boca, que voa para a frente, esfria e vira fumaça */
+    const ember = () => {
+      const s = sc()
+      // boca do desenho voando: (28, 8.5) na grade de 32×24
+      const mx = st.x + st.dir * (28 - GW / 2) * s
+      const my = st.y - st.hov - (GH - 8.5) * s
+      const el = document.createElement("span")
+      const sz = Math.round(s * rnd(1.2, 2.4))
+      const c = FIRE[Math.floor(Math.random() * FIRE.length)]
+      el.style.cssText = `position:absolute;left:${mx}px;top:${my}px;width:${sz}px;height:${sz}px;background:${c};box-shadow:0 0 ${s * 2}px ${c};pointer-events:none`
+      fxl.appendChild(el)
+      const dx = st.dir * rnd(40, 95) * (s / 3), dy = rnd(-12, 8) * (s / 3)
+      el.animate([
+        { transform: "translate(-50%,-50%) scale(1)", opacity: 1 },
+        { transform: `translate(calc(-50% + ${dx * 0.55}px), calc(-50% + ${dy * 0.55}px)) scale(1.1)`, opacity: 1, offset: 0.45 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy - 12 * (s / 3)}px)) scale(.4)`, opacity: 0, background: "#5d5566", boxShadow: "none" },
+      ], { duration: rnd(420, 760), easing: "cubic-bezier(.2,.7,.4,1)" }).onfinish = () => el.remove()
+    }
+    const breathe = (ms = 900) => { st.fireUntil = performance.now() + ms }
 
     /* ---------------- decisões ---------------- */
     const nightOwl = () => { const h = new Date().getHours(); return h >= 23 || h < 6 }
@@ -204,10 +229,12 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
         ["groom", from === "sit" || from === "groom" ? 14 : 4],
         ["sleep", (from === "sit" || from === "groom" ? 16 : 4) * sleepy / e],
         ["idle", 10],
+        ["fire", isDragon() ? 7 * e : 0],
       ])
       if (choice === "walk") planWalk(Math.random() < 0.18 * e)
       else if (choice === "jump") { if (!planJump()) planWalk() }
       else if (choice === "sit") setAct("sit", rnd(4, 14))
+      else if (choice === "fire") { setAct("fire", rnd(1.2, 1.8)); breathe(rnd(800, 1200)) }
       else if (choice === "groom") setAct("groom", rnd(2.2, 4.5))
       else if (choice === "sleep") setAct("sleep", rnd(25, 80) * sleepy)
       else { setAct("idle", rnd(1, 3)); if (sound() && Math.random() < 0.25) bleat() }
@@ -222,6 +249,8 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
       st.vy = dy / T - 0.5 * g * T
       st.dir = dx >= 0 ? 1 : -1
       st.plat = null
+      // dragão voando baixinho: o pulo sai da altura em que ele está
+      st.y -= st.hov; st.hov = 0
       squash(1.18)
       setAct("air")
     }
@@ -238,7 +267,7 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
     const move = (e: PointerEvent) => {
       if (!press) return
       const now = performance.now()
-      if (!press.moved && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 5) { press.moved = true; st.plat = null; setAct("drag"); st.hold = 0 }
+      if (!press.moved && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 5) { press.moved = true; st.plat = null; setAct("drag"); st.hold = 0; st.hov = 0; st.fireUntil = 0 }
       const dt = Math.max(1, now - press.lt) / 1000
       press.vx = press.vx * 0.6 + ((e.clientX - press.lx) / dt) * 0.4
       press.vy = press.vy * 0.6 + ((e.clientY - press.ly) / dt) * 0.4
@@ -256,7 +285,8 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
         return
       }
       // clique: muda o que está fazendo (anda → senta → dorme → anda)
-      if (sound() && Math.random() < 0.6) bleat()
+      if (isDragon() && Math.random() < 0.5) breathe(800)
+      else if (sound() && Math.random() < 0.6) bleat()
       else heart()
       st.happyUntil = performance.now() + 1300
       if (!st.plat) return
@@ -384,6 +414,19 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
       const blink = st.tailT < st.blinkUntil
       const happy = now < st.happyUntil
 
+      // ----- dragão: voa em vez de andar (e sobe um pouco para cuspir fogo) -----
+      const firing = isDragon() && (st.act === "fire" || now < st.fireUntil) && st.act !== "drag" && st.act !== "air"
+      const flying = isDragon() && (st.act === "walk" || firing)
+      if (isDragon()) {
+        // de vez em quando solta uma labaredinha no meio do voo
+        if (st.act === "walk" && now > st.fireUntil && Math.random() < dt * 0.06) breathe(rnd(600, 1000))
+        const want = st.act === "air" || st.act === "drag" ? st.hov : flying ? (7 + Math.sin(st.tailT * 3) * 1.5) * s : 0
+        st.hov += (want - st.hov) * Math.min(1, dt * 5)
+        if (st.hov < 0.3) st.hov = 0
+        st.flapT += dt * (st.act === "walk" && st.run ? 13 : 9)
+        if (firing && now > st.emberAt) { st.emberAt = now + 28; ember(); if (Math.random() < 0.5) ember() }
+      } else st.hov = 0
+
       // ----- escolhe o quadro -----
       const tailWave = (sp: number) => q(Math.sin(st.tailT * sp), 4)
       let pose: Pose
@@ -422,6 +465,10 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
           pose = { k: "stand", phase: 0, move: 0, tail: tailWave(1.4), eyes: happy ? "happy" : blink ? "blink" : "open" }
       }
 
+      if (isDragon() && st.act !== "air" && st.act !== "drag" && (flying || st.hov > s)) {
+        pose = { k: "fly", flap: q((Math.sin(st.flapT) + 1) / 2, 4), tail: tailWave(5), fire: firing }
+      }
+
       // ----- desenha (só quando o quadro muda) -----
       const dpr = devicePixelRatio || 1
       const W = GW * s, H = GH * s
@@ -435,7 +482,7 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
         ctx.drawImage(frame(pose, coat(), species()), 0, 0, pw, ph)
       }
       const sx = 1 / Math.sqrt(Math.max(0.5, st.sq))
-      const x = Math.round(st.x - W / 2), y = Math.round(st.y - H)
+      const x = Math.round(st.x - W / 2), y = Math.round(st.y - H - st.hov)
       wr.style.transform = `translate3d(${x}px,${y}px,0)`
       cv.style.transform = `scale(${st.dir * sx},${st.sq})`
       const grounded = !!st.plat && st.act !== "drag"

@@ -87,6 +87,8 @@ export type Pose =
   | { k: "fall"; tail: number }
   | { k: "stretch"; amt: number; tail: number }
   | { k: "drag"; swing: number }
+  /** só o dragão: voando (flap 0–1 = batida das asas) e, às vezes, cuspindo fogo */
+  | { k: "fly"; flap: number; tail: number; fire?: boolean }
 
 export function draw(p: Pose, look: Look): Uint8Array {
   const g = new Grid()
@@ -217,6 +219,7 @@ export const coatOf = (species: Species, coat: string) => {
 
 /** desenha a pose do bicho na grade (sem canvas: dá para testar no Node) */
 export function drawSpecies(p: Pose, coat: Coat, species: Species): Uint8Array {
+  if (p.k === "fly" && species !== "dragon") p = { k: "jump", tail: p.tail }
   return species === "goat" ? drawGoat(p, coat) : species === "dog" ? drawDog(p, coat) : species === "frog" ? drawFrog(p, coat) : species === "dragon" ? drawDragon(p, coat) : draw(p, coat)
 }
 
