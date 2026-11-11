@@ -15,7 +15,7 @@ $lastSampleSec = 0.0
 function Group-Process([string]$name) {
   # "electron.exe" sozinho pode pertencer a outro app (VS Code, editores etc.).
   # Contabilize apenas o Widgy instalado, cujo executável mantém o nome.
-  if ($name -match '^(Widgy|Agenda)
+  if ($name -match '^(Widgy|Agenda)$') { return "Widgy" }
   if ($name -match '^(Discord|DiscordCanary|DiscordPTB)$') { return "Discord" }
   if ($name -match '^(VALORANT|VALORANT-Win64-Shipping|RiotClientServices|RiotClientUx|RiotClientUxRender)$') { return "Valorant + Riot" }
   return $null
