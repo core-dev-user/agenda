@@ -1,3 +1,5 @@
+import type { ShellPrefs } from "@/shell/pack"
+
 export type ThemeId = "glass" | "metal" | "retro" | "terminal" | "minimal"
 export type CursorStyle = "system" | "dot" | "ring" | "sakura" | "pixel" | "crosshair" | "arrow" | "heart" | "star" | "neon" | "diamond" | "bubble" | "paw"
 export type CursorEffect = "none" | "trail" | "sakura" | "sparkle" | "glow" | "ripple" | "pixels" | "hearts" | "stars" | "bubbles" | "confetti" | "fire" | "snow" | "rainbow" | "comet" | "leaves" | "magic"
@@ -104,6 +106,8 @@ export interface Settings {
   savedRooms?: { code: string; name: string }[]
   /** assistente: IA local ligada (já baixada) e qual modelo */
   ai?: { on: boolean; model: "small" | "big" }
+  /** pacote de interface (ex.: Carbono) e seus ajustes */
+  shell?: ShellPrefs
 }
 
 export type SportKind = "football" | "cs2" | "valorant"

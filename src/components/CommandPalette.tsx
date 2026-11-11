@@ -30,9 +30,11 @@ export function CommandPalette() {
     window.addEventListener("keydown", key)
     return () => window.removeEventListener("keydown", key)
   }, [])
+  // com o pacote Carbono, o Ctrl+K abre a busca de baixo (src/shell/Carbono.tsx)
+  const packed = useStore((s) => s.settings.shell?.pack === "carbono")
   return createPortal(
     <AnimatePresence>
-      {open && (
+      {open && !packed && (
         <motion.div data-modal className="fixed inset-0 z-[6000] flex items-start justify-center bg-black/45 pt-[12vh]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} onMouseDown={close}>
           <motion.div className="surface w-[640px] max-w-[92vw] overflow-hidden" initial={{ y: -12, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: -8, scale: 0.98, opacity: 0 }} transition={{ type: "spring", stiffness: 520, damping: 36 }} onMouseDown={(e) => e.stopPropagation()}>
             <Palette close={close} />
