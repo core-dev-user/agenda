@@ -4,6 +4,7 @@ No Windows, selecione o modo Área de trabalho e ative a substituição da barra
 
 | Teclas | Ação com a substituição ativa |
 | --- | --- |
+| Win+D | Alterna a área de trabalho mantendo a barra Widgy visível |
 | Windows ou Ctrl+Esc | Iniciar do Agenda |
 | Win+S / Win+Q | Pesquisa do Agenda |
 | Win+I | Configurações do Agenda |
@@ -37,3 +38,9 @@ Antes de publicar um instalador, validar em Windows 10/11:
 - Encerrar o renderizador da barra e usar Ctrl+Alt+Backspace para verificar recuperação.
 
 A compilação e os testes de processos simulados não comprovam o comportamento interativo do Explorer ou do gancho de teclado.
+
+## Resiliência e catálogo de aplicativos
+
+O auxiliar de teclado reinicia se o PowerShell encerrar, e o auxiliar Win32 reaplica a ocultação da barra e reservas AppBar após falha. O renderizador tem tolerância a pausas temporárias; se ocorrerem cinco falhas em 45 segundos, a barra original é restaurada por segurança.
+
+O catálogo de aplicativos usa atalhos do Menu Iniciar e da Área de Trabalho, AppsFolder (Microsoft Store/MSIX) e entradas registradas em App Paths. Programas portáteis sem atalhos ou registro podem precisar de fixação manual.
