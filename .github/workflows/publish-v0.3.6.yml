@@ -1,0 +1,52 @@
+name: Publicar Widgy 0.3.6
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v0.3.6.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    if: "startsWith(github.event.head_commit.message, 'release: publicar v0.3.6')"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Conferir versao
+        shell: bash
+        run: test "$(node -p "require('./package.json').version")" = "0.3.6"
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Testar Spotify e player do PC
+        run: npm run test:media
+      - name: Testar atalhos e barra do Widgy
+        run: npm run test:taskbar
+      - name: Compilar aplicativo
+        run: npm run build
+      - name: Validar previas da barra com Windows e DWM
+        run: npm run test:taskbar:windows
+      - name: Criar release Widgy 0.3.6
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.6 >/dev/null 2>&1 || gh release create v0.3.6 --target "$GITHUB_SHA" --title "Widgy 0.3.6 — Atalhos em aplicativos e jogos" --notes "Corrige o desligamento dos atalhos do Widgy quando um jogo fica aberto em segundo plano. Os atalhos Win+D e Win+S permanecem ativos em programas comuns. Quando jogos protegidos por anti-cheat estão em primeiro plano, o Widgy preserva os atalhos nativos do Windows e oferece Ctrl+Alt+D como alternativa de Mostrar Area de Trabalho (quando a combinacao estiver disponivel). Mantem widgets, configuracoes e identificador do instalador. Em jogos exclusivos ou aplicativos elevados, o Windows pode impedir atalhos globais."
+      - name: Gerar instalador Windows e publicar atualizacao
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis --publish always
+      - name: Confirmar arquivos do instalador
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.6 --json assets --jq '.assets[].name' | grep -Fx 'Widgy-Setup-0.3.6.exe'
+          gh release view v0.3.6 --json assets --jq '.assets[].name' | grep -Fx 'Widgy-Setup-0.3.6.exe.blockmap'
+          gh release view v0.3.6 --json assets --jq '.assets[].name' | grep -Fx 'latest.yml'
