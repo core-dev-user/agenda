@@ -20,7 +20,20 @@ let lastWrite = 0
 
 function apply(st: GamesState) {
   const now = st.at || Date.now()
-  useStore.setState({ gamesRunning: st.playing })
+  const current = useStore.getState()
+  const previous = current.gamesRunning
+  // Não invalidar widgets e persistência quando o scanner retorna o mesmo estado.
+  if (JSON.stringify(previous) !== JSON.stringify(st.playing)) {
+    useStore.setState({ gamesRunning: st.playing })
+  }
+  const history = current.gaming ?? emptyGaming()
+  const live = new Set(st.playing.map((p) => p.id))
+  const changed = history.sessions.some((s) => s.open && !live.has(s.game))
+    || st.playing.some((p) => !history.sessions.some((s) => s.open && s.game === p.id)
+      || !history.games[p.id] || history.games[p.id].name !== p.name
+      || (p.art && Object.keys(p.art).length && JSON.stringify(history.games[p.id]?.art) !== JSON.stringify(p.art)))
+  // A duração de uma sessão ativa precisa ser salva no máximo uma vez por minuto.
+  if (!changed && (!st.playing.length || Date.now() - lastWrite < 55_000)) return
   setG((g) => {
     const games = { ...g.games }
     let sessions = g.sessions.map((s) => ({ ...s }))
