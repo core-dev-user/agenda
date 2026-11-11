@@ -71,9 +71,18 @@ async function flush() {
   writing = false
   if (pending != null) setTimeout(flush, 200)
 }
+// A janela pode ser fechada antes do debounce do React. Grava com fsync
+// no caminho de saída e preserva a fila se houver uma gravação assíncrona antiga.
 function flushSync() {
-  if (pending == null) return
-  try { fs.writeFileSync(dataFile(), encrypt(pending)); pending = null } catch (e) { console.error(e) }
+  if (pending == null) return true
+  try {
+    const tmp = dataFile() + ".exit.tmp"
+    const fd = fs.openSync(tmp, "w")
+    try { fs.writeFileSync(fd, encrypt(pending)); fs.fsyncSync(fd) } finally { fs.closeSync(fd) }
+    fs.renameSync(tmp, dataFile())
+    if (!writing) pending = null
+    return true
+  } catch (e) { console.error("finanças: falha ao salvar na saída", e); return false }
 }
 
 function register(ipcMain, opts = {}) {
@@ -107,8 +116,25 @@ function register(ipcMain, opts = {}) {
     if (!unlocked || typeof txt !== "string") return false
     try { JSON.parse(txt) } catch { return false }
     pending = txt
-    flush()
+    void flush()
     return true
+  })
+  // Encerramento da janela: IPC síncrono evita perder o debounce pendente.
+  ipcMain.on("finance:saveSync", (event, txt) => {
+    event.returnValue = false
+    if (!unlocked || typeof txt !== "string") return
+    try { JSON.parse(txt) } catch { return }
+    pending = txt
+    event.returnValue = flushSync()
+    if (!writing && pending != null) void flush()
+  })
+  ipcMain.handle("finance:drain", async () => {
+    const deadline = Date.now() + 10000
+    while ((writing || pending != null) && Date.now() < deadline) {
+      if (!writing && pending != null) await flush()
+      else await new Promise((res) => setTimeout(res, 40))
+    }
+    return !writing && pending == null
   })
   ipcMain.handle("finance:setPin", (_e, oldPin, newPin) => {
     const lock = readLock()
