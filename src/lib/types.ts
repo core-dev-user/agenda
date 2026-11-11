@@ -98,6 +98,7 @@ export interface Settings {
   /** Limites para o perfil personalizado. */
   perfFps?: number
   perfEmbedHz?: number
+  perfMonitorMs?: number
   perfPreload?: PreloadMode
   /** modo leve: sem efeito de vidro desfocado, pétalas e partículas do cursor */
   perfLite?: boolean
