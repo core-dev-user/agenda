@@ -7,6 +7,7 @@ const { spawn, execFile } = require("node:child_process")
 let getWin = () => null
 const subs = new Set()
 let timer = null
+let refreshMs = 3000
 let lastCpu = null
 let smi = null
 let smiOk = null // null = ainda não testado
@@ -36,7 +37,7 @@ function startSmi() {
   if (smi || smiOk === false) return
   const q = "name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,power.limit,fan.speed,clocks.gr"
   try {
-    smi = spawn("nvidia-smi", [`--query-gpu=${q}`, "--format=csv,noheader,nounits", "-lms", "1500"], { windowsHide: true })
+    smi = spawn("nvidia-smi", [`--query-gpu=${q}`, "--format=csv,noheader,nounits", "-lms", String(Math.max(1500, refreshMs))], { windowsHide: true })
   } catch { smiOk = false; smi = null; return }
   let buf = ""
   smi.stdout.on("data", (d) => {
@@ -51,7 +52,8 @@ function startSmi() {
     state.gpu = { name: p[0], usage: n(p[1]), memUsed: n(p[2]), memTotal: n(p[3]), temp: n(p[4]), power: n(p[5]), powerLimit: n(p[6]), fan: n(p[7]), clock: n(p[8]), vendor: "nvidia" }
   })
   smi.on("error", () => { smiOk = false; smi = null })
-  smi.on("exit", () => { smi = null; if (smiOk !== true) smiOk = false })
+  const worker = smi
+  smi.on("exit", () => { if (smi === worker) smi = null; if (smiOk !== true) smiOk = false })
 }
 
 // PowerShell contínuo: rede, disco e (sem NVIDIA) a GPU pelos contadores do Windows. Uma linha JSON a cada ~2,5 s.
@@ -77,14 +79,15 @@ while ($true) {
   }
   [Console]::Out.WriteLine(($o | ConvertTo-Json -Compress -Depth 4))
   $i++
-  Start-Sleep -Milliseconds 1600
+  Start-Sleep -Milliseconds $env:AGENDA_SYSMON_DELAY
 }`
 
 function startPs() {
   if (ps) return
+  psBuf = ""
   try {
     ps = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", "-"], {
-      windowsHide: true, env: { ...process.env, AGENDA_GPU_CIM: smiOk === true ? "0" : "1" },
+      windowsHide: true, env: { ...process.env, AGENDA_GPU_CIM: smiOk === true ? "0" : "1", AGENDA_SYSMON_DELAY: String(refreshMs) },
     })
   } catch { ps = null; return }
   ps.stdin.end(PS_LOOP)
@@ -112,7 +115,8 @@ function startPs() {
       } catch {}
     }
   })
-  ps.on("exit", () => { ps = null })
+  const worker = ps
+  ps.on("exit", () => { if (ps === worker) ps = null })
 }
 
 function loadStatic() {
@@ -154,7 +158,7 @@ function start() {
   startSmi()
   // espera o nvidia-smi responder antes de decidir se a GPU vem dele ou dos contadores do Windows
   setTimeout(() => { if (timer) startPs() }, smiOk === null ? 2500 : 0)
-  timer = setInterval(tick, 1500)
+  timer = setInterval(tick, refreshMs)
   setTimeout(tick, 300)
 }
 function stop() {
@@ -163,10 +167,25 @@ function stop() {
   if (ps) { try { ps.kill() } catch {} ps = null }
 }
 
+/** O monitor só roda enquanto assinado; reduz amostragens CIM durante jogos. */
+function setRefresh(value) {
+  const raw = Number(value)
+  const next = Number.isFinite(raw) ? Math.max(1500, Math.min(8000, Math.round(raw))) : 3000
+  if (next === refreshMs) return true
+  refreshMs = next
+  if (!timer) return true
+  clearInterval(timer)
+  timer = setInterval(tick, refreshMs)
+  if (ps) { const worker = ps; ps = null; try { worker.kill() } catch {}; startPs() }
+  if (smi) { const worker = smi; smi = null; try { worker.kill() } catch {}; startSmi() }
+  return true
+}
+
 function register(ipcMain, gw) {
   getWin = gw
   ipcMain.handle("sysmon:sub", (_e, id) => { subs.add(id); start(); return true })
   ipcMain.handle("sysmon:unsub", (_e, id) => { subs.delete(id); if (!subs.size) stop(); return true })
+  ipcMain.handle("sysmon:rate", (_e, ms) => setRefresh(ms))
   const { app } = require("electron")
   app.on("before-quit", stop)
 }
