@@ -301,7 +301,7 @@ function Spikes({ art, playing, size }: { art?: string | null; playing: boolean;
       path.current?.setAttribute("d", d)
     }
     if (!playing) { path.current?.setAttribute("d", ""); return }
-    return rafLoop(draw)
+    return rafLoop(() => draw(performance.now()))
   }, [playing, size, r0])
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -340,7 +340,7 @@ function WaveProgress({ value, playing, onSeek }: { value: number; playing: bool
       path.current?.setAttribute("d", d)
     }
     if (!playing) { draw(0); return }
-    return rafLoop(draw)
+    return rafLoop(() => draw(performance.now()))
   }, [playing, v, w])
   return (
     <div ref={box} className={cn("relative h-4 flex-1", onSeek && "cursor-pointer")} role="slider" aria-label="Posição na música" aria-valuenow={Math.round(v * 100)} aria-valuemin={0} aria-valuemax={100}
