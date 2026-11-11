@@ -402,6 +402,7 @@ while ($true) {
 
 let proc = null
 let ready = null
+let generation = 0
 
 function start() {
   if (proc || process.platform !== "win32") return
@@ -411,6 +412,7 @@ function start() {
     proc = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", file], { windowsHide: true })
   } catch { proc = null; return }
   const child = proc
+  generation++
   let buf = ""
   const waiting = child.pending = []
   const stop = () => { if (proc === child) proc = null; while (waiting.length) waiting.shift()(""); child.kill() }
@@ -462,4 +464,4 @@ const hwndOf = (win) => {
   return (b.length >= 8 ? b.readBigUInt64LE(0) : BigInt(b.readUInt32LE(0))).toString()
 }
 
-module.exports = { call, hwndOf }
+module.exports = { call, hwndOf, generation: () => generation }

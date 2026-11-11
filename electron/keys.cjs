@@ -3,7 +3,8 @@
 // Um PowerShell separado instala um gancho de teclado (WH_KEYBOARD_LL) numa thread própria:
 //  - Windows sozinha (apertou e soltou sem outra tecla): o Windows não abre o Iniciar dele, o Agenda abre o seu
 //  - Win+S / Win+Q: a pesquisa do Agenda no lugar da do Windows
-//  - qualquer outro atalho (Win+E, Win+D, Win+Shift+S, Win+V…) continua igual
+//  - Win+D alterna a área de trabalho sem ocultar a barra do Widgy
+//  - outros atalhos (Win+E, Win+Shift+S, Win+V…) continuam nativos
 // Para não abrir o Iniciar do Windows, segura o "soltar" da tecla Windows e manda uma tecla neutra antes
 // (o mesmo truque do AutoHotkey). Com um jogo aberto o gancho é DESLIGADO (anti-cheats não gostam de ganchos).
 // Se o Agenda fechar ou travar, o processo termina e o teclado volta ao normal na hora.
@@ -86,7 +87,7 @@ public static class AgKeys {
           return new IntPtr(1);
         } else if (winHeld && down) {
           clean = false;
-          string action = k.vk == 0x53 || k.vk == 0x51 ? "search" : k.vk == 0x49 ? "settings" : k.vk == 0x41 || k.vk == 0x4E ? "notifications" : k.vk == 0x43 ? "assistant" : k.vk >= 0x31 && k.vk <= 0x39 ? "pin:" + (k.vk - 0x31) : null;
+          string action = k.vk == 0x44 ? "desktop" : k.vk == 0x53 || k.vk == 0x51 ? "search" : k.vk == 0x49 ? "settings" : k.vk == 0x41 || k.vk == 0x4E ? "notifications" : k.vk == 0x43 ? "assistant" : k.vk >= 0x31 && k.vk <= 0x39 ? "pin:" + (k.vk - 0x31) : null;
           if (action != null && !shift && !ctrl && !alt) { // Win+S ou Win+Q (sem outra tecla junto): pesquisa
             if (eaten != k.vk) Events.Add(action);
             eaten = k.vk; ate = true;
@@ -151,14 +152,26 @@ let proc = null
 let want = false
 let winAgenda = false
 let onEvent = () => {}
+let restartTimer = null
+let quitting = false
+let failures = 0
+function cancelRestart() { if (restartTimer) clearTimeout(restartTimer); restartTimer = null }
+function retry() {
+  cancelRestart()
+  if (!want || quitting) return
+  const backoff = Math.min(8000, 600 * 2 ** Math.min(failures++, 4))
+  restartTimer = setTimeout(() => { restartTimer = null; if (want && !quitting && !proc) start() }, backoff)
+  restartTimer.unref?.()
+}
 
 function start() {
-  if (proc || process.platform !== "win32") return
+  if (proc || !want || quitting || process.platform !== "win32") return
+  cancelRestart()
   const file = path.join(os.tmpdir(), "agenda-keys.ps1")
-  try { fs.writeFileSync(file, "﻿" + PS, "utf8") } catch { return }
+  try { fs.writeFileSync(file, "﻿" + PS, "utf8") } catch { retry(); return }
   try {
     proc = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", file], { windowsHide: true })
-  } catch { proc = null; return }
+  } catch { proc = null; retry(); return }
   const child = proc
   let buf = ""
   proc.stdout.on("data", (d) => {
@@ -169,25 +182,26 @@ function start() {
     for (const raw of lines) {
       const l = raw.trim()
       if (!l) continue
-      if (l === "ready") { send(winAgenda ? "win:agenda" : "win:windows"); if (want) send("on"); continue }
-      if (l.startsWith("error")) console.error("keys:", l)
-      if (["start", "search", "settings", "notifications", "assistant"].includes(l) || /^pin:[0-8]$/.test(l)) onEvent(l)
+      if (l === "ready") { failures = 0; send(winAgenda ? "win:agenda" : "win:windows"); if (want) send("on"); continue }
+      if (l.startsWith("error")) { console.error("keys:", l); if (proc === child) child.kill(); continue }
+      if (["start", "search", "settings", "notifications", "assistant", "desktop"].includes(l) || /^pin:[0-8]$/.test(l)) onEvent(l)
     }
   })
   proc.stderr.on("data", (d) => console.error("keys:", d.toString()))
-  proc.on("error", (error) => { console.error("keys:", error.message); if (proc === child) { proc = null; want = false } })
-  proc.on("exit", () => { if (proc === child) { proc = null; want = false } })
+  const disconnected = () => { if (proc !== child) return; proc = null; retry() }
+  proc.on("error", (error) => { console.error("keys:", error.message); disconnected() })
+  proc.on("exit", disconnected)
 
 }
-app.on("will-quit", () => { try { proc && proc.stdin.end() } catch {} })
+app.on("will-quit", () => { quitting = true; want = false; cancelRestart(); try { proc && proc.stdin.end() } catch {} })
 const send = (cmd) => { try { proc && proc.stdin.write(cmd + "\n") } catch {} }
 
 /** liga/desliga o gancho (desliga com jogo aberto) */
 function enable(on) {
-  if (on === want) return
+  if (on === want) { if (on && !proc) start(); return }
   want = on
   if (on) { if (!proc) start(); else send("on") }
-  else send("off")
+  else { cancelRestart(); send("off") }
 }
 
 /** tecla Windows sozinha: true = Iniciar do Agenda; false = Iniciar do Windows (o padrão) */

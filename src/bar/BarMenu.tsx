@@ -22,11 +22,20 @@ function LnkIcon({ file, name, style }: { file: string; name: string; style: Ico
 function StartMenu() {
   const sync = useBarSync()
   const [apps, setApps] = useState<{ name: string; path: string }[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [visible, setVisible] = useState(60)
   const [q, setQ] = useState("")
   const [confirm, setConfirm] = useState<"" | "restart" | "shutdown">("")
-  useEffect(() => { bridge.bar.apps().then(setApps) }, [])
+  useEffect(() => {
+    let alive = true
+    bridge.bar.apps().then((list) => { if (alive) setApps(list) }).catch(() => {})
+      .finally(() => { if (alive) setLoaded(true) })
+    return () => { alive = false }
+  }, [])
   const query = norm(q.trim())
   const list = useMemo(() => (query ? apps.filter((a) => norm(a.name).includes(query)) : apps), [apps, query])
+  useEffect(() => setVisible(60), [query])
+  const shownApps = list.slice(0, visible)
   const sections = query ? SECTIONS.filter((s) => norm(s.label).includes(query)) : SECTIONS
   const pinned = new Set((sync?.pins ?? []).map((p) => exeKey(p.path)))
   const launch = (p: string) => { bridge.bar.launch(p); done() }
@@ -60,10 +69,13 @@ function StartMenu() {
         </>
       )}
 
-      <div className="mt-4 mb-2 flex items-center text-xs font-semibold text-fg-muted">Programas <span className="ml-auto font-normal">clique direito: fixar na barra</span></div>
-      <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
+      <div className="mt-4 mb-2 flex items-center text-xs font-semibold text-fg-muted">Programas <span className="ml-2 font-normal text-fg-muted">{loaded ? list.length + " encontrados" : "procurando..."}</span><span className="ml-auto font-normal">clique direito: fixar na barra</span></div>
+      <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1" onScroll={(event) => {
+        const node = event.currentTarget
+        if (node.scrollTop + node.clientHeight >= node.scrollHeight - 150) setVisible((n) => Math.min(n + 60, list.length))
+      }}>
         <div className="grid grid-cols-2 gap-0.5">
-          {list.map((a) => (
+          {shownApps.map((a) => (
             <button
               key={a.path}
               className="bar-btn !justify-start gap-2.5 px-2 py-1.5 text-left text-sm"
@@ -76,7 +88,8 @@ function StartMenu() {
             </button>
           ))}
         </div>
-        {!list.length && !query && <div className="py-6 text-center text-sm text-fg-muted">Carregando…</div>}
+        {list.length > visible && <button className="bar-btn mt-2 w-full py-2 text-xs text-fg-muted" onClick={() => setVisible((n) => n + 60)}>Mostrar mais aplicativos · {list.length - visible} restantes</button>}
+        {!list.length && !query && <div className="py-6 text-center text-sm text-fg-muted">{loaded ? "Nenhum aplicativo encontrado." : "Procurando aplicativos instalados…"}</div>}
         {query && (
           <button className="bar-btn mt-1 w-full !justify-start gap-2.5 px-2 py-2 text-left text-sm" onClick={web}>
             <span className="flex size-7 items-center justify-center"><Globe size={17} className="text-fg-muted" /></span>

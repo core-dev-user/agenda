@@ -13,6 +13,7 @@ const winh = require("./winhelper.cjs")
 const modes = require("./mode.cjs")
 const keys = require("./keys.cjs")
 const games = require("./games.cjs")
+const { collectStartApps, isAppsFolderTarget } = require("./startapps.cjs")
 
 const cfgFile = () => path.join(app.getPath("userData"), "bar.json")
 let cfg = { on: false, height: 64, position: "bottom", keys: true }
@@ -80,7 +81,11 @@ let menu = null // janela do menu aberto (Iniciar, relógio…)
 let lastSync = null
 let lastFg = ""
 let poll = null
+let polling = false
+let helperFailures = 0
+let helperGeneration = 0
 let recoveryShortcut = false
+const barFailureTimes = []
 let settleT = null, warmupT = null, peekT = null
 const hiddenOn = new Set() // monitores com jogo/vídeo em tela cheia: a barra some
 
@@ -179,14 +184,20 @@ function iconSource(file) {
   } catch {}
   return { file, index: 0 }
 }
-async function iconOf(file) {
+async function iconOf(file, useNative = true) {
   if (!file) return ""
   const k = file.toLowerCase()
-  if (icons.has(k)) return icons.get(k)
+  if (icons.has(k) && icons.get(k)) return icons.get(k)
   let url = ""
-  // primeiro, o ícone exatamente como o Explorer desenha (resolve atalhos, .msc, jogos…)
-  const b64 = await winh.call("icon " + file)
-  if (b64 && b64 !== "none" && b64 !== "ok" && /^[A-Za-z0-9+/=]+$/.test(b64)) { icons.set(k, "data:image/png;base64," + b64); return icons.get(k) }
+  // Menu Iniciar can render dozens of icons at once. Never fill the single
+  // Win32 helper FIFO with thumbnail requests, as this stalls taskbar polling.
+  if (useNative) {
+    const b64 = await winh.call("icon " + file)
+    if (b64 && b64 !== "none" && b64 !== "ok" && /^[A-Za-z0-9+/=]+$/.test(b64)) {
+      icons.set(k, "data:image/png;base64," + b64)
+      return icons.get(k)
+    }
+  }
   const src = iconSource(file)
   try {
     // arquivo .ico: lê direto (fica nítido); .exe/.dll: o Windows dá o ícone dele
@@ -200,10 +211,29 @@ async function iconOf(file) {
 const nice = (exe) => path.basename(exe || "", ".exe").replace(/[-_.]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 
 async function tick() {
+  if (!bars.size || polling) return
+  polling = true
+  try { await tickWindows() }
+  catch (e) { console.warn("Widgy bar poll:", e.message) }
+  finally { polling = false }
+}
+async function tickWindows() {
   if (!bars.size) return
   const raw = await winh.call("list")
   if (!bars.size) return
-  if (!raw) { cfg.on = false; save(); teardown(); return }
+  if (!raw) {
+    // One stalled helper must not turn off the replacement taskbar forever.
+    if (++helperFailures >= 5) { cfg.on = false; save(); teardown() }
+    return
+  }
+  helperFailures = 0
+  const generation = winh.generation?.() ?? 0
+  if (generation !== helperGeneration) {
+    helperGeneration = generation
+    await winh.call("hidetb")
+    for (const b of bars.values()) b.__appbar = ""
+    layout()
+  }
   let j
   try { j = JSON.parse(raw) } catch { return }
   const own = process.execPath.toLowerCase()
@@ -265,10 +295,26 @@ function makeBar(d) {
   page(b, { view: "bar" })
   b.once("ready-to-show", () => { if (!b.isDestroyed() && !hiddenOn.has(d.id)) b.showInactive() })
   b.webContents.on("did-finish-load", () => { if (!b.isDestroyed()) b.webContents.send("bar:max", maxOn.has(d.id)) })
-  const failed = () => { if (bars.get(d.id) === b) { cfg.on = false; save(); teardown() } }
+  const failed = () => {
+    if (bars.get(d.id) !== b || !active()) return
+    const now = Date.now()
+    barFailureTimes.push(now)
+    while (barFailureTimes.length && barFailureTimes[0] < now - 45000) barFailureTimes.shift()
+    if (barFailureTimes.length >= 5) {
+      cfg.on = false; save(); teardown()
+    } else rebuild()
+  }
+  let freezeTimer = null
   b.webContents.on("render-process-gone", failed)
-  b.on("unresponsive", failed)
-  b.on("closed", () => { if (bars.get(d.id) === b) { bars.delete(d.id); cfg.on = false; save(); teardown() } })
+  b.on("unresponsive", () => {
+    clearTimeout(freezeTimer)
+    freezeTimer = setTimeout(failed, 9000)
+  })
+  b.on("responsive", () => { clearTimeout(freezeTimer); freezeTimer = null })
+  b.on("closed", () => {
+    clearTimeout(freezeTimer)
+    if (bars.get(d.id) === b) failed()
+  })
   bars.set(d.id, b)
 }
 
@@ -300,7 +346,10 @@ function create() {
     makeBar(d)
     if (!span && d.id !== main) makeDesk(d)
   }
-  winh.call("hidetb").then((st) => { if (/^\d+$/.test(st) && cfg.abState == null) { cfg.abState = Number(st); save() } })
+  winh.call("hidetb").then((st) => {
+    if (st) helperGeneration = winh.generation?.() ?? 0
+    if (/^\d+$/.test(st) && cfg.abState == null) { cfg.abState = Number(st); save() }
+  })
   cfg.hidTaskbar = true; save()
   layout()
   // a barra do Windows leva um instante para se esconder: registra de novo depois, já sem ela ocupando espaço
@@ -491,6 +540,14 @@ keys.onKey((ev) => {
   if (!bars.size) return
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
   const target = bars.get(display.id) || primaryBar()
+  if (ev === "desktop") {
+    closeMenu()
+    hidePreview()
+    void winh.call("desktop").then(() => {
+      for (const [id, b] of bars) if (!b.isDestroyed() && !hiddenOn.has(id) && !b.isVisible()) b.showInactive()
+    })
+    return
+  }
   if (ev === "start" || ev === "search") { openMenu("start", null, 640, 660, target, ev); return }
   if (ev.startsWith("pin:")) {
     const pin = withWinPins(lastSync)?.pins?.[Number(ev.slice(4))]
@@ -528,33 +585,18 @@ function teardown(restore = true) {
   setTimeout(() => { const m = getMain(); if (m && !m.isDestroyed()) m.setBounds(modes.workArea()) }, 300)
 }
 
-/* ---------------- apps do Menu Iniciar ---------------- */
+/* ---------------- aplicativos do Menu Iniciar ---------------- */
 let appsCache = null
+let appsPending = null
 async function startApps() {
   if (appsCache) return appsCache
-  const roots = [
-    path.join(process.env.ProgramData || "C:\\ProgramData", "Microsoft", "Windows", "Start Menu", "Programs"),
-    path.join(process.env.APPDATA || "", "Microsoft", "Windows", "Start Menu", "Programs"),
-  ]
-  const out = new Map()
-  const walk = async (dir, depth) => {
-    let items = []
-    try { items = await fsp.readdir(dir, { withFileTypes: true }) } catch { return }
-    for (const it of items) {
-      const p = path.join(dir, it.name)
-      if (it.isDirectory() && depth < 3) await walk(p, depth + 1)
-      else if (/\.(lnk|url)$/i.test(it.name)) {
-        const name = it.name.replace(/\.(lnk|url)$/i, "")
-        // tira desinstaladores, ajudas e sites
-        if (/uninstall|desinstalar|readme|leia-me|help|ajuda|website|documenta/i.test(name)) continue
-        if (!out.has(name.toLowerCase())) out.set(name.toLowerCase(), { name, path: p })
-      }
-    }
-  }
-  for (const r of roots) await walk(r, 0)
-  appsCache = [...out.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
-  setTimeout(() => { appsCache = null }, 5 * 60 * 1000)
-  return appsCache
+  if (appsPending) return appsPending
+  appsPending = collectStartApps()
+    .then((items) => { appsCache = items; return items })
+    .catch((error) => { console.warn("Widgy installed apps:", error.message); return [] })
+    .finally(() => { appsPending = null })
+  setTimeout(() => { appsCache = null }, 5 * 60 * 1000).unref?.()
+  return appsPending
 }
 
 const state = () => ({ on: cfg.on, height: cfg.height, position: cfg.position, keys: cfg.keys !== false, winKey: cfg.winKey === "agenda" ? "agenda" : "windows", available: modes.mode() === "desktop", active: bars.size > 0 })
@@ -664,8 +706,16 @@ function register(ipcMain, mainGetter) {
     return winh.call("peek " + (on ? 1 : 0))
   })
   ipcMain.handle("bar:apps", () => startApps())
-  ipcMain.handle("bar:icon", (_e, file) => iconOf(String(file || "")))
-  ipcMain.handle("bar:launch", (_e, file) => { if (typeof file === "string" && file) return launchPin(file) })
+  ipcMain.handle("bar:icon", (_e, file) => iconOf(String(file || ""), false))
+  ipcMain.handle("bar:launch", (_e, file) => {
+    if (typeof file !== "string" || !file) return
+    if (isAppsFolderTarget(file)) {
+      return new Promise((resolve) => {
+        execFile("explorer.exe", [file], { windowsHide: true }, (error) => resolve(error ? error.message : ""))
+      })
+    }
+    return launchPin(file)
+  })
   ipcMain.handle("bar:web", (_e, q) => { if (typeof q === "string" && q.trim()) shell.openExternal("https://www.google.com/search?q=" + encodeURIComponent(q.trim())) })
   ipcMain.handle("bar:power", (_e, kind) => {
     const run = (cmd, args) => execFile(cmd, args, { windowsHide: true }, () => {})

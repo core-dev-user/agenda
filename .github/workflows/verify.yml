@@ -51,6 +51,17 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Validate Windows app-discovery PowerShell syntax
+        shell: powershell
+        run: |
+          node -e "require('fs').writeFileSync('startapps-test.ps1', require('./electron/startapps.cjs').PS)"
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) 'startapps-test.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host $_.ToString() }
+            exit 1
+          }
       - name: Compile native helpers with Windows PowerShell
         shell: powershell
         run: |
