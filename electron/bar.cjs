@@ -2,7 +2,8 @@
 // Em cada monitor: uma janela fina sempre por cima na borda de baixo, que esconde a barra do Windows,
 // reserva o espaço dela (as janelas maximizadas param em cima da barra) e mostra os programas abertos.
 // Nos monitores onde o Agenda principal não está, um fundo do Agenda (papel de parede + relógio) cobre
-// a área de trabalho do Windows. A tecla Windows e Win+S abrem o Iniciar/pesquisa do Agenda (keys.cjs).
+// a área de trabalho do Windows. Win+S abre a pesquisa do Agenda (keys.cjs); a tecla Windows sozinha abre o
+// Iniciar do Windows (ou o do Widgy, se a pessoa escolher). Os fixados da barra do Windows aparecem aqui também.
 const { app, BrowserWindow, screen, shell, nativeImage, globalShortcut } = require("electron")
 const path = require("node:path")
 const fs = require("node:fs")
@@ -18,7 +19,55 @@ let cfg = { on: false, height: 64, position: "bottom", keys: true }
 try { cfg = { ...cfg, ...JSON.parse(fs.readFileSync(cfgFile(), "utf8")) } } catch {}
 // Explicit migration to Agenda keyboard control; preferences remain editable afterward.
 if (!cfg.controlVersion) { cfg.winKey = "agenda"; cfg.keys = true; cfg.controlVersion = 1 }
+// v2: a tecla Windows sozinha volta a abrir o Iniciar do Windows (igual ao botão "Iniciar do Windows")
+if (cfg.controlVersion < 2) { cfg.winKey = "windows"; cfg.controlVersion = 2; try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null, 2)) } catch {} }
 const save = () => { try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null, 2)) } catch {} }
+
+/* ---------------- fixados da barra do Windows ---------------- */
+// Os atalhos fixados na barra normal do Windows ficam nesta pasta; eles aparecem também na barra do Widgy.
+// `path` é o programa de verdade (para juntar com a janela aberta dele); abrir usa o atalho (que guarda os argumentos).
+const winPinDir = () => path.join(app.getPath("appData"), "Microsoft", "Internet Explorer", "Quick Launch", "User Pinned", "TaskBar")
+let winPins = []
+function readWinPins() {
+  const out = []
+  let files = []
+  try { files = fs.readdirSync(winPinDir()).filter((f) => /\.lnk$/i.test(f)) } catch { return out }
+  for (const f of files.sort((a, b) => a.localeCompare(b))) {
+    const lnk = path.join(winPinDir(), f)
+    let target = ""
+    try { const l = shell.readShortcutLink(lnk); if (l.target && !l.args?.includes("--launch-product")) target = l.target } catch {}
+    // Explorador de Arquivos: o atalho não tem caminho (é um item do shell)
+    if (!target && /explorer|explorador/i.test(f)) target = path.join(process.env.WINDIR || "C:\\Windows", "explorer.exe")
+    // atalhos que dependem dos argumentos (ex.: Riot Client --launch-product=valorant) ficam com o próprio atalho
+    out.push({ path: target || lnk, name: f.replace(/\.lnk$/i, ""), open: lnk, win: true })
+  }
+  return out
+}
+/** fixados do Widgy + os do Windows (sem repetir e sem os que a pessoa tirou da barra do Widgy) */
+function withWinPins(data) {
+  if (!data) return data
+  const own = Array.isArray(data.pins) ? data.pins : []
+  const seen = new Set(own.map((p) => String(p.path).toLowerCase()))
+  const hidden = new Set((cfg.hiddenWinPins || []).map((x) => x.toLowerCase()))
+  const extra = winPins.filter((p) => !seen.has(p.path.toLowerCase()) && !hidden.has(p.open.toLowerCase()))
+  return { ...data, pins: [...extra, ...own] }
+}
+/** abre um fixado: se for um fixado do Windows, pelo atalho dele */
+function launchPin(file) {
+  const wp = winPins.find((p) => p.path.toLowerCase() === String(file).toLowerCase())
+  return shell.openPath(wp ? wp.open : file)
+}
+let winPinWatch = null, winPinT = null
+function watchWinPins(resend) {
+  winPins = readWinPins()
+  if (winPinWatch) return
+  try {
+    winPinWatch = fs.watch(winPinDir(), () => {
+      clearTimeout(winPinT)
+      winPinT = setTimeout(() => { winPins = readWinPins(); resend() }, 400)
+    })
+  } catch {}
+}
 
 const isDev = !!process.env.AGENDA_DEV
 const active = () => cfg.on && modes.mode() === "desktop" && process.platform === "win32" && !process.env.AGENDA_SHOT
@@ -444,8 +493,8 @@ keys.onKey((ev) => {
   const target = bars.get(display.id) || primaryBar()
   if (ev === "start" || ev === "search") { openMenu("start", null, 640, 660, target, ev); return }
   if (ev.startsWith("pin:")) {
-    const pin = lastSync?.pins?.[Number(ev.slice(4))]
-    if (pin?.path) shell.openPath(pin.path)
+    const pin = withWinPins(lastSync)?.pins?.[Number(ev.slice(4))]
+    if (pin?.path) launchPin(pin.path)
     return
   }
   const main = getMain()
@@ -533,8 +582,16 @@ function register(ipcMain, mainGetter) {
     return state()
   })
   // a janela principal manda tema, fixados, papel de parede e avisos; barras e fundos recebem
-  ipcMain.on("bar:sync", (_e, data) => {
-    lastSync = data
+  const sendSync = () => {
+    const data = withWinPins(lastSync)
+    if (!data) return
+    for (const w of [...bars.values(), ...desks.values()]) if (!w.isDestroyed()) w.webContents.send("bar:sync", data)
+    if (menu && !menu.isDestroyed()) menu.webContents.send("bar:sync", data)
+  }
+  watchWinPins(sendSync)
+  ipcMain.on("bar:sync", (_e, raw) => {
+    lastSync = raw
+    const data = withWinPins(raw)
     // jeito da barra mudou nas configurações: reposiciona (ou recria, se mudou de dock para barra/vertical)
     if (data && data.tb) {
       const t = { ...TB, ...data.tb }
@@ -552,11 +609,21 @@ function register(ipcMain, mainGetter) {
     for (const w of [...bars.values(), ...desks.values()]) if (!w.isDestroyed()) w.webContents.send("bar:sync", data)
     if (menu && !menu.isDestroyed()) menu.webContents.send("bar:sync", data)
   })
-  ipcMain.handle("bar:hello", () => lastSync)
+  ipcMain.handle("bar:hello", () => withWinPins(lastSync))
   // pedidos da barra para a janela principal (abrir aba, busca, fixar…)
   ipcMain.on("bar:main", (e, msg) => {
     const m = getMain()
     if (!m || m.isDestroyed() || !msg) return
+    // tirar da barra um fixado do Windows: some só da barra do Widgy (a do Windows não é mexida)
+    if (msg.type === "unpin") {
+      const wp = winPins.find((p) => p.path.toLowerCase() === String(msg.path).toLowerCase())
+      if (wp) { cfg.hiddenWinPins = [...new Set([...(cfg.hiddenWinPins || []), wp.open])]; save(); sendSync() }
+    }
+    // fixar de novo um que estava escondido
+    if (msg.type === "pin" && msg.app && cfg.hiddenWinPins?.length) {
+      const wp = winPins.find((p) => p.path.toLowerCase() === String(msg.app.path).toLowerCase())
+      if (wp) { cfg.hiddenWinPins = cfg.hiddenWinPins.filter((x) => x.toLowerCase() !== wp.open.toLowerCase()); save(); sendSync(); return }
+    }
     // de qual monitor veio o pedido (abas e painéis abrem nele)
     const w = BrowserWindow.fromWebContents(e.sender)
     const d = w === menu ? { id: menuDisplay } : displayOfWin(w)
@@ -598,7 +665,7 @@ function register(ipcMain, mainGetter) {
   })
   ipcMain.handle("bar:apps", () => startApps())
   ipcMain.handle("bar:icon", (_e, file) => iconOf(String(file || "")))
-  ipcMain.handle("bar:launch", (_e, file) => { if (typeof file === "string" && file) return shell.openPath(file) })
+  ipcMain.handle("bar:launch", (_e, file) => { if (typeof file === "string" && file) return launchPin(file) })
   ipcMain.handle("bar:web", (_e, q) => { if (typeof q === "string" && q.trim()) shell.openExternal("https://www.google.com/search?q=" + encodeURIComponent(q.trim())) })
   ipcMain.handle("bar:power", (_e, kind) => {
     const run = (cmd, args) => execFile(cmd, args, { windowsHide: true }, () => {})

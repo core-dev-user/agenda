@@ -409,7 +409,7 @@ function MainBarSwitch() {
               onChange={async (v) => setWinKey((await bridge.bar.set({ winKey: v ? "agenda" : "windows" })).winKey)}
             />
           )}
-          <div className="text-xs text-fg-muted">Os outros atalhos (Win+E, Win+D, Win+Shift+S…) continuam iguais. Com um jogo aberto, o Widgy não mexe no teclado.</div>
+          <div className="text-xs text-fg-muted">Os programas fixados na barra normal do Windows aparecem também na do Widgy (tirar um deles da barra do Widgy não mexe na do Windows). Os outros atalhos (Win+E, Win+D, Win+Shift+S…) continuam iguais. Com um jogo aberto, o Widgy não mexe no teclado.</div>
         </>
       )}
     </div>
