@@ -114,7 +114,7 @@ export async function loadWeather(city: string): Promise<Wx> {
   if (!loc) throw new Error("Cidade não encontrada")
   const u = `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,apparent_temperature,is_day,weather_code,relative_humidity_2m,wind_speed_10m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=5`
   const d = await getJSON(u)
-  const nowIdx = Math.max(0, d.hourly.time.findIndex((t: string) => new Date(t) >= new Date(Date.now() - 3600000))
+  const nowIdx = Math.max(0, d.hourly.time.findIndex((t: string) => new Date(t) >= new Date(Date.now() - 3600000)))
   const data: Wx = {
     city: loc.name,
     temp: d.current.temperature_2m,
