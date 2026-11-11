@@ -70,8 +70,10 @@ export function CursorLayer() {
 
     let raf = 0
     let frameTimer: ReturnType<typeof setTimeout> | undefined
+    let dirty = true
     const wake = () => { if (!raf && !frameTimer) raf = requestAnimationFrame(loop) }
     const onMove = (e: PointerEvent) => {
+      dirty = true
       wake()
       m.x = e.clientX
       m.y = e.clientY
@@ -101,6 +103,7 @@ export function CursorLayer() {
       m.py = m.y
     }
     const onDown = () => {
+      dirty = true
       wake()
       m.down = true
       const c = cfg.current
@@ -118,8 +121,8 @@ export function CursorLayer() {
           parts.push({ x: m.x, y: m.y, vx: Math.cos(a) * 2.5, vy: Math.sin(a) * 2.5, life: 0, max: 60, size: 1.4, rot: a, vr: 0.1, kind: 0, color: cfg.current.cursorColor })
         }
     }
-    const onUp = () => { m.down = false; wake() }
-    const onLeave = () => { m.visible = false; wake() }
+    const onUp = () => { m.down = false; dirty = true; wake() }
+    const onLeave = () => { m.visible = false; dirty = true; wake() }
     window.addEventListener("pointermove", onMove)
     window.addEventListener("pointerdown", onDown)
     window.addEventListener("pointerup", onUp)
@@ -132,7 +135,8 @@ export function CursorLayer() {
       // Oculto ou em jogo: o loop dorme até um evento de visibilidade.
       if (perfPaused() || document.hidden) return
       // Sem mudanças: ficar realmente ocioso, não gastar 60 callbacks por segundo.
-      if (!parts.length && !ripples.length && trail.length < 2 && Math.abs(m.x - m.rx) < 0.2 && Math.abs(m.y - m.ry) < 0.2 && m.x === lastX && m.y === lastY) return
+      if (!dirty && !parts.length && !ripples.length && trail.length < 2 && Math.abs(m.x - m.rx) < 0.2 && Math.abs(m.y - m.ry) < 0.2 && m.x === lastX && m.y === lastY) return
+      dirty = false
       lastX = m.x; lastY = m.y
       const now = performance.now()
       const frameScale = Math.max(0.5, Math.min(12, (now - lastDraw) / 16.667))
@@ -339,6 +343,8 @@ export function CursorLayer() {
       else frameTimer = setTimeout(() => { frameTimer = undefined; wake() }, Math.max(5, 1000 / fps - 3))
     }
     wake()
+    const redraw = () => { dirty = true; wake() }
+    window.addEventListener("widgy:perf-settings", redraw)
     window.addEventListener("widgy:perf-state", wake)
     document.addEventListener("visibilitychange", wake)
     return () => {
@@ -346,6 +352,7 @@ export function CursorLayer() {
       clearTimeout(frameTimer)
       window.removeEventListener("resize", resize)
       window.removeEventListener("widgy:perf-settings", resize)
+      window.removeEventListener("widgy:perf-settings", redraw)
       window.removeEventListener("widgy:perf-state", wake)
       document.removeEventListener("visibilitychange", wake)
       window.removeEventListener("pointermove", onMove)
