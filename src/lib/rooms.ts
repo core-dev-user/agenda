@@ -335,7 +335,9 @@ registerProcessor("agenda-pcm", Pcm)`
 /** som do PC (sem o Discord ou sem o Agenda) como uma faixa de áudio para juntar à tela */
 async function pcAudioTrack(without: "discord" | "agenda"): Promise<{ track: MediaStreamTrack; excluded: string } | null> {
   audioCtx = new AudioContext({ sampleRate: 48000 })
-  await audioCtx.audioWorklet.addModule(URL.createObjectURL(new Blob([PCM_WORKLET], { type: "application/javascript" })))
+  const workletUrl = URL.createObjectURL(new Blob([PCM_WORKLET], { type: "application/javascript" }))
+  try { await audioCtx.audioWorklet.addModule(workletUrl) }
+  finally { URL.revokeObjectURL(workletUrl) }
   const node = new AudioWorkletNode(audioCtx, "agenda-pcm", { outputChannelCount: [2] })
   const dest = audioCtx.createMediaStreamDestination()
   node.connect(dest)
@@ -351,9 +353,17 @@ async function pcAudioTrack(without: "discord" | "agenda"): Promise<{ track: Med
   })
   const off2 = bridge.share.onAudioEnd((m) => { if (m && m !== "fim") toast("Som do PC parou: " + m) })
   audioOff = () => { off1(); off2() }
-  const r = await bridge.share.audioStart(without)
-  if (!r.ok) return null
-  return { track: dest.stream.getAudioTracks()[0], excluded: r.excluded }
+  try {
+    const r = await bridge.share.audioStart(without)
+    if (r.ok) return { track: dest.stream.getAudioTracks()[0], excluded: r.excluded }
+  } catch {
+    // Disponível só em Windows compatível: degradar para captura sem áudio.
+  }
+  audioOff?.(); audioOff = null
+  dest.stream.getTracks().forEach((track) => track.stop())
+  await audioCtx.close().catch(() => {})
+  audioCtx = null
+  return null
 }
 
 export async function startShare(o: ShareOpts) {
