@@ -431,6 +431,75 @@ function BarItemsSection() {
 }
 
 /* ------------------------- Papel de parede ------------------------- */
+
+const hasEngineWallpaper = (settings: Settings) =>
+  settings.wallpaper.type === "engine" ||
+  Object.values(settings.wallpaperBy ?? {}).some((item) => item.type === "engine")
+
+/** O Wallpaper Engine renderiza no Windows; a janela transparente do Widgy só sobrepõe widgets. */
+function WallpaperEnginePanel() {
+  const mode = useUiMode((x) => x.mode)
+  const [status, setStatus] = useState<Awaited<ReturnType<typeof bridge.wallpaperEngine.status>> | null>(null)
+  const [error, setError] = useState("")
+  const [opening, setOpening] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    const refresh = () => {
+      void bridge.wallpaperEngine.status().then((state) => {
+        if (alive) setStatus(state)
+      }).catch(() => { if (alive) setStatus(null) })
+    }
+    refresh()
+    const timer = window.setInterval(refresh, 10000)
+    return () => { alive = false; window.clearInterval(timer) }
+  }, [])
+
+  return (
+    <div className="space-y-3 rounded-xl border border-line p-4">
+      <div className="flex items-center gap-2">
+        <span className={cn("size-2.5 rounded-full", status?.running ? "bg-[#55d99e]" : "bg-[#f0ad63]")} />
+        <span className="text-sm font-semibold">
+          {status?.running ? "Wallpaper Engine em execução" : status?.installed ? "Wallpaper Engine não está aberto" : "Wallpaper Engine não detectado"}
+        </span>
+      </div>
+      <p className="text-xs leading-relaxed text-fg-muted">
+        O Widgy mostra o wallpaper animado que o Wallpaper Engine já está desenhando no Windows.
+        Se você trocar o wallpaper lá, o fundo muda automaticamente aqui, sem copiar vídeos nem rodar uma segunda reprodução.
+      </p>
+      {status?.wallpaper && <p className="text-xs text-fg-muted">Papel de parede ativo (monitor principal): <span className="font-medium text-fg">{status.wallpaper}</span></p>}
+      {mode !== "desktop" ? (
+        <div className="space-y-2">
+          <div className="text-xs text-[#f2b978]">É necessário usar o modo Área de trabalho do Widgy. No modo Aplicativo ou Tela própria o Wallpaper Engine não pode aparecer atrás da janela.</div>
+          {isDesktop && <ThemedButton size="sm" onClick={() => { bridge.store.flush?.(); void bridge.mode.set("desktop") }}>Ativar modo Área de trabalho</ThemedButton>}
+        </div>
+      ) : (
+        <div className="text-xs text-fg-muted">
+          Modo Área de trabalho ativo. A primeira ativação ou desativação desta opção reinicia o Widgy para configurar a transparência nativa.
+        </div>
+      )}
+      {isDesktop && (
+        <div className="flex items-center gap-2">
+          <ThemedButton size="sm" disabled={opening} onClick={async () => {
+            setOpening(true); setError("")
+            try {
+              const ok = await bridge.wallpaperEngine.open()
+              if (!ok) setError("Não foi possível abrir o Wallpaper Engine pelo Steam.")
+              else window.setTimeout(() => { void bridge.wallpaperEngine.status().then(setStatus).catch(() => {}) }, 2500)
+            } catch { setError("Falha ao iniciar o Wallpaper Engine.") }
+            setOpening(false)
+          }}>Abrir no Steam</ThemedButton>
+          <button className="btn text-xs" onClick={() => { void bridge.wallpaperEngine.status().then(setStatus).catch(() => setStatus(null)) }}>Atualizar status</button>
+        </div>
+      )}
+      {error && <div className="text-xs text-[#ff8f8f]">{error}</div>}
+      <div className="text-[11px] leading-relaxed text-fg-muted">
+        Não precisa exportar seus wallpapers do Workshop. O Wallpaper Engine deve continuar aberto, e a interação direta com o fundo depende do Windows e do próprio Wallpaper Engine.
+      </div>
+    </div>
+  )
+}
+
 function WallpaperTab() {
   const [s, set] = useS()
   const media = useStore((x) => x.media)
@@ -441,11 +510,21 @@ function WallpaperTab() {
   const by = s.wallpaperBy ?? {}
   const own = target != null ? by[String(target)] : undefined
   const wp = own ? { ...s.wallpaper, ...own } : s.wallpaper
+  const applyWallpaper = (patch: Partial<Settings>) => {
+    const next = { ...s, ...patch }
+    const needsRestart = hasEngineWallpaper(s) !== hasEngineWallpaper(next) && useUiMode.getState().mode === "desktop" && isDesktop
+    set(patch)
+    // Persistence is sent to Electron synchronously before the native relaunch.
+    if (needsRestart) { bridge.store.flush?.(); void bridge.wallpaperEngine.restart() }
+  }
   const p = (patch: Partial<Settings["wallpaper"]>) =>
     target == null
-      ? set({ wallpaper: { ...s.wallpaper, ...patch } })
-      : set({ wallpaperBy: { ...by, [String(target)]: { ...(by[String(target)] ?? {}), ...patch } } })
-  const sameAsAll = (id: number) => { const n = { ...by }; delete n[String(id)]; set({ wallpaperBy: n }) }
+      ? applyWallpaper({ wallpaper: { ...s.wallpaper, ...patch } })
+      : applyWallpaper({ wallpaperBy: { ...by, [String(target)]: { ...(by[String(target)] ?? {}), ...patch } } })
+  const sameAsAll = (id: number) => {
+    const n = { ...by }; delete n[String(id)]
+    applyWallpaper({ wallpaperBy: n })
+  }
   const [pick, setPick] = useState(false)
   const [living, setLiving] = useState(false)
   const current = media.find((x) => x.file === wp.image) ?? null
@@ -471,7 +550,7 @@ function WallpaperTab() {
       )}
       <Section title="Fundo">
         <p className="mb-2 text-xs text-fg-muted">Os 17 fundos do pacote visual já estão incluídos offline em forma de degradês adaptáveis à resolução.</p>
-        <Segmented value={wp.type} onChange={(v) => p({ type: v })} options={[{ value: "gradient", label: "Degradê" }, { value: "image", label: "Imagem" }, { value: "color", label: "Cor sólida" }, { value: "video", label: "Vídeo ou GIF" }]} />
+        <Segmented value={wp.type} onChange={(v) => p({ type: v })} options={[{ value: "gradient", label: "Degradê" }, { value: "image", label: "Imagem" }, { value: "color", label: "Cor sólida" }, { value: "video", label: "Vídeo ou GIF" }, { value: "engine", label: "Wallpaper Engine" }]} />
         <div className="pt-3">
           {wp.type === "gradient" && (
             <div className="grid grid-cols-3 gap-3">
@@ -510,6 +589,7 @@ function WallpaperTab() {
               </div>
             </div>
           )}
+          {wp.type === "engine" && <WallpaperEnginePanel />}
           {wp.type === "color" && <ColorPicker value={wp.color} onChange={(v) => p({ color: v })} swatches={["#1a1020", "#0b0710", "#008080", "#202830", "#2b1055", "#f6e8ee", "#000000"]} />}
         </div>
       </Section>
