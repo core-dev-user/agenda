@@ -12,7 +12,7 @@ export interface SysStats {
   uptime: number
 }
 export interface AgendaBridge {
-  store: { get(): string | null; set(data: string): void; flush?(): void }
+  store: { get(): string | null; set(data: string): void; flush?(): void; drain?(): Promise<boolean> }
   win: {
     minimize(): void
     toggleMaximize(): void
@@ -53,6 +53,12 @@ export interface AgendaBridge {
     span(on?: boolean): Promise<boolean>
     detectApps(): Promise<{ apps: PcApp[]; monitors: number }>
     onSummon(cb: () => void): Unsub
+  }
+  /** wallpaper externo exibido atrás do Widgy (somente Windows, modo desktop) */
+  wallpaperEngine: {
+    status(): Promise<{ supported: boolean; installed: boolean; running: boolean; wallpaper: string }>
+    open(): Promise<boolean>
+    restart(): Promise<boolean>
   }
   /** atualização automática (só no app instalado) */
   update?: {
@@ -339,12 +345,13 @@ declare global {
 
 const noop = () => () => {}
 const browserFallback: AgendaBridge = {
-  store: { get: () => localStorage.getItem("agenda-data"), set: (d) => localStorage.setItem("agenda-data", d) },
+  store: { get: () => localStorage.getItem("agenda-data"), set: (d) => localStorage.setItem("agenda-data", d), drain: async () => true },
   win: { minimize() {}, toggleMaximize() {}, fullscreen(on) { on ? document.documentElement.requestFullscreen() : document.exitFullscreen() }, close() {}, onState: noop },
   app: { autostart: async () => false, openExternal: async (u) => void window.open(u, "_blank"), screenInfo: async () => ({ long: Math.max(screen.width, screen.height) * devicePixelRatio }), show: async () => {}, quit: async () => {} },
   sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
   games: { get: async () => ({ playing: [], at: Date.now() }), config: async () => {}, scan: async () => {}, icon: async () => "", onState: noop, valorantAgent: async () => null, onValorantAgent: noop },
   sysmon: { sub: async () => false, unsub: async () => false, onData: noop },
+  wallpaperEngine: { status: async () => ({ supported: false, installed: false, running: false, wallpaper: "" }), open: async () => false, restart: async () => false },
   mode: { get: async () => ({ mode: "screen", monitors: 1 }), set: async () => false, displays: async () => [], raise: async () => {}, screens: async () => [], onScreens: noop, span: async () => false, detectApps: async () => ({ apps: [], monitors: 1 }), onSummon: noop },
   pcmedia: { sub: async () => ({ none: true, unsupported: true }), unsub: async () => {}, cmd: async () => false, onState: noop },
   share: { sources: async () => [], pick: async () => {}, audioStart: async () => ({ ok: false, excluded: "agenda" }), audioStop: async () => {}, onAudio: noop, onAudioEnd: noop },

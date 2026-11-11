@@ -76,6 +76,12 @@ body {
   -webkit-font-smoothing: antialiased;
   user-select: none;
 }
+/* A janela nativa do modo desktop deixa o Wallpaper Engine visível atrás.
+   Não aplicar em modos de app/tela própria, onde a janela não é transparente. */
+html[data-wallpaper-engine="true"],
+html[data-wallpaper-engine="true"] body,
+html[data-wallpaper-engine="true"] #root { background: transparent !important; }
+
 /* em camada base: classes utilitárias (ex.: text-black) vencem */
 @layer base {
   input, textarea, select, button { font: inherit; color: inherit; }

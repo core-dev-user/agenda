@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld("agenda", {
     get: () => ipcRenderer.sendSync("store:get"),
     set: (data) => ipcRenderer.send("store:set", data),
     flush: () => ipcRenderer.sendSync("store:flushSync"),
+    drain: () => ipcRenderer.invoke("store:drain"),
   },
   win: {
     minimize: () => ipcRenderer.send("win:minimize"),
@@ -18,6 +19,11 @@ contextBridge.exposeInMainWorld("agenda", {
     fullscreen: (on) => ipcRenderer.send("win:fullscreen", on),
     close: () => ipcRenderer.send("win:close"),
     onState: on("win:state"),
+  },
+  wallpaperEngine: {
+    status: () => ipcRenderer.invoke("wallpaperEngine:status"),
+    open: () => ipcRenderer.invoke("wallpaperEngine:open"),
+    restart: () => ipcRenderer.invoke("wallpaperEngine:restart"),
   },
   app: {
     autostart: (v) => ipcRenderer.invoke("app:autostart", v),
