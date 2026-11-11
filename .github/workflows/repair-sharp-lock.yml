@@ -1,0 +1,44 @@
+name: Regenerar lockfile Sharp (temporário)
+
+on:
+  push:
+    branches: [refactor/security-performance-cleanup-0-3-12]
+    paths: [".github/workflows/repair-sharp-lock.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    if: "startsWith(github.event.head_commit.message, 'chore(deps): regenerate Sharp lockfile')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Regenerar lockfile com override de Sharp
+        run: npm install --package-lock-only --ignore-scripts --no-audit
+      - name: Validar lockfile com instalação limpa
+        run: npm ci --ignore-scripts
+      - name: Conferir versões de Sharp
+        run: |
+          node - <<'NODE'
+          const p = require("./package-lock.json").packages
+          for (const [path, info] of Object.entries(p)) {
+            if (path === "node_modules/sharp" || path.endsWith("/node_modules/sharp")) {
+              console.log(path, info.version)
+              if (!info.version.startsWith("0.35.")) process.exitCode = 1
+            }
+          }
+          NODE
+      - name: Salvar lockfile atualizado na branch de refatoração
+        shell: bash
+        run: |
+          git add package-lock.json
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "chore(deps): refresh lockfile with patched Sharp"
+          git push origin HEAD:refs/heads/refactor/security-performance-cleanup-0-3-12
