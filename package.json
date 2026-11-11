@@ -13,7 +13,7 @@
     "dist": "npm run icon && npm run build && electron-builder --win --dir",
     "release": "node scripts/release.mjs",
     "predev": "npm run icon && node scripts/generate-icon-pack.mjs",
-    "test:media": "node --test tests/pcmedia.test.cjs",
+    "test:media": "node --experimental-strip-types --test tests/pcmedia.test.cjs tests/spectrum.test.cjs tests/cover-match.test.mjs",
     "test:security": "node --test tests/security-network.test.cjs",
     "test:finance": "node --test tests/finance-save.test.cjs",
     "test:perf": "node --test tests/perf-policy.test.cjs",

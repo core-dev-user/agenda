@@ -123,6 +123,7 @@ function useMainBar() {
       const vars: Record<string, string> = {}
       for (let i = 0; i < st.length; i++) if (st[i].startsWith("--")) vars[st[i]] = st.getPropertyValue(st[i])
       const data: BarSync = {
+        pack: s.settings.shell?.pack ?? "none",
         vars, theme: s.settings.theme, dark: s.settings.dark, fontScale: s.settings.fontScale,
         style: s.settings.taskbar.style, showLabels: s.settings.taskbar.showLabels,
         pins: s.settings.pcPins ?? [], unread: s.notifications.filter((n) => !n.read).length,

@@ -586,6 +586,15 @@ keys.onKey((ev) => {
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
   const target = bars.get(display.id) || primaryBar()
   if (ev === "desktop") { toggleDesktop(); return }
+  // pacote Carbono ativo: Win+S (e a tecla Windows, se ela abre o Widgy) abrem a busca do Carbono
+  if ((ev === "start" || ev === "search") && lastSync && lastSync.pack === "carbono") {
+    const main = getMain()
+    if (main && !main.isDestroyed()) {
+      main.webContents.send("bar:main", { type: "palette", screen: display.id })
+      main.show(); main.focus(); winh.call("activate " + winh.hwndOf(main))
+      return
+    }
+  }
   if (ev === "start" || ev === "search") { openMenu("start", null, 640, 660, target, ev); return }
   if (ev.startsWith("pin:")) {
     const pin = withWinPins(lastSync)?.pins?.[Number(ev.slice(4))]

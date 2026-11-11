@@ -24,8 +24,16 @@ import { Dashboard } from "./Dashboard"
 export function useCarbonoVars(on: boolean, prefs: ShellPrefs) {
   useEffect(() => {
     const r = document.documentElement
-    if (!on) { delete r.dataset.pack; return }
+    if (!on) { delete r.dataset.pack; document.getElementById("carbono-css")?.remove(); return }
     r.dataset.pack = "carbono"
+    // O estilo vai no <head> sempre que o pacote está ativo. Antes ele vinha junto com a barra lateral:
+    // com a barra do Widgy no lugar da do Windows a barra lateral não aparece, e a busca ficava transparente.
+    if (!document.getElementById("carbono-css")) {
+      const tag = document.createElement("style")
+      tag.id = "carbono-css"
+      tag.textContent = CSS
+      document.head.appendChild(tag)
+    }
     const a = ACCENTS[prefs.accent ?? "rose"]
     r.style.setProperty("--sh-accent", a.color)
     r.style.setProperty("--sh-accent-2", a.soft)
@@ -123,7 +131,6 @@ export function CarbonoChrome() {
 
   return (
     <>
-      <style>{CSS}</style>
       {/* moldura: um retângulo arredondado vazado, o resto da tela fica no carvão */}
       {prefs.frame && (
         <div aria-hidden className="pointer-events-none fixed z-[795]"
@@ -254,19 +261,30 @@ export function CarbonoPanels() {
   const right = side === "right" ? RAIL : f
   const center: CSSProperties = { left: `calc(${left}px + (100% - ${left + right}px) / 2)` }
 
-  // encostar o mouse no meio do topo abre o painel
+  // encostar o mouse no meio do topo abre o painel; no meio de baixo, a busca
+  const byHover = useRef(false)
+  const hoverBottom = prefs.hoverBottom !== false
   useEffect(() => {
-    if (!prefs.hoverTop) return
+    if (!prefs.hoverTop && !hoverBottom) return
     let dwell: number | undefined
+    let zone: "" | "top" | "bottom" = ""
     const move = (e: PointerEvent) => {
-      const w = window.innerWidth
-      const inZone = e.clientY <= Math.max(3, f + 1) && Math.abs(e.clientX - (left + (w - left - right) / 2)) < 220
-      if (inZone && !useShell.getState().dash && !dwell) dwell = window.setTimeout(() => { openDash(); dwell = undefined }, 180)
-      if (!inZone && dwell) { clearTimeout(dwell); dwell = undefined }
+      const w = window.innerWidth, h = window.innerHeight
+      const centered = Math.abs(e.clientX - (left + (w - left - right) / 2)) < 220
+      const edge = Math.max(3, f + 1)
+      const now: typeof zone = !centered ? "" : prefs.hoverTop && e.clientY <= edge ? "top" : hoverBottom && e.clientY >= h - edge ? "bottom" : ""
+      if (now !== zone) { clearTimeout(dwell); dwell = undefined; zone = now }
+      if (!zone || dwell) return
+      dwell = window.setTimeout(() => {
+        dwell = undefined
+        if (zone === "top" && !useShell.getState().dash) openDash()
+        if (zone === "bottom" && !useStore.getState().paletteOpen) { byHover.current = true; useStore.setState({ paletteOpen: true }) }
+      }, 200)
     }
     window.addEventListener("pointermove", move)
     return () => { window.removeEventListener("pointermove", move); clearTimeout(dwell) }
-  }, [prefs.hoverTop, f, left, right])
+  }, [prefs.hoverTop, hoverBottom, f, left, right])
+  useEffect(() => { if (!launcher) byHover.current = false }, [launcher])
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -288,7 +306,9 @@ export function CarbonoPanels() {
         <Dashboard />
       </EdgePanel>
       {launcher && <div className="fixed inset-0 z-[6990]" onPointerDown={() => useStore.setState({ paletteOpen: false })} />}
-      <EdgePanel edge="bottom" open={launcher} offset={f} label="Buscar" style={center} center>
+      <EdgePanel edge="bottom" open={launcher} offset={f} label="Buscar" style={center} center
+        onEnter={() => clearTimeout(leaveTimer.current)}
+        onLeave={() => { if (byHover.current && !launcherQuery.current) leaveTimer.current = window.setTimeout(() => useStore.setState({ paletteOpen: false }), 650) }}>
         <Launcher close={() => useStore.setState({ paletteOpen: false })} />
       </EdgePanel>
     </>
@@ -353,8 +373,12 @@ function PcIcon({ path }: { path: string }) {
 const CMD_ICON = (I: typeof Search) => <span className="flex size-7 items-center justify-center rounded-lg" style={{ background: "var(--sh-2)" }}><I size={14} style={{ color: "var(--sh-fg)" }} /></span>
 const WALL_RE = /^>\s*(papel|wallpaper|fundo)\b\s*/i
 
+/** texto digitado na busca (aberta pelo mouse, ela só fecha sozinha se nada foi digitado) */
+const launcherQuery = { current: "" }
+
 function Launcher({ close }: { close: () => void }) {
   const [q, setQ] = useState("")
+  launcherQuery.current = q
   const [sel, setSel] = useState(0)
   const [apps, setApps] = useState<{ name: string; path: string }[]>([])
   const input = useRef<HTMLInputElement>(null)

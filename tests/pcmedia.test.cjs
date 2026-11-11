@@ -60,3 +60,19 @@ test("multiple apps keep independent grace windows", () => {
   assert.equal(retainRecentSessions(first, [c], seen, 9500).length, 2)
   assert.deepEqual(retainRecentSessions(first, [c], seen, 10100), [c])
 })
+
+test("commands are validated before reaching the Windows worker", () => {
+  const { buildCommand } = require("../electron/media-utils.cjs")
+  const s = { app: "Spotify.exe", dur: 200, canSeek: true, canShuffle: true, canRepeat: true }
+  const code = Buffer.from("Spotify.exe").toString("base64")
+  assert.equal(buildCommand("toggle", s), "toggle " + code)
+  assert.equal(buildCommand("seek", s, 999), "seek " + code + " 200.00")
+  assert.equal(buildCommand("seek", { ...s, canSeek: false }, 10), null)
+  assert.equal(buildCommand("shuffle", s, true), "shuffle " + code + " 1")
+  assert.equal(buildCommand("shuffle", { ...s, canShuffle: false }, true), null)
+  assert.equal(buildCommand("repeat", s, 1), "repeat " + code + " 1")
+  assert.equal(buildCommand("repeat", s, 7), "repeat " + code + " 0")
+  assert.equal(buildCommand("repeat", { ...s, canRepeat: false }, 2), null)
+  assert.equal(buildCommand("rm -rf", s), null)
+  assert.equal(buildCommand("toggle", null), null)
+})

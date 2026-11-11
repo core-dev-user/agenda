@@ -103,6 +103,9 @@ contextBridge.exposeInMainWorld("agenda", {
     audioStop: () => ipcRenderer.invoke("sysaudio:stop"),
     onAudio: on("sysaudio:data"),
     onAudioEnd: on("sysaudio:end"),
+    /** visualizador de música: liga/desliga a análise do som do PC */
+    viz: (on) => ipcRenderer.invoke("sysaudio:viz", on),
+    onSpectrum: on("sysaudio:spectrum"),
   },
   pcmedia: {
     sub: (id, app) => ipcRenderer.invoke("media:sub", id, app),
