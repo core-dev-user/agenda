@@ -14,6 +14,7 @@
     "release": "node scripts/release.mjs",
     "predev": "npm run icon && node scripts/generate-icon-pack.mjs",
     "test:media": "node --test tests/pcmedia.test.cjs",
+    "test:security": "node --test tests/security-network.test.cjs",
     "test:wallpaper": "node --test tests/wallpaper-engine.test.cjs",
     "test:taskbar": "node --test tests/taskbar*.test.cjs",
     "test:taskbar:windows": "electron tests/taskbar-preview-smoke.cjs"
