@@ -12,7 +12,7 @@ export interface SysStats {
   uptime: number
 }
 export interface AgendaBridge {
-  store: { get(): string | null; set(data: string): void; flush?(): void }
+  store: { get(): string | null; set(data: string): void; flush?(): void; drain?(): Promise<boolean> }
   win: {
     minimize(): void
     toggleMaximize(): void
@@ -345,7 +345,7 @@ declare global {
 
 const noop = () => () => {}
 const browserFallback: AgendaBridge = {
-  store: { get: () => localStorage.getItem("agenda-data"), set: (d) => localStorage.setItem("agenda-data", d) },
+  store: { get: () => localStorage.getItem("agenda-data"), set: (d) => localStorage.setItem("agenda-data", d), drain: async () => true },
   win: { minimize() {}, toggleMaximize() {}, fullscreen(on) { on ? document.documentElement.requestFullscreen() : document.exitFullscreen() }, close() {}, onState: noop },
   app: { autostart: async () => false, openExternal: async (u) => void window.open(u, "_blank"), screenInfo: async () => ({ long: Math.max(screen.width, screen.height) * devicePixelRatio }), show: async () => {}, quit: async () => {} },
   sys: (() => { const c: SysConfig = { closeToTray: false, hotkey: "", cloudDir: "", cloudOn: false, lastCloud: 0, cloudError: "", guesses: [] }; return { get: async () => c, set: async () => c, pickCloud: async () => "", cloudNow: async () => c } })(),
