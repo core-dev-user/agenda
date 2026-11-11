@@ -15,6 +15,8 @@ import { AutoStylePrompt } from "@/components/AutoStylePrompt"
 import { Wallpaper, Overlays, GRADIENTS } from "@/components/Wallpaper"
 import { CursorLayer } from "@/components/CursorLayer"
 import { Taskbar, WidgetMenu } from "@/components/Taskbar"
+import { CarbonoChrome, CarbonoPanels, useCarbonoVars } from "@/shell/Carbono"
+import { shellPrefs, useShell } from "@/shell/pack"
 import { NotificationPanel } from "@/components/NotificationCenter"
 import { useScreenList, useActiveScreen, setActiveScreen } from "@/lib/screens"
 import type { ScreenRect } from "@/lib/bridge"
@@ -92,16 +94,18 @@ function useDesktopLayer() {
     let up = false
     const sync = () => {
       const s = useStore.getState()
-      const want = s.windows.some((w) => !w.minimized) || s.paletteOpen || useAssistant.getState().open || !!useBarPanels.getState().panel
+      const sh = useShell.getState()
+      const want = s.windows.some((w) => !w.minimized) || s.paletteOpen || useAssistant.getState().open || !!useBarPanels.getState().panel || sh.dash || sh.power
       if (want !== up) { up = want; bridge.mode.raise(want) }
     }
     const off = useStore.subscribe(sync)
     const offA = useAssistant.subscribe(sync)
     const offP = useBarPanels.subscribe(sync)
+    const offS = useShell.subscribe(sync)
     // atalho global / bandeja: abre a busca rápida por cima de tudo
     const off2 = bridge.mode.onSummon(() => useStore.setState({ paletteOpen: true }))
     sync()
-    return () => { off(); offA(); offP(); off2() }
+    return () => { off(); offA(); offP(); offS(); off2() }
   }, [])
 }
 
@@ -209,6 +213,10 @@ export default function App() {
   useDesktopLayer()
   useMainBar()
   const mainBar = useUiMode((s) => s.mainBar)
+  // pacote de interface (Carbono): troca a barra, a busca e ganha o painel de cima
+  const shell = shellPrefs(useStore((s) => s.settings))
+  const packed = shell.pack === "carbono"
+  useCarbonoVars(packed, shell)
   useDesktopDrop()
   useHistory()
   useAppWidgets()
@@ -256,13 +264,14 @@ export default function App() {
           {!showSplash && <Pet />}
         </div>
         <AnimatePresence>{windows.map((w) => <AppWindow key={w.id} win={w} />)}</AnimatePresence>
-        {!mainBar && <ScreenFrame sc={home}><Taskbar /></ScreenFrame>}
+        {!mainBar && <ScreenFrame sc={home}>{packed ? <CarbonoChrome /> : <Taskbar />}</ScreenFrame>}
         <AnimatePresence>{ctx && <DesktopMenu at={ctx} close={() => setCtx(null)} />}</AnimatePresence>
       </motion.div>
       {/* busca, assistente e avisos abrem no monitor onde você está mexendo */}
       <ScreenFrame sc={active}>
         <FocusBar />
         <CommandPalette />
+        {packed && <CarbonoPanels />}
         <Assistant />
         <AutoStylePrompt />
         <BarPanels />

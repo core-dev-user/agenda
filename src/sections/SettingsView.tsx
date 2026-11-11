@@ -2,7 +2,7 @@ import { useScreenList } from "@/lib/screens"
 import { useUiMode } from "@/lib/uimode"
 import { useEffect, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
-import { Download, Upload, RotateCcw, Ban, Bell, Circle, CircleDashed, CircleDot, Crosshair, Droplets, Flame, Flashlight, Flower2, Gem, Grid3x3, HardDrive, Heart, Image, LayoutGrid, LayoutTemplate, Leaf, MonitorSmartphone, MousePointer, MousePointer2, Navigation, Orbit, Palette, PanelBottom, PartyPopper, PawPrint, Plug, Rainbow, Scissors, Snowflake, Sparkles, Spline, Star, Type, Wand2, WandSparkles, Waves, type LucideIcon } from "lucide-react"
+import { Download, Upload, RotateCcw, Ban, Bell, Boxes, Circle, CircleDashed, CircleDot, Crosshair, Droplets, Flame, Flashlight, Flower2, Gem, Grid3x3, HardDrive, Heart, Image, LayoutGrid, LayoutTemplate, Leaf, MonitorSmartphone, MousePointer, MousePointer2, Navigation, Orbit, Palette, PanelBottom, PartyPopper, PawPrint, Plug, Rainbow, Scissors, Snowflake, Sparkles, Spline, Star, Type, Wand2, WandSparkles, Waves, type LucideIcon } from "lucide-react"
 import { GlyphTile } from "@/components/Glyph"
 import { useStore, THEME_PRESETS } from "@/lib/store"
 import { bridge, isDesktop, mediaUrl } from "@/lib/bridge"
@@ -24,10 +24,12 @@ import { TemplatesTab } from "./Templates"
 import { PetTab } from "@/pet/PetSettings"
 import { UpdatesSection } from "@/components/Updates"
 import { IntegrationsTab, ModeTab, RoutineTab, SystemExtra } from "./SettingsExtra"
+import { PacksTab } from "@/shell/PackSettings"
 
 const TABS = [
   { id: "mode", label: "Modo de uso", e: MonitorSmartphone, c: "#6ea8ff" },
   { id: "templates", label: "Templates", e: LayoutTemplate, c: "#a78bfa" },
+  { id: "packs", label: "Pacotes", e: Boxes, c: "#e6a3b4" },
   { id: "look", label: "Aparência", e: Palette, c: "#329FFD" },
   { id: "fonts", label: "Fontes", e: Type, c: "#8f9bff" },
   { id: "cursor", label: "Cursor", e: MousePointer2, c: "#7cc8ff" },
@@ -66,6 +68,7 @@ export default function SettingsView() {
         <motion.div key={tab} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="mx-auto max-w-3xl space-y-5">
           {tab === "mode" && <ModeTab />}
           {tab === "templates" && <TemplatesTab />}
+          {tab === "packs" && <PacksTab />}
           {tab === "look" && <Look />}
           {tab === "fonts" && <Fonts />}
           {tab === "cursor" && <Cursor />}
