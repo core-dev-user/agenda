@@ -443,9 +443,11 @@ function register(ipcMain, mainGetter, app) {
     }
   }
   ipcMain.handle("webapp:watch", (_e, id, on) => {
-    if (id !== "discord") return
-    discordWatchers = Math.max(0, discordWatchers + (on ? 1 : -1))
-    syncDiscordTimer()
+    if (!APPS[id]) return
+    if (id === "discord") {
+      discordWatchers = Math.max(0, discordWatchers + (on ? 1 : -1))
+      syncDiscordTimer()
+    }
     if (on) ensure(id)
   })
   ipcMain.handle("webapp:ifoodOrders", () => ifoodOrders())
