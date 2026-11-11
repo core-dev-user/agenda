@@ -1,4 +1,4 @@
-import { perfPaused } from "@/lib/perf"
+import { perfPaused, perfVisualFps } from "@/lib/perf"
 import { useEffect, useRef } from "react"
 
 interface Petal {
@@ -65,11 +65,13 @@ export function SakuraCanvas({
     let W = 0, H = 0, dpr = 1
     const mouse = { x: -9999, y: -9999, vx: 0, vy: 0 }
     let raf = 0
+    let sleepTimer: ReturnType<typeof setTimeout> | undefined
     let last = performance.now()
     let t = 0
 
     const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const fps = perfVisualFps()
+      dpr = Math.min(window.devicePixelRatio || 1, fps >= 55 ? 2 : fps >= 24 ? 1.5 : 1)
       W = canvas.clientWidth
       H = canvas.clientHeight
       canvas.width = W * dpr
@@ -128,12 +130,20 @@ export function SakuraCanvas({
     }
     if (interactive) window.addEventListener("pointermove", onMove)
     window.addEventListener("resize", resize)
+    window.addEventListener("widgy:perf-settings", resize)
 
     const frame = (now: number) => {
-      if (perfPaused()) { raf = requestAnimationFrame(frame); return }
-      // 30 quadros por segundo bastam para as pétalas e custam metade (o vidro desfocado por cima é recalculado a cada quadro)
-      if (now - last < 31) { raf = requestAnimationFrame(frame); return }
-      const dt = Math.min(3, (now - last) / 16.67)
+      const delay = 1000 / Math.min(30, perfVisualFps())
+      if (perfPaused() || document.hidden) {
+        sleepTimer = setTimeout(() => { raf = requestAnimationFrame(frame) }, 450)
+        return
+      }
+      // Agenda economia: não agendar 60 callbacks RAF para desenhar apenas 15 pétalas/s.
+      if (now - last < delay - 2) {
+        sleepTimer = setTimeout(() => { raf = requestAnimationFrame(frame) }, Math.max(5, delay - (now - last) - 3))
+        return
+      }
+      const dt = Math.min(6, (now - last) / 16.67)
       last = now
       t += dt * 0.016
       const gust = Math.sin(t * 0.35) * 0.5 + Math.sin(t * 0.13 + 1) * 0.6
@@ -207,12 +217,14 @@ export function SakuraCanvas({
       ctx.globalAlpha = 1
       mouse.vx *= 0.85
       mouse.vy *= 0.85
-      raf = requestAnimationFrame(frame)
+      sleepTimer = setTimeout(() => { raf = requestAnimationFrame(frame) }, Math.max(6, 1000 / Math.min(30, perfVisualFps()) - 4))
     }
     raf = requestAnimationFrame(frame)
 
     return () => {
       cancelAnimationFrame(raf)
+      clearTimeout(sleepTimer)
+      window.removeEventListener("widgy:perf-settings", resize)
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("resize", resize)
     }
