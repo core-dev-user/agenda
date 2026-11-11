@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { useSettings } from "@/lib/store"
-import { perfPaused } from "@/lib/perf"
+import { perfPaused, perfVisualFps } from "@/lib/perf"
 
 const CLICKABLE = "button,a,[role=button],select,label,.clickable,[data-clickable]"
 const TEXT = "input:not([type=range]):not([type=checkbox]):not([type=color]),textarea,[contenteditable=true]"
@@ -32,12 +32,14 @@ export function CursorLayer() {
     const ctx = canvas.getContext("2d")!
     let dpr = 1
     const resize = () => {
-      dpr = Math.min(2, window.devicePixelRatio || 1)
+      const fps = perfVisualFps()
+      dpr = Math.min(fps >= 55 ? 2 : fps >= 24 ? 1.5 : 1, window.devicePixelRatio || 1)
       canvas.width = innerWidth * dpr
       canvas.height = innerHeight * dpr
     }
     resize()
     window.addEventListener("resize", resize)
+    window.addEventListener("widgy:perf-settings", resize)
 
     const m = { x: innerWidth / 2, y: innerHeight / 2, px: 0, py: 0, rx: innerWidth / 2, ry: innerHeight / 2, hover: false, text: false, down: false, visible: false }
     const trail: { x: number; y: number; t: number }[] = []
@@ -66,7 +68,11 @@ export function CursorLayer() {
     }
     const EFFECT_KIND: Record<string, number> = { hearts: 3, stars: 4, bubbles: 5, confetti: 6, fire: 7, snow: 8, leaves: 9, magic: 10 }
 
+    let raf = 0
+    let frameTimer: ReturnType<typeof setTimeout> | undefined
+    const wake = () => { if (!raf && !frameTimer) raf = requestAnimationFrame(loop) }
     const onMove = (e: PointerEvent) => {
+      wake()
       m.x = e.clientX
       m.y = e.clientY
       m.visible = true
@@ -95,6 +101,7 @@ export function CursorLayer() {
       m.py = m.y
     }
     const onDown = () => {
+      wake()
       m.down = true
       const c = cfg.current
       const ce = c.clickEffect ?? "auto"
@@ -111,20 +118,20 @@ export function CursorLayer() {
           parts.push({ x: m.x, y: m.y, vx: Math.cos(a) * 2.5, vy: Math.sin(a) * 2.5, life: 0, max: 60, size: 1.4, rot: a, vr: 0.1, kind: 0, color: cfg.current.cursorColor })
         }
     }
-    const onUp = () => (m.down = false)
-    const onLeave = () => (m.visible = false)
+    const onUp = () => { m.down = false; wake() }
+    const onLeave = () => { m.visible = false; wake() }
     window.addEventListener("pointermove", onMove)
     window.addEventListener("pointerdown", onDown)
     window.addEventListener("pointerup", onUp)
     document.addEventListener("pointerleave", onLeave)
 
-    let raf = 0
     let lastX = -1, lastY = -1
     const loop = () => {
-      // Agenda escondido ou jogo aberto: não desenha nada
-      if (perfPaused()) { raf = requestAnimationFrame(loop); return }
-      // mouse parado, sem partículas nem rastro: nada mudou, não redesenha
-      if (!parts.length && !ripples.length && trail.length < 2 && Math.abs(m.x - m.rx) < 0.2 && Math.abs(m.y - m.ry) < 0.2 && m.x === lastX && m.y === lastY) { raf = requestAnimationFrame(loop); return }
+      raf = 0
+      // Oculto ou em jogo: o loop dorme até um evento de visibilidade.
+      if (perfPaused() || document.hidden) return
+      // Sem mudanças: ficar realmente ocioso, não gastar 60 callbacks por segundo.
+      if (!parts.length && !ripples.length && trail.length < 2 && Math.abs(m.x - m.rx) < 0.2 && Math.abs(m.y - m.ry) < 0.2 && m.x === lastX && m.y === lastY) return
       lastX = m.x; lastY = m.y
       const c = cfg.current
       const [r, g, b] = hexToRgb(c.cursorColor)
@@ -322,12 +329,20 @@ export function CursorLayer() {
         ring.style.transform = `translate3d(${m.rx}px, ${m.ry}px, 0) scale(${sc})`
         ring.style.opacity = m.visible && !m.text ? "1" : "0"
       }
-      raf = requestAnimationFrame(loop)
+      const fps = perfVisualFps()
+      if (fps >= 55) raf = requestAnimationFrame(loop)
+      else frameTimer = setTimeout(() => { frameTimer = undefined; wake() }, Math.max(5, 1000 / fps - 3))
     }
-    raf = requestAnimationFrame(loop)
+    wake()
+    window.addEventListener("widgy:perf-state", wake)
+    document.addEventListener("visibilitychange", wake)
     return () => {
       cancelAnimationFrame(raf)
+      clearTimeout(frameTimer)
       window.removeEventListener("resize", resize)
+      window.removeEventListener("widgy:perf-settings", resize)
+      window.removeEventListener("widgy:perf-state", wake)
+      document.removeEventListener("visibilitychange", wake)
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("pointerdown", onDown)
       window.removeEventListener("pointerup", onUp)
