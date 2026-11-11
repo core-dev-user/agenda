@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld("agenda", {
     status: () => ipcRenderer.invoke("wallpaperEngine:status"),
     open: () => ipcRenderer.invoke("wallpaperEngine:open"),
     restart: () => ipcRenderer.invoke("wallpaperEngine:restart"),
+    resume: () => ipcRenderer.invoke("wallpaperEngine:resume"),
   },
   app: {
     autostart: (v) => ipcRenderer.invoke("app:autostart", v),

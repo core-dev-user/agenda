@@ -147,7 +147,8 @@ function Rail({ side, onBell, onPower, pop }: { side: "left" | "right"; onBell: 
   const openW = useStore((s) => s.openWindow)
   const patch = useStore((s) => s.patchWindow)
   const unread = useStore((s) => s.notifications.filter((n) => !n.read).length)
-  const now = useNow(1000)
+  // A barra exibe horas/minutos, não precisa renderizar a cada segundo.
+  const now = useNow(60000)
   const open = [...windows].sort((a, b) => SECTIONS.findIndex((x) => x.id === a.id) - SECTIONS.findIndex((x) => x.id === b.id))
   const top = [...windows].filter((w) => !w.minimized).sort((a, b) => b.z - a.z)[0]
   const topMeta = top ? SECTIONS.find((x) => x.id === top.id) : null
@@ -301,19 +302,48 @@ const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 
 let appsCache: Promise<{ name: string; path: string }[]> | null = null
 const loadApps = () => (appsCache ??= bridge.bar.apps().catch(() => { appsCache = null; return [] }))
-const iconCache = new Map<string, Promise<string>>()
+// Ícones base64 são strings grandes mantidas pelo Promise mesmo após fechar a busca.
+// LRU limitado tanto por quantidade quanto por bytes, sem reter erros ou ícones gigantes.
+const ICON_CACHE_LIMIT = 24
+const ICON_CACHE_BYTES = 1024 * 1024
+type CachedIcon = { promise: Promise<string>; bytes: number }
+const iconCache = new Map<string, CachedIcon>()
+let iconCacheBytes = 0
+function clearIconCache() { iconCache.clear(); iconCacheBytes = 0 }
+function trimIconCache() {
+  while (iconCache.size > ICON_CACHE_LIMIT || iconCacheBytes > ICON_CACHE_BYTES) {
+    const key = iconCache.keys().next().value
+    if (key === undefined) break
+    const oldest = iconCache.get(key)
+    iconCache.delete(key)
+    iconCacheBytes -= oldest?.bytes ?? 0
+  }
+}
+function getCachedIcon(path: string) {
+  const cached = iconCache.get(path)
+  if (cached) {
+    iconCache.delete(path)
+    iconCache.set(path, cached)
+    return cached.promise
+  }
+  const entry: CachedIcon = { bytes: 0, promise: Promise.resolve("") }
+  entry.promise = bridge.bar.icon(path).catch(() => "").then((src) => {
+    if (iconCache.get(path) !== entry) return src
+    if (!src || src.length > ICON_CACHE_BYTES / 2) { iconCache.delete(path); return src }
+    entry.bytes = src.length
+    iconCacheBytes += entry.bytes
+    trimIconCache()
+    return src
+  })
+  iconCache.set(path, entry)
+  trimIconCache()
+  return entry.promise
+}
 function PcIcon({ path }: { path: string }) {
   const [src, setSrc] = useState("")
   useEffect(() => {
     let alive = true
-    let p = iconCache.get(path)
-    if (!p) {
-      p = bridge.bar.icon(path).catch(() => "")
-      iconCache.set(path, p)
-      // Ícones em base64 são pesados; cache LRU simples com limite de 96.
-      while (iconCache.size > 96) iconCache.delete(iconCache.keys().next().value!)
-    }
-    void p.then((s) => alive && setSrc(s || ""))
+    void getCachedIcon(path).then((s) => { if (alive) setSrc(s || "") })
     return () => { alive = false }
   }, [path])
   return src ? <img src={src} alt="" className="size-6 object-contain" draggable={false} />
@@ -330,7 +360,18 @@ function Launcher({ close }: { close: () => void }) {
   const input = useRef<HTMLInputElement>(null)
   const list = useRef<HTMLDivElement>(null)
   const st = useStore.getState()
-  useEffect(() => { void loadApps().then(setApps); const t = setTimeout(() => input.current?.focus(), 60); return () => clearTimeout(t) }, [])
+  useEffect(() => {
+    let alive = true
+    void loadApps().then((items) => { if (alive) setApps(items) })
+    const t = setTimeout(() => input.current?.focus(), 60)
+    return () => {
+      alive = false
+      clearTimeout(t)
+      // O buscador sai da árvore ao fechar: devolve ícones base64 e lista de apps à GC.
+      clearIconCache()
+      appsCache = null
+    }
+  }, [])
 
   const wallMode = WALL_RE.test(q)
 

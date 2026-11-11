@@ -42,7 +42,7 @@ function useMedia() {
   }, [])
   useEffect(() => {
     if (!m?.playing) return
-    const t = window.setInterval(() => setNow(performance.now()), 500)
+    const t = window.setInterval(() => { if (!document.hidden) setNow(performance.now()) }, 1000)
     return () => clearInterval(t)
   }, [m?.playing])
   const pos = m?.pos != null ? Math.min(m.dur || Infinity, m.pos + (m.playing ? (now - at) / 1000 : 0)) : 0

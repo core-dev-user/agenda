@@ -82,6 +82,19 @@ function register(ipcMain, onQuit, userDir) {
     try { await shell.openExternal("steam://rungameid/" + STEAM_ID); return true }
     catch { return false }
   })
+  ipcMain.handle("wallpaperEngine:resume", async () => {
+    // Nunca reiniciar wallpapers automaticamente: Wallpaper Engine pode tê-los
+    // pausado de propósito durante um jogo ou em bateria.
+    if (process.platform !== "win32" || process.env.AGENDA_SHOT || !userDir) return false
+    if (require("./mode.cjs").mode() !== "desktop" || !requiresTransparency(userDir)) return false
+    const exe = findExecutable()
+    if (!exe || !(await status()).running) return false
+    // Comando oficial "-control play"; não abrir uma segunda instância gráfica.
+    return new Promise((resolve) => {
+      execFile(exe, ["-control", "play"], { windowsHide: true, timeout: 3500, maxBuffer: 256 * 1024 },
+        (err) => resolve(!err))
+    })
+  })
   ipcMain.handle("wallpaperEngine:restart", () => {
     // A transparência do Electron só pode ser definida ao criar a janela.
     if (process.platform !== "win32") return false

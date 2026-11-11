@@ -445,6 +445,8 @@ function WallpaperEnginePanel() {
   const [status, setStatus] = useState<Awaited<ReturnType<typeof bridge.wallpaperEngine.status>> | null>(null)
   const [error, setError] = useState("")
   const [opening, setOpening] = useState(false)
+  const [resuming, setResuming] = useState(false)
+  const [resumeMessage, setResumeMessage] = useState("")
 
   useEffect(() => {
     let alive = true
@@ -454,7 +456,8 @@ function WallpaperEnginePanel() {
       }).catch(() => { if (alive) setStatus(null) })
     }
     refresh()
-    const timer = window.setInterval(refresh, 10000)
+    // Cada consulta dispara processos Windows; evitar uma consulta a cada 10 s.
+    const timer = window.setInterval(() => { if (!document.hidden) refresh() }, 30000)
     return () => { alive = false; window.clearInterval(timer) }
   }, [])
 
@@ -492,10 +495,29 @@ function WallpaperEnginePanel() {
             } catch { setError("Falha ao iniciar o Wallpaper Engine.") }
             setOpening(false)
           }}>Abrir no Steam</ThemedButton>
+          {mode === "desktop" && status?.running && (
+            <button className="btn text-xs" disabled={resuming} onClick={async () => {
+              setResuming(true); setResumeMessage("")
+              try {
+                const ok = await bridge.wallpaperEngine.resume()
+                setResumeMessage(ok ? "Comando de reprodução enviado ao Wallpaper Engine." : "Não foi possível retomar. Confira se o Widgy está com o fundo Wallpaper Engine ativo.")
+              } catch { setResumeMessage("Falha ao enviar comando ao Wallpaper Engine.") }
+              setResuming(false)
+            }}>Retomar animação</button>
+          )}
           <button className="btn text-xs" onClick={() => { void bridge.wallpaperEngine.status().then(setStatus).catch(() => setStatus(null)) }}>Atualizar status</button>
         </div>
       )}
-      {error && <div className="text-xs text-[#ff8f8f]">{error}</div>}
+      {resumeMessage && <div className="text-xs text-fg-muted">{resumeMessage}</div>}
+      {mode === "desktop" && (
+        <div className="text-xs leading-relaxed text-fg-muted">
+          Se a animação parar ao abrir o Widgy, no Wallpaper Engine vá a <strong>Configurações → Desempenho → Regras de aplicativos</strong>
+          e adicione <strong>Widgy.exe</strong> com reprodução <strong>Continuar</strong>.
+          O Wallpaper Engine pode pausar wallpapers quando detecta uma janela sobre a área de trabalho.
+          Prefira essa regra específica a desativar globalmente as pausas durante jogos.
+        </div>
+      )}
+      {error && <div className="text-xs text-[#ff8f8f]">{error}</div>
       <div className="text-[11px] leading-relaxed text-fg-muted">
         Não precisa exportar seus wallpapers do Workshop. O Wallpaper Engine deve continuar aberto, e a interação direta com o fundo depende do Windows e do próprio Wallpaper Engine.
       </div>

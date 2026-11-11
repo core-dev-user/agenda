@@ -88,7 +88,13 @@ function createWindow() {
   system.attachWindow(win)
   // fechar pelo X manda para a bandeja; "Sair" na bandeja encerra tudo
   win.on("closed", () => { win = null; app.quit() })
-  win.once("ready-to-show", () => win && !hidden && win.show())
+  win.once("ready-to-show", () => {
+    if (!win || hidden) return
+    // Não roubar foco do Wallpaper Engine: o Widgy em modo desktop é uma camada
+    // de widgets, não um app em tela cheia. A ativação explícita ainda usa mode:raise.
+    if (modes.mode() === "desktop" && !process.env.AGENDA_SHOT) win.showInactive()
+    else win.show()
+  })
   win.on("maximize", () => win && win.webContents.send("win:state", { maximized: true }))
   win.on("unmaximize", () => win && win.webContents.send("win:state", { maximized: false }))
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -217,7 +223,7 @@ require("./sports.cjs").register(ipcMain)
 require("./webapps.cjs").register(ipcMain, () => win, app)
 system.register(ipcMain, () => win)
 modes.register(ipcMain, () => win, () => system.quit())
-wallpaperEngine.register(ipcMain, () => system.quit())
+wallpaperEngine.register(ipcMain, () => system.quit(), userDir)
 require("./media.cjs").register(ipcMain, () => win)
 require("./bar.cjs").register(ipcMain, () => win)
 require("./share.cjs").register(ipcMain)
