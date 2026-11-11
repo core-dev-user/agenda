@@ -1,0 +1,50 @@
+name: Publicar Widgy 0.3.5
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    if: "startsWith(github.event.head_commit.message, 'release: v0.3.5')"
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Confirmar versão
+        shell: bash
+        run: test "$(node -p "require('./package.json').version")" = "0.3.5"
+      - run: npm ci
+      - run: npm run test:media
+      - run: npm run test:taskbar
+      - run: npm run build
+      - name: Testar prévias reais Electron/DWM
+        run: npm run test:taskbar:windows
+      - name: Criar publicação
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.5 >/dev/null 2>&1 || gh release create v0.3.5 --target "$GITHUB_SHA" --title "Widgy 0.3.5 — estabilidade e aplicativos" --notes "Correções para a barra personalizada voltar ao padrão do Windows após falhas transitórias; recuperação do auxiliar de teclado e da barra; Win+D mostrando/restaurando a área de trabalho; Iniciar Widgy com Microsoft Store/MSIX, mais atalhos e executáveis registrados; carregamento de ícones otimizado. Preserva os fixados da barra original, as preferências e os dados existentes. A experiência depende do Windows e precisa de validação adicional no PC do usuário."
+      - name: Gerar instalador e metadados do atualizador
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis --publish always
+      - name: Conferir arquivos enviados
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.5 --json assets --jq '.assets[].name' | grep -Fx 'Widgy-Setup-0.3.5.exe'
+          gh release view v0.3.5 --json assets --jq '.assets[].name' | grep -Fx 'Widgy-Setup-0.3.5.exe.blockmap'
+          gh release view v0.3.5 --json assets --jq '.assets[].name' | grep -Fx 'latest.yml'
