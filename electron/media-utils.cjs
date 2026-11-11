@@ -36,4 +36,24 @@ function retainRecentSessions(previous, incoming, lastSeen, now = Date.now(), gr
   return [...fresh, ...retained]
 }
 
-module.exports = { pickSession, mergeArtwork, retainRecentSessions }
+const COMMANDS = ["toggle", "next", "prev", "seek", "shuffle", "repeat"]
+
+/** Valida um comando de um widget e monta a linha enviada ao leitor do Windows (ou null se não for permitido). */
+function buildCommand(cmd, session, arg) {
+  if (!COMMANDS.includes(cmd) || !session || !session.app) return null
+  const code = Buffer.from(String(session.app), "utf8").toString("base64")
+  if (cmd === "seek") {
+    if (!session.canSeek) return null
+    const seconds = Math.max(0, Math.min(Number(session.dur) || 86400, Number(arg) || 0))
+    return "seek " + code + " " + seconds.toFixed(2)
+  }
+  if (cmd === "shuffle") return session.canShuffle ? "shuffle " + code + " " + (arg ? "1" : "0") : null
+  if (cmd === "repeat") {
+    if (!session.canRepeat) return null
+    const mode = Math.round(Number(arg))
+    return "repeat " + code + " " + (mode === 1 || mode === 2 ? mode : 0)
+  }
+  return cmd + " " + code
+}
+
+module.exports = { pickSession, mergeArtwork, retainRecentSessions, buildCommand }

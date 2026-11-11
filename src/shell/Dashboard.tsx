@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
-  ArrowDown, ArrowUp, ChevronLeft, ChevronRight, CloudSun, Cpu, Droplets, HardDrive, LayoutDashboard, MemoryStick,
-  Music2, Pause, Play, SkipBack, SkipForward, Thermometer, Wind, Gauge as GaugeIcon, MonitorSmartphone,
+  ArrowDown, ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, CloudSun, Cpu, Droplets, Gauge as GaugeIcon, HardDrive, LayoutDashboard, MemoryStick, MonitorSmartphone, Music2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Thermometer, Wind,
 } from "lucide-react"
 import { useStore } from "@/lib/store"
-import { bridge, type PcMedia, type SysStats } from "@/lib/bridge"
+import { bridge, type PcMedia, type PcMediaCommand, type SysStats } from "@/lib/bridge"
+import { useCoverArt } from "@/lib/coverArt"
+import { PC_PLAYERS } from "@/widgets/PcMusicWidget"
 import { useNow } from "@/widgets/Clock"
 import { LABEL, WxIcon, loadWeather, type Wx } from "@/widgets/Weather"
 import { useLyrics, lineAt } from "@/lib/lyrics"
@@ -16,7 +17,7 @@ import { ensureFont, fontFamily } from "@/lib/fonts"
 /** fonte condensada só do relógio grande do painel */
 const CLOCK_FONT = "gf-bebas-neue"
 import { cn } from "@/lib/utils"
-import { useShell, type DashTab } from "./pack"
+import { setShellPrefs, useShell, type DashTab } from "./pack"
 
 const TABS: { id: DashTab; label: string; icon: typeof Cpu }[] = [
   { id: "dash", label: "Painel", icon: LayoutDashboard },
@@ -28,27 +29,66 @@ const TABS: { id: DashTab; label: string; icon: typeof Cpu }[] = [
 /* ───────────────────────────── dados ───────────────────────────── */
 
 /** música tocando no PC (Spotify e outros, pela central de mídia do Windows) */
+const MEDIA_ID = "carbono-dash"
 function useMedia() {
+  const player = useStore((s) => s.settings.shell?.player ?? "")
   const [m, setM] = useState<PcMedia | null>(null)
   const [at, setAt] = useState(performance.now())
   const [now, setNow] = useState(performance.now())
   useEffect(() => {
-    const id = "carbono-dash"
     let alive = true
-    const got = (s: PcMedia) => { if (alive && s.widgetId === id) { setM(s); setAt(performance.now()) } }
+    setM(null)
+    const got = (s: PcMedia) => { if (alive && s.widgetId === MEDIA_ID) { setM(s); setAt(performance.now()) } }
     const off = bridge.pcmedia.onState(got)
-    void bridge.pcmedia.sub(id, "").then((s) => s && got(s)).catch(() => {})
-    return () => { alive = false; off(); void bridge.pcmedia.unsub(id) }
-  }, [])
+    void bridge.pcmedia.sub(MEDIA_ID, player).then((s) => s && got({ ...s, widgetId: MEDIA_ID })).catch(() => {})
+    return () => { alive = false; off(); void bridge.pcmedia.unsub(MEDIA_ID) }
+  }, [player])
   useEffect(() => {
     if (!m?.playing) return
     const t = window.setInterval(() => { if (!document.hidden) setNow(performance.now()) }, 1000)
     return () => clearInterval(t)
   }, [m?.playing])
-  const pos = m?.pos != null ? Math.min(m.dur || Infinity, m.pos + (m.playing ? (now - at) / 1000 : 0)) : 0
-  const cmd = (c: "toggle" | "next" | "prev" | "seek", s?: number) => { void bridge.pcmedia.cmd(c, "carbono-dash", s) }
-  return { m: m && !m.none && m.title ? m : null, pos, cmd }
+  const live = m && !m.none && m.title ? m : null
+  // capa do Windows ou, se o Spotify não entregar, a reserva (iTunes/Deezer com título e artista iguais)
+  const art = useCoverArt(live)
+  const pos = live?.pos != null ? Math.min(live.dur || Infinity, live.pos + (live.playing ? (now - at) / 1000 : 0)) : 0
+  const cmd = (c: PcMediaCommand, a?: number | boolean) => { void bridge.pcmedia.cmd(c, MEDIA_ID, a) }
+  return { m: live ? { ...live, art } : null, pos, cmd }
 }
+
+/**
+ * Espectro do som do PC (48 faixas, graves primeiro), calculado no processo principal.
+ * A análise só roda enquanto algum visualizador está na tela e a música está tocando.
+ */
+const spectrum = { bands: new Float32Array(48), level: 0, at: 0 }
+let vizUsers = 0
+let vizOff: (() => void) | null = null
+function useSpectrum(on: boolean) {
+  useEffect(() => {
+    if (!on) return
+    if (vizUsers++ === 0) {
+      vizOff = bridge.share.onSpectrum((s) => {
+        for (let i = 0; i < 48; i++) {
+          const v = s.bands[i] ?? 0, cur = spectrum.bands[i]
+          // sobe rápido, desce devagar: o movimento acompanha a batida sem tremer
+          spectrum.bands[i] = v > cur ? cur + (v - cur) * 0.65 : cur + (v - cur) * 0.2
+        }
+        spectrum.level = s.level
+        spectrum.at = performance.now()
+      })
+      void bridge.share.viz(true).catch(() => {})
+    }
+    return () => {
+      if (--vizUsers > 0) return
+      vizOff?.(); vizOff = null
+      void bridge.share.viz(false).catch(() => {})
+      spectrum.bands.fill(0); spectrum.level = 0; spectrum.at = 0
+    }
+  }, [on])
+}
+/** recebendo o som de verdade agora? (senão os visualizadores usam um ritmo suave de reserva) */
+const liveSpectrum = () => performance.now() - spectrum.at < 600
+const bass = () => (spectrum.bands[1] + spectrum.bands[2] + spectrum.bands[3] + spectrum.bands[4]) / 4
 
 function useSys() {
   const [s, setS] = useState<SysStats | null>(null)
@@ -198,21 +238,18 @@ function MiniPlayer({ m, pos, cmd }: ReturnType<typeof useMedia>) {
   const pct = m?.dur ? Math.min(100, (pos / m.dur) * 100) : 0
   return (
     <div className="sh-card row-span-2 flex flex-col items-center px-4 py-4 text-center">
-      <Spikes art={m?.art} playing={!!m?.playing} size={118} />
+      <ReactiveCover art={m?.art} playing={!!m?.playing} size={122} />
       <div className="mt-3 w-full truncate text-[13px] font-semibold">{m?.title ?? "Nada tocando"}</div>
       <div className="w-full truncate text-[11px]" style={{ color: "var(--sh-muted)" }}>{m?.artist || (m ? "" : "Toque algo no Spotify")}</div>
       <div className="mt-auto w-full pt-3">
         <div className="h-1 w-full overflow-hidden rounded-full" style={{ background: "var(--sh-3)" }}>
-          <div className="h-full rounded-full" style={{ width: pct + "%", background: "var(--sh-accent)" }} />
+          <div className="h-full rounded-full transition-[width] duration-500 ease-linear" style={{ width: pct + "%", background: "var(--sh-accent)" }} />
         </div>
         <div className="mt-1 flex justify-between text-[10px] tabular-nums" style={{ color: "var(--sh-dim)" }}><span>{fmt(pos)}</span><span>{fmt(m?.dur)}</span></div>
       </div>
       <div className="flex items-center gap-1 pt-2">
         <button type="button" className="sh-btn size-8" aria-label="Anterior" disabled={!m} onClick={() => cmd("prev")}><SkipBack size={14} fill="currentColor" /></button>
-        <button type="button" aria-label={m?.playing ? "Pausar" : "Tocar"} disabled={!m} onClick={() => cmd("toggle")}
-          className="flex h-8 w-12 items-center justify-center rounded-full transition-transform active:scale-90" style={{ background: "var(--sh-fg)", color: "#141414" }}>
-          {m?.playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" className="translate-x-px" />}
-        </button>
+        <PlayButton playing={!!m?.playing} disabled={!m} onClick={() => cmd("toggle")} small />
         <button type="button" className="sh-btn size-8" aria-label="Próxima" disabled={!m} onClick={() => cmd("next")}><SkipForward size={14} fill="currentColor" /></button>
       </div>
     </div>
@@ -221,103 +258,233 @@ function MiniPlayer({ m, pos, cmd }: ReturnType<typeof useMedia>) {
 
 /* ───────────────────────────── mídia ───────────────────────────── */
 
+const REPEAT_LABEL = ["Repetir: desligado", "Repetir: esta música", "Repetir: a lista"] as const
+
 function MediaTab() {
   const { m, pos, cmd } = useMedia()
-  const lyrics = useLyrics(m?.title, m?.artist, m?.dur, !!m)
-  const lines = lyrics && lyrics.synced ? lyrics.synced : null
-  const cur = lines ? lineAt(lines, pos + 0.3) : -1
-  const lyricBox = useRef<HTMLDivElement>(null)
-  useEffect(() => { lyricBox.current?.querySelector(`[data-l="${cur}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }) }, [cur])
+  // aleatório/repetir mudam na hora; o Windows confirma no próximo envio
+  const [ov, setOv] = useState<{ shuffle?: boolean; repeat?: 0 | 1 | 2; at: number } | null>(null)
+  const fresh = ov && performance.now() - ov.at < 2500 ? ov : null
+  const shuffle = fresh?.shuffle ?? !!m?.shuffle
+  const repeat = fresh?.repeat ?? m?.repeat ?? 0
+  const noCtl = "O player não permite isso pelo Windows"
 
   return (
-    <div className="grid gap-3" style={{ gridTemplateColumns: "230px minmax(0,1fr) 250px" }}>
-      <div className="flex items-center justify-center py-2">
-        <Spikes art={m?.art} playing={!!m?.playing} size={196} />
+    <div className="grid h-[252px] gap-3" style={{ gridTemplateColumns: "236px minmax(0,1fr) 262px" }}>
+      <div className="flex items-center justify-center">
+        <ReactiveCover art={m?.art} playing={!!m?.playing} size={214} />
       </div>
-      <div className="flex min-w-0 flex-col justify-center gap-1 py-2">
-        <div className="truncate text-[22px] font-semibold tracking-[-.01em]">{m?.title ?? "Nada tocando"}</div>
-        <div className="truncate text-[13px]" style={{ color: "var(--sh-muted)" }}>{m?.artist || "Abra o Spotify ou outro player"}</div>
-        {m?.album && m.album !== m.title && <div className="truncate text-[12px]" style={{ color: "var(--sh-dim)" }}>{m.album}</div>}
+      <div className="flex min-w-0 flex-col justify-center gap-1">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={(m?.title ?? "") + (m?.artist ?? "")} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.22 }} className="min-w-0">
+            <div className="truncate text-[22px] font-semibold tracking-[-.01em]">{m?.title ?? "Nada tocando"}</div>
+            <div className="truncate text-[13px]" style={{ color: "var(--sh-muted)" }}>{m?.artist || "Abra o Spotify ou outro player"}</div>
+            {m?.album && m.album !== m.title && <div className="truncate text-[12px]" style={{ color: "var(--sh-dim)" }}>{m.album}</div>}
+          </motion.div>
+        </AnimatePresence>
         <div className="mt-4 flex items-center gap-3 text-[11px] tabular-nums" style={{ color: "var(--sh-muted)" }}>
-          <span>{fmt(pos)}</span>
+          <span className="w-8 text-right">{fmt(pos)}</span>
           <WaveProgress value={m?.dur ? pos / m.dur : 0} playing={!!m?.playing} onSeek={m?.canSeek && m.dur ? (p) => cmd("seek", p * m.dur!) : undefined} />
-          <span>{fmt(m?.dur)}</span>
+          <span className="w-8">{fmt(m?.dur)}</span>
         </div>
         <div className="mt-3 flex items-center gap-1.5">
+          <button type="button" className="sh-btn relative size-10" aria-label="Ordem aleatória" aria-pressed={shuffle}
+            title={m?.canShuffle ? (shuffle ? "Ordem aleatória: ligada" : "Ordem aleatória: desligada") : noCtl}
+            disabled={!m?.canShuffle} style={{ color: shuffle ? "var(--sh-accent)" : undefined, opacity: m?.canShuffle ? 1 : 0.35 }}
+            onClick={() => { setOv({ ...fresh, shuffle: !shuffle, at: performance.now() }); cmd("shuffle", !shuffle) }}>
+            <Shuffle size={16} />{shuffle && <span className="absolute bottom-1 size-1 rounded-full" style={{ background: "var(--sh-accent)" }} />}
+          </button>
           <button type="button" className="sh-btn size-10" aria-label="Anterior" disabled={!m || m.canPrev === false} onClick={() => cmd("prev")}><SkipBack size={17} fill="currentColor" /></button>
-          <motion.button type="button" aria-label={m?.playing ? "Pausar" : "Tocar"} disabled={!m} onClick={() => cmd("toggle")}
-            animate={{ width: m?.playing ? 64 : 48, borderRadius: m?.playing ? 16 : 24 }} transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            className="flex h-12 items-center justify-center" style={{ background: "var(--sh-fg)", color: "#141414" }}>
-            {m?.playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="translate-x-px" />}
-          </motion.button>
+          <PlayButton playing={!!m?.playing} disabled={!m} onClick={() => cmd("toggle")} />
           <button type="button" className="sh-btn size-10" aria-label="Próxima" disabled={!m || m.canNext === false} onClick={() => cmd("next")}><SkipForward size={17} fill="currentColor" /></button>
+          <button type="button" className="sh-btn relative size-10" aria-label={REPEAT_LABEL[repeat]} aria-pressed={repeat !== 0}
+            title={m?.canRepeat ? REPEAT_LABEL[repeat] : noCtl}
+            disabled={!m?.canRepeat} style={{ color: repeat ? "var(--sh-accent)" : undefined, opacity: m?.canRepeat ? 1 : 0.35 }}
+            onClick={() => { const next = (repeat === 0 ? 2 : repeat === 2 ? 1 : 0) as 0 | 1 | 2; setOv({ ...fresh, repeat: next, at: performance.now() }); cmd("repeat", next) }}>
+            {repeat === 1 ? <Repeat1 size={16} /> : <Repeat size={16} />}{repeat !== 0 && <span className="absolute bottom-1 size-1 rounded-full" style={{ background: "var(--sh-accent)" }} />}
+          </button>
         </div>
       </div>
-      <div className="sh-card flex min-h-[230px] flex-col overflow-hidden">
+      <div className="sh-card flex min-h-0 flex-col">
         <div className="flex items-center gap-2 px-4 pb-1 pt-3 text-[12px] font-semibold"><Music2 size={13} /> Letra</div>
-        <div ref={lyricBox} className="sh-scroll relative flex-1 overflow-y-auto px-4 pb-3 text-[12.5px] leading-relaxed" style={{ maskImage: "linear-gradient(transparent, #000 18%, #000 82%, transparent)" }}>
-          <div className="h-12" />
-          {!m && <p style={{ color: "var(--sh-dim)" }}>A letra aparece aqui quando uma música tocar.</p>}
-          {m && lyrics === null && <p style={{ color: "var(--sh-dim)" }}>Procurando a letra…</p>}
-          {m && lyrics === false && <p style={{ color: "var(--sh-dim)" }}>Letra não encontrada para esta música.</p>}
-          {lines?.map((l, i) => (
-            <p key={i} data-l={i} className="py-0.5 transition-colors duration-300" style={{ color: i === cur ? "var(--sh-fg)" : i < cur ? "var(--sh-dim)" : "var(--sh-muted)", fontWeight: i === cur ? 600 : 400 }}>{l.text || "♪"}</p>
-          ))}
-          {lyrics && !lines && lyrics.plain && <p className="whitespace-pre-line" style={{ color: "var(--sh-muted)" }}>{lyrics.plain}</p>}
-          <div className="h-12" />
-        </div>
-        <div className="mx-3 mb-3 flex items-center justify-center gap-2 rounded-full py-1.5 text-[11px]" style={{ background: "var(--sh-2)", color: "var(--sh-muted)" }}>
-          <span className="size-1.5 rounded-full" style={{ background: m?.playing ? "var(--sh-accent)" : "var(--sh-dim)" }} />
-          {m ? appLabel(m.app) : "Nenhum player"}
-        </div>
+        <LyricsPane m={m} pos={pos} />
+        <PlayerChip m={m} />
       </div>
     </div>
+  )
+}
+
+/** botão de tocar/pausar: pílula larga tocando, círculo pausado */
+function PlayButton({ playing, disabled, onClick, small }: { playing: boolean; disabled?: boolean; onClick: () => void; small?: boolean }) {
+  const h = small ? 32 : 48
+  return (
+    <motion.button type="button" aria-label={playing ? "Pausar" : "Tocar"} disabled={disabled} onClick={onClick}
+      animate={{ width: playing ? h * 1.4 : h, borderRadius: playing ? h * 0.34 : h / 2 }} whileTap={{ scale: 0.92 }}
+      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      className="flex items-center justify-center disabled:opacity-40" style={{ height: h, background: "var(--sh-fg)", color: "#141414" }}>
+      {playing ? <Pause size={small ? 14 : 18} fill="currentColor" /> : <Play size={small ? 14 : 18} fill="currentColor" className="translate-x-px" />}
+    </motion.button>
   )
 }
 
 /**
- * Capa redonda com uma coroa de traços que pulsa enquanto a música toca.
- * (O Windows não entrega o áudio do player; os traços seguem um ritmo suave, não o espectro real.)
+ * Letra numa janela de altura fixa que acompanha a música: a linha que está tocando fica no meio
+ * e as outras vão sumindo nas bordas. Letra sem tempo marcado rola conforme o progresso da música.
  */
-function Spikes({ art, playing, size }: { art?: string | null; playing: boolean; size: number }) {
-  const path = useRef<SVGPathElement>(null)
-  const N = 72
-  const r0 = size * 0.37
-  useEffect(() => {
-    let energy = playing ? 1 : 0
-    const t0 = performance.now()
-    const draw = (now: number) => {
-      energy += ((playing ? 1 : 0.12) - energy) * 0.06
-      const t = (now - t0) / 1000
-      let d = ""
-      for (let i = 0; i < N; i++) {
-        const a = (i / N) * Math.PI * 2 - Math.PI / 2
-        const n = 0.5 + 0.5 * Math.sin(i * 0.9 + t * 3.1) * Math.sin(i * 0.37 - t * 1.7) + 0.25 * Math.sin(i * 2.3 + t * 5.3)
-        const len = 3 + Math.max(0, n) * size * 0.07 * energy
-        const x1 = size / 2 + Math.cos(a) * (r0 + 4), y1 = size / 2 + Math.sin(a) * (r0 + 4)
-        const x2 = size / 2 + Math.cos(a) * (r0 + 4 + len), y2 = size / 2 + Math.sin(a) * (r0 + 4 + len)
-        d += `M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`
-      }
-      path.current?.setAttribute("d", d)
-    }
-    if (!playing) { path.current?.setAttribute("d", ""); return }
-    return rafLoop(() => draw(performance.now()))
-  }, [playing, size, r0])
+function LyricsPane({ m, pos }: { m: (PcMedia & { art: string | null }) | null; pos: number }) {
+  const lyrics = useLyrics(m?.title, m?.artist, m?.dur, !!m)
+  const lines = lyrics && lyrics.synced?.length ? lyrics.synced : null
+  const plain = lyrics && !lines && lyrics.plain ? lyrics.plain.split(/\r?\n/) : null
+  const cur = lines ? lineAt(lines, pos + 0.3) : -1
+  const box = useRef<HTMLDivElement>(null)
+  const list = useRef<HTMLDivElement>(null)
+  const [y, setY] = useState(0)
+  const progress = m?.dur ? Math.min(1, Math.max(0, pos / m.dur)) : 0
+  useLayoutEffect(() => {
+    const b = box.current, l = list.current
+    if (!b || !l) return
+    if (lines) {
+      const el = l.querySelector<HTMLElement>(`[data-l="${Math.max(0, cur)}"]`)
+      if (el) setY(b.clientHeight / 2 - (el.offsetTop + el.offsetHeight / 2))
+    } else if (plain) setY(-Math.max(0, l.scrollHeight - b.clientHeight) * progress)
+    else setY(0)
+  }, [cur, lines, plain, progress])
+  useEffect(() => { setY(0) }, [m?.title])
+
+  const msg = (t: string) => <p className="px-4 pt-6 text-[12px]" style={{ color: "var(--sh-dim)" }}>{t}</p>
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="absolute inset-0" aria-hidden>
-        <path ref={path} stroke="var(--sh-accent)" strokeWidth={2} strokeLinecap="round" opacity={0.85} />
-      </svg>
-      <motion.div className="absolute overflow-hidden rounded-full" style={{ inset: size / 2 - r0, background: "var(--sh-2)" }}
-        animate={{ rotate: playing ? 360 : 0 }} transition={playing ? { duration: 24, ease: "linear", repeat: Infinity } : { duration: 0.6 }}>
-        {art ? <img src={art} alt="" className="h-full w-full object-cover" draggable={false} />
-          : <span className="flex h-full w-full items-center justify-center"><Music2 size={size * 0.16} style={{ color: "var(--sh-dim)" }} /></span>}
-      </motion.div>
+    <div ref={box} className="relative min-h-0 flex-1 overflow-hidden" style={{ maskImage: "linear-gradient(transparent, #000 22%, #000 78%, transparent)" }}>
+      {!m ? msg("A letra aparece aqui quando uma música tocar.")
+        : lyrics === null ? msg("Procurando a letra…")
+        : lyrics === false || (!lines && !plain) ? msg("Letra não encontrada para esta música.")
+        : (
+          <motion.div ref={list} className="px-4" animate={{ y }} transition={{ type: "spring", stiffness: 90, damping: 20, mass: 0.8 }}>
+            {lines ? lines.map((l, i) => {
+              const d = Math.abs(i - cur)
+              return (
+                <p key={i} data-l={i} className="origin-left py-1 text-[12.5px] leading-snug transition-[color,opacity,transform] duration-300"
+                  style={{ color: i === cur ? "var(--sh-fg)" : "var(--sh-muted)", fontWeight: i === cur ? 600 : 400, opacity: i === cur ? 1 : Math.max(0.25, 0.75 - d * 0.14), transform: i === cur ? "scale(1.04)" : "none" }}>
+                  {l.text || "♪"}
+                </p>
+              )
+            }) : plain!.map((t, i) => <p key={i} className="py-0.5 text-[12px] leading-snug" style={{ color: "var(--sh-muted)" }}>{t || " "}</p>)}
+          </motion.div>
+        )}
     </div>
   )
 }
 
-/** linha de progresso em onda enquanto toca (reta quando pausa); clique para pular */
+/** de qual player o painel mostra a música (o mesmo seletor dos widgets) */
+function PlayerChip({ m }: { m: PcMedia | null }) {
+  const player = useStore((s) => s.settings.shell?.player ?? "")
+  const [open, setOpen] = useState(false)
+  const label = m ? appLabel(m.app) : PC_PLAYERS.find((p) => p.id === player)?.label ?? "Automático"
+  return (
+    <div className="relative mx-3 mb-3 mt-1">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="Escolher o player"
+        className="flex w-full items-center justify-center gap-2 rounded-full py-1.5 text-[11px] transition-colors hover:brightness-125" style={{ background: "var(--sh-2)", color: "var(--sh-muted)" }}>
+        <span className="size-1.5 rounded-full" style={{ background: m?.playing ? "var(--sh-accent)" : "var(--sh-dim)" }} />
+        {label}{player && !m ? "" : player ? " · fixo" : ""}
+        <ChevronDown size={12} className={cn("transition-transform", open && "rotate-180")} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.14 }}
+            className="absolute inset-x-0 bottom-full z-10 mb-1.5 overflow-hidden rounded-2xl p-1" style={{ background: "var(--sh-3)", boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
+            {PC_PLAYERS.map((p) => (
+              <button key={p.id} type="button" onClick={() => { setShellPrefs({ player: p.id }); setOpen(false) }}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-1.5 text-left text-[12px] hover:bg-white/5" style={{ color: "var(--sh-fg)" }}>
+                {p.label}{player === p.id && <Check size={12} style={{ color: "var(--sh-accent)" }} />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/** contorno de "flor recortada" (círculo com ondas suaves) para a capa, em px */
+function scallop(d: number, waves = 9, depth = 0.045) {
+  const r = d / 2
+  let p = ""
+  for (let i = 0; i <= 180; i++) {
+    const a = (i / 180) * Math.PI * 2
+    const rr = r * (1 - depth + depth * Math.cos(waves * a))
+    p += (i ? "L" : "M") + (r + Math.cos(a) * rr).toFixed(1) + " " + (r + Math.sin(a) * rr).toFixed(1)
+  }
+  return p + "Z"
+}
+
+/**
+ * Capa com uma coroa de traços que reage à música: o comprimento de cada traço segue o espectro do som do PC
+ * (graves embaixo, espelhado dos dois lados) e a capa pulsa com o grave. Sem som capturado, usa um ritmo suave.
+ */
+function ReactiveCover({ art, playing, size }: { art?: string | null; playing: boolean; size: number }) {
+  useSpectrum(playing)
+  const path = useRef<SVGPathElement>(null)
+  const cover = useRef<HTMLDivElement>(null)
+  const glow = useRef<HTMLDivElement>(null)
+  const N = 72
+  const r0 = size * 0.36
+  const clip = useMemo(() => `path("${scallop(r0 * 2)}")`, [r0])
+  useEffect(() => {
+    let energy = playing ? 1 : 0
+    const t0 = performance.now()
+    const draw = () => {
+      const now = performance.now()
+      energy += ((playing ? 1 : 0) - energy) * 0.08
+      const live = liveSpectrum()
+      const t = (now - t0) / 1000
+      let d = ""
+      for (let i = 0; i < N; i++) {
+        // espelhado: o topo e a base da coroa mostram as mesmas faixas, como um visualizador de verdade
+        const half = i < N / 2 ? i : N - 1 - i
+        const a = (i / N) * Math.PI * 2 + Math.PI / 2
+        const v = live
+          ? spectrum.bands[Math.min(47, 2 + Math.round((half / (N / 2)) * 34))]
+          : Math.max(0, 0.5 + 0.5 * Math.sin(i * 0.9 + t * 3.1) * Math.sin(i * 0.37 - t * 1.7) + 0.25 * Math.sin(i * 2.3 + t * 5.3)) * 0.6
+        const len = 2 + v * size * 0.12 * energy
+        const x1 = size / 2 + Math.cos(a) * (r0 + 5), y1 = size / 2 + Math.sin(a) * (r0 + 5)
+        const x2 = size / 2 + Math.cos(a) * (r0 + 5 + len), y2 = size / 2 + Math.sin(a) * (r0 + 5 + len)
+        d += `M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`
+      }
+      path.current?.setAttribute("d", d)
+      const b = live ? bass() : 0.35 + 0.25 * Math.sin(t * 4.2)
+      if (cover.current) cover.current.style.transform = `scale(${(0.96 + 0.04 * energy + 0.045 * b * energy).toFixed(4)})`
+      if (glow.current) glow.current.style.opacity = (0.15 + 0.5 * b * energy).toFixed(3)
+    }
+    draw()
+    if (!playing) {
+      // pausado: a coroa encolhe até virar pontinhos e para
+      let frames = 40
+      return rafLoop(() => { if (frames-- > 0) draw() })
+    }
+    return rafLoop(draw)
+  }, [playing, size, r0])
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <div ref={glow} aria-hidden className="absolute rounded-full blur-2xl" style={{ inset: size / 2 - r0, background: "var(--sh-accent)", opacity: 0.15 }} />
+      <svg width={size} height={size} className="absolute inset-0" aria-hidden>
+        <path ref={path} stroke="var(--sh-accent)" strokeWidth={2.2} strokeLinecap="round" opacity={0.9} />
+      </svg>
+      <div ref={cover} className="absolute will-change-transform" style={{ inset: size / 2 - r0 }}>
+        <motion.div className="h-full w-full overflow-hidden" style={{ clipPath: clip, background: "var(--sh-2)" }}
+          animate={{ rotate: playing ? 360 : 0 }} transition={playing ? { duration: 30, ease: "linear", repeat: Infinity } : { duration: 0.8 }}>
+          <AnimatePresence initial={false}>
+            {art ? <motion.img key={art} src={art} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} />
+              : <motion.span key="none" className="absolute inset-0 flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <Music2 size={size * 0.14} style={{ color: "var(--sh-dim)" }} />
+                </motion.span>}
+          </AnimatePresence>
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+
+/** linha de progresso em onda enquanto toca (reta quando pausa; mais alta quando a música está forte); clique para pular */
 function WaveProgress({ value, playing, onSeek }: { value: number; playing: boolean; onSeek?: (p: number) => void }) {
   const path = useRef<SVGPathElement>(null)
   const box = useRef<HTMLDivElement>(null)
@@ -333,7 +500,8 @@ function WaveProgress({ value, playing, onSeek }: { value: number; playing: bool
   useEffect(() => {
     let amp = playing ? 3 : 0
     const draw = (now: number) => {
-      amp += ((playing ? 3 : 0) - amp) * 0.08
+      const target = !playing ? 0 : liveSpectrum() ? 1.5 + spectrum.level * 3 : 3
+      amp += (target - amp) * 0.12
       const end = Math.max(0, v * w - 6)
       let d = "M0 8"
       for (let x = 2; x <= end; x += 2) d += `L${x} ${(8 + Math.sin(x / 7 - now / 260) * amp).toFixed(2)}`

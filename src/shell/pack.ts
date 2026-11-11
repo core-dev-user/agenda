@@ -20,13 +20,17 @@ export interface ShellPrefs {
   frame?: boolean
   /** abrir o painel ao encostar o mouse no topo */
   hoverTop?: boolean
+  /** abrir a busca ao encostar o mouse no meio de baixo */
+  hoverBottom?: boolean
+  /** player acompanhado no painel de música ("" = automático) */
+  player?: string
   /** lado da barra */
   side?: "left" | "right"
   /** visual que estava antes de ativar o pacote (para desfazer) */
   prev?: Partial<Settings>
 }
 
-export const SHELL_DEFAULT: ShellPrefs = { pack: "none", accent: "rose", frame: true, hoverTop: true, side: "left" }
+export const SHELL_DEFAULT: ShellPrefs = { pack: "none", accent: "rose", frame: true, hoverTop: true, hoverBottom: true, side: "left", player: "" }
 export const shellPrefs = (s: Settings): ShellPrefs => ({ ...SHELL_DEFAULT, ...(s.shell ?? {}) })
 
 export const ACCENTS: Record<CarbonoAccent, { label: string; color: string; soft: string }> = {

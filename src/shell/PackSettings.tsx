@@ -1,7 +1,8 @@
 import { Check, Command, LayoutDashboard, MousePointer2, PanelLeft, Search } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { Card, Segmented, Switch } from "@/components/ui/controls"
-import type { ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
+import { bridge, type BarConfig } from "@/lib/bridge"
 import { cn } from "@/lib/utils"
 import { ACCENTS, applyCarbono, removePack, setShellPrefs, shellPrefs, type CarbonoAccent } from "./pack"
 
@@ -45,6 +46,20 @@ function Section({ title, desc, children }: { title: string; desc?: string; chil
       {desc && <div className="mb-3 text-sm text-fg-muted">{desc}</div>}
       {children}
     </Card>
+  )
+}
+
+/** tecla Windows sozinha: Iniciar do Windows ou a busca do Carbono (precisa da barra do Widgy no lugar da do Windows) */
+function WinKeySwitch() {
+  const [bar, setBar] = useState<BarConfig | null>(null)
+  useEffect(() => { void bridge.bar.get().then(setBar).catch(() => {}) }, [])
+  if (!bar?.available) return null
+  return (
+    <div>
+      <Switch label="Tecla Windows abre a busca do Carbono" checked={bar.winKey === "agenda"}
+        onChange={(v) => void bridge.bar.set({ winKey: v ? "agenda" : "windows" }).then(setBar)} />
+      {!bar.active && <p className="mt-1 text-xs text-fg-muted">Funciona quando a barra do Widgy substitui a do Windows (Barra e ícones). Win+S abre a busca nesse modo.</p>}
+    </div>
   )
 }
 
@@ -103,9 +118,11 @@ export function PacksTab() {
           </div>
           <Switch label="Moldura em volta da tela" checked={p.frame !== false} onChange={(v) => setShellPrefs({ frame: v })} />
           <Switch label="Abrir o painel ao encostar o mouse no meio do topo" checked={p.hoverTop !== false} onChange={(v) => setShellPrefs({ hoverTop: v })} />
+          <Switch label="Abrir a busca ao encostar o mouse no meio de baixo" checked={p.hoverBottom !== false} onChange={(v) => setShellPrefs({ hoverBottom: v })} />
+          <WinKeySwitch />
           <div className="rounded-xl bg-[color-mix(in_srgb,var(--fg)_5%,transparent)] p-3 text-[12.5px] leading-relaxed text-fg-muted">
             <div className="mb-1 flex items-center gap-1.5 font-medium text-fg"><MousePointer2 size={13} /> Atalhos</div>
-            <b>Ctrl+K</b> ou o logo da barra abrem a busca · <b>Ctrl+Shift+D</b> abre o painel · <b>Tab</b> completa um comando · <b>Esc</b> fecha.
+            <b>Win+S</b>, <b>Ctrl+K</b> ou o logo da barra abrem a busca · <b>Ctrl+Shift+D</b> abre o painel · <b>Tab</b> completa um comando · <b>Esc</b> fecha.
             No comando <b>&gt;papel</b>, as setas escolhem o fundo e <b>Enter</b> aplica.
           </div>
         </div>

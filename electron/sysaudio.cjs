@@ -159,37 +159,79 @@ function discordRoot() {
 let proc = null
 let getWin = () => null
 
-async function start(without) {
-  stop()
+// Dois usos podem pedir o som ao mesmo tempo: a tela compartilhada nas Salas ("share", recebe o PCM)
+// e o visualizador de música do Carbono ("viz", recebe só 48 faixas do espectro, ~30 vezes por segundo).
+// Um único processo de captura atende os dois; ele só para quando nenhum dos dois precisa mais.
+const { createAnalyzer } = require("./spectrum.cjs")
+let shareOn = false
+let vizOn = false
+let analyzer = null
+let vizTimer = null
+
+async function launch(without) {
+  stopProc()
   // "discord" = tudo menos o Discord; "agenda" = tudo menos o próprio Agenda (evita eco da voz da sala)
   let pid = 0
   if (without === "discord") pid = await discordRoot()
   if (!pid) pid = process.pid
   const file = path.join(os.tmpdir(), "agenda-sysaudio.ps1")
-  fs.writeFileSync(file, "﻿" + PS, "utf8")
+  fs.writeFileSync(file, "\ufeff" + PS, "utf8")
   const p = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", file], {
     windowsHide: true, env: { ...process.env, AGENDA_AUDIO_PID: String(pid), AGENDA_AUDIO_MODE: "exclude" },
   })
   proc = p
   let err = ""
   p.stdout.on("data", (chunk) => {
+    if (vizOn && analyzer) analyzer.push(chunk)
+    if (!shareOn) return
     const w = getWin()
     if (w && !w.isDestroyed()) w.webContents.send("sysaudio:data", chunk)
   })
   p.stderr.on("data", (d) => (err += d))
   p.on("exit", () => {
     if (proc === p) proc = null
+    if (!shareOn) return
     const w = getWin()
     if (w && !w.isDestroyed()) w.webContents.send("sysaudio:end", err.trim())
   })
   return { ok: true, excluded: pid === process.pid ? "agenda" : "discord" }
 }
-function stop() { if (proc) { try { proc.stdin.end(); proc.kill() } catch {} proc = null } }
+function stopProc() { if (proc) { try { proc.stdin.end(); proc.kill() } catch {} proc = null } }
+
+async function start(without) {
+  shareOn = true
+  return launch(without)
+}
+function stopShare() {
+  shareOn = false
+  if (!vizOn) stopProc()
+}
+function setViz(on) {
+  if (process.platform !== "win32") return { ok: false }
+  vizOn = !!on
+  clearInterval(vizTimer)
+  vizTimer = null
+  if (!vizOn) {
+    analyzer = null
+    if (!shareOn) stopProc()
+    return { ok: true }
+  }
+  analyzer = createAnalyzer()
+  if (!proc) void launch("agenda")
+  vizTimer = setInterval(() => {
+    const w = getWin()
+    if (!analyzer || !w || w.isDestroyed() || !w.isVisible() || w.isMinimized()) return
+    w.webContents.send("sysaudio:spectrum", analyzer.bands())
+  }, 33)
+  return { ok: true }
+}
+function stop() { shareOn = false; vizOn = false; clearInterval(vizTimer); vizTimer = null; analyzer = null; stopProc() }
 
 function register(ipcMain, winGetter) {
   getWin = winGetter
   ipcMain.handle("sysaudio:start", (_e, without) => start(without === "agenda" ? "agenda" : "discord"))
-  ipcMain.handle("sysaudio:stop", () => stop())
+  ipcMain.handle("sysaudio:stop", () => stopShare())
+  ipcMain.handle("sysaudio:viz", (_e, on) => setViz(on))
 }
 
 module.exports = { register, stop }

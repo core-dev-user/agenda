@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Segmented, Switch } from "@/components/ui/controls"
 import { useStore } from "@/lib/store"
 import { lineAt, useLyrics, type Lyrics } from "@/lib/lyrics"
+import { useCoverArt } from "@/lib/coverArt"
 
 /**
  * Widgy Music — minimal, album-first desktop player.
@@ -88,46 +89,6 @@ function usePcMedia(id: string, app: string) {
   const elapsed = media?.playing ? Math.max(0, (now - captured) / 1000) : 0
   const position = media?.pos != null ? Math.max(0, Math.min(media.dur || Infinity, media.pos + elapsed)) : 0
   return { media, position }
-}
-
-// Some Windows players do not expose a thumbnail through SMTC. Only use an
-// independently verified title + artist match, never an unrelated album cover.
-const fallbackCovers = new Map<string, string | null>()
-const normal = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, " ").toLowerCase().trim()
-function useFallbackCover(media: PcMedia | null) {
-  const title = media?.title || ""
-  const artist = media?.artist || ""
-  const app = media?.app || ""
-  const currentArt = media?.art
-  const key = normal(title) + "|" + normal(artist)
-  const [fallback, setFallback] = useState<{ key: string; url: string | null } | null>(null)
-
-  useEffect(() => {
-    if (!title || !artist || currentArt || !app.toLowerCase().includes("spotify")) return
-    let active = true
-    if (fallbackCovers.has(key)) {
-      setFallback({ key, url: fallbackCovers.get(key) || null })
-      return
-    }
-    const url = "https://itunes.apple.com/search?term=" + encodeURIComponent(title + " " + artist) + "&entity=song&limit=10"
-    void bridge.net.text(url).then((raw) => {
-      const found = JSON.parse(raw).results?.find((item: { trackName?: string; artistName?: string; artworkUrl100?: string }) =>
-        !!item.artworkUrl100 && normal(item.trackName || "") === normal(title) &&
-        (normal(item.artistName || "") === normal(artist) ||
-          normal(item.artistName || "").includes(normal(artist)) ||
-          normal(artist).includes(normal(item.artistName || ""))))
-      const art = found?.artworkUrl100?.replace(/100x100bb/, "600x600bb") || null
-      // O Widgy pode ficar semanas aberto: não acumular capas antigas sem limite.
-      fallbackCovers.delete(key)
-      fallbackCovers.set(key, art)
-      if (fallbackCovers.size > 100) {
-        fallbackCovers.delete(fallbackCovers.keys().next().value!)
-      }
-      if (active) setFallback({ key, url: art })
-    }).catch(() => { if (active) setFallback({ key, url: null }) })
-    return () => { active = false }
-  }, [title, artist, app, currentArt, key])
-  return !currentArt && fallback?.key === key ? fallback.url : null
 }
 
 function PcLyrics({ lyrics, seconds, expanded }: { lyrics: Lyrics | null | false; seconds: number; expanded: boolean }) {
@@ -265,8 +226,8 @@ export function PcMusicWidget({ w }: { w: Widget }) {
   const c = w.config
   const app = typeof c.app === "string" ? c.app : ""
   const { media, position } = usePcMedia(w.id, app)
-  const fallbackArt = useFallbackCover(media)
-  const art = media?.art || fallbackArt
+  // capa do Windows ou, se o player não entregar, a reserva (iTunes/Deezer, só com título e artista iguais)
+  const art = useCoverArt(media && !media.none ? media : null)
   const lyricsOn = c.pcLyrics === true
   const lyrics = useLyrics(media?.title, media?.artist, media?.dur, lyricsOn && !media?.none)
   const updateWidgetConfig = useStore((s) => s.updateWidgetConfig)
