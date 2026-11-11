@@ -47,3 +47,8 @@ A compilação e os testes de processos simulados não comprovam o comportamento
 O auxiliar de teclado reinicia se o PowerShell encerrar, e o auxiliar Win32 reaplica a ocultação da barra e reservas AppBar após falha. O renderizador tem tolerância a pausas temporárias; se ocorrerem cinco falhas em 45 segundos, a barra original é restaurada por segurança.
 
 O catálogo de aplicativos usa atalhos do Menu Iniciar e da Área de Trabalho, AppsFolder (Microsoft Store/MSIX) e entradas registradas em App Paths. Programas portáteis sem atalhos ou registro podem precisar de fixação manual.
+
+
+## Recuperação temporária da barra
+
+Falhas repetidas do auxiliar nativo ou renderizador acionam primeiro a **restauração segura da barra do Windows** e depois até três tentativas automáticas de retorno do Widgy (1,5 s, 3 s e 6 s). A preferência `substituir barra` permanece marcada durante as tentativas. Se houver novas falhas na mesma janela de cinco minutos, a substituição é desativada para deixar a barra do Windows acessível. As tentativas são canceladas quando o usuário desativa a função ou fecha o aplicativo. O atalho de recuperação manual `Ctrl+Alt+Backspace` continua disponível. Os testes unitários estão em `tests/taskbar-recovery.test.cjs`.
