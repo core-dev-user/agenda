@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react"
-import { Disc3, Headphones, Pause, Play, SkipBack, SkipForward } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Disc3, Headphones, MicVocal, Pause, Play, SkipBack, SkipForward } from "lucide-react"
 import { bridge, type PcMedia } from "@/lib/bridge"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Segmented, Switch } from "@/components/ui/controls"
+import { useStore } from "@/lib/store"
+import { lineAt, useLyrics, type Lyrics } from "@/lib/lyrics"
 
 /**
  * Widgy Music — minimal, album-first desktop player.
@@ -86,6 +88,62 @@ function usePcMedia(id: string, app: string) {
   const elapsed = media?.playing ? Math.max(0, (now - captured) / 1000) : 0
   const position = media?.pos != null ? Math.max(0, Math.min(media.dur || Infinity, media.pos + elapsed)) : 0
   return { media, position }
+}
+
+// Some Windows players do not expose a thumbnail through SMTC. Only use an
+// independently verified title + artist match, never an unrelated album cover.
+const fallbackCovers = new Map<string, string | null>()
+const normal = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, " ").toLowerCase().trim()
+function useFallbackCover(media: PcMedia | null) {
+  const title = media?.title || ""
+  const artist = media?.artist || ""
+  const app = media?.app || ""
+  const currentArt = media?.art
+  const key = normal(title) + "|" + normal(artist)
+  const [fallback, setFallback] = useState<{ key: string; url: string | null } | null>(null)
+
+  useEffect(() => {
+    if (!title || !artist || currentArt || !app.toLowerCase().includes("spotify")) return
+    let active = true
+    if (fallbackCovers.has(key)) {
+      setFallback({ key, url: fallbackCovers.get(key) || null })
+      return
+    }
+    const url = "https://itunes.apple.com/search?term=" + encodeURIComponent(title + " " + artist) + "&entity=song&limit=10"
+    void bridge.net.text(url).then((raw) => {
+      const found = JSON.parse(raw).results?.find((item: { trackName?: string; artistName?: string; artworkUrl100?: string }) =>
+        !!item.artworkUrl100 && normal(item.trackName || "") === normal(title) &&
+        (normal(item.artistName || "") === normal(artist) ||
+          normal(item.artistName || "").includes(normal(artist)) ||
+          normal(artist).includes(normal(item.artistName || ""))))
+      const art = found?.artworkUrl100?.replace(/100x100bb/, "600x600bb") || null
+      fallbackCovers.set(key, art)
+      if (active) setFallback({ key, url: art })
+    }).catch(() => { if (active) setFallback({ key, url: null }) })
+    return () => { active = false }
+  }, [title, artist, app, currentArt, key])
+  return !currentArt && fallback?.key === key ? fallback.url : null
+}
+
+function PcLyrics({ lyrics, seconds, expanded }: { lyrics: Lyrics | null | false; seconds: number; expanded: boolean }) {
+  const scroll = useRef<HTMLDivElement>(null)
+  const lines = lyrics && lyrics.synced ? lyrics.synced.filter((line) => !!line.text) : null
+  const index = lines ? Math.max(0, lineAt(lines, seconds + 0.25)) : -1
+  useEffect(() => {
+    if (!expanded || !scroll.current) return
+    const container = scroll.current
+    const active = container.querySelector<HTMLElement>('[data-current="true"]')
+    if (active) container.scrollTo({ top: active.offsetTop - container.offsetTop - container.clientHeight / 2 + active.clientHeight / 2, behavior: "smooth" })
+  }, [index, expanded])
+  if (lyrics === null) return <div className="text-[11px] text-white/45">Buscando letra…</div>
+  if (lyrics === false) return <div className="text-[11px] text-white/45">Letra não encontrada.</div>
+  if (lines?.length) {
+    if (expanded) return <div ref={scroll} data-nodrag className="max-h-28 w-full overflow-y-auto rounded-xl bg-white/[.045] px-3 py-2 text-left">
+      {lines.map((line, i) => <div key={i} data-current={i === index} className={cn("py-1 text-[12px] leading-snug transition-colors", i === index ? "font-semibold text-white" : "text-white/40")}>{line.text}</div>)}
+    </div>
+    return <div className="line-clamp-2 text-[12px] font-medium leading-snug text-white/80">{lines[index]?.text}</div>
+  }
+  return lyrics?.plain ? <div data-nodrag className={cn("text-left text-[11px] leading-relaxed text-white/65 whitespace-pre-line", expanded ? "max-h-28 overflow-y-auto" : "line-clamp-2")}>{lyrics.plain}</div> : <div className="text-[11px] text-white/45">Letra não disponível.</div>
 }
 
 function Cover({ image, shape, size }: { image?: string | null; shape: CoverShape; size: number }) {
@@ -202,6 +260,12 @@ export function PcMusicWidget({ w }: { w: Widget }) {
   const c = w.config
   const app = typeof c.app === "string" ? c.app : ""
   const { media, position } = usePcMedia(w.id, app)
+  const fallbackArt = useFallbackCover(media)
+  const art = media?.art || fallbackArt
+  const lyricsOn = c.pcLyrics === true
+  const lyrics = useLyrics(media?.title, media?.artist, media?.dur, lyricsOn && !media?.none)
+  const updateWidgetConfig = useStore((s) => s.updateWidgetConfig)
+  const lyricsArea = lyricsOn && !!media?.title ? <PcLyrics lyrics={lyrics} seconds={position} expanded={w.h >= 320} /> : null
   const selectedLayout: Layout = c.pcLayout ?? "auto"
   const background: Background = c.pcBg ?? "glass"
   const shape: CoverShape = c.pcArtShape ?? "rounded"
@@ -243,7 +307,13 @@ export function PcMusicWidget({ w }: { w: Widget }) {
 
   return (
     <div className="relative isolate h-full w-full overflow-hidden text-white">
-      <Backdrop mode={background} art={media?.art} />
+      <Backdrop mode={background} art={art} />
+      <button type="button" data-nodrag aria-label={lyricsOn ? "Ocultar letras" : "Mostrar letras"}
+        title={lyricsOn ? "Ocultar letras" : "Mostrar letras"}
+        onClick={() => updateWidgetConfig(w.id, { pcLyrics: !lyricsOn })}
+        className={cn("absolute right-2 top-2 z-20 grid size-7 place-items-center rounded-lg transition-colors hover:bg-white/15", lyricsOn ? "bg-white/15 text-white" : "bg-black/25 text-white/60")}>
+        <MicVocal size={14} />
+      </button>
       {!media?.title || media.none ? (
         <div className="relative flex h-full items-center gap-3.5 p-4">
           <div className="grid size-[52px] shrink-0 place-items-center rounded-[15px] border border-white/[.06] bg-white/[.06]">
@@ -262,18 +332,20 @@ export function PcMusicWidget({ w }: { w: Widget }) {
         </div>
       ) : vertical ? (
         <div className="relative flex h-full w-full flex-col items-center justify-between gap-2.5 p-5 text-center">
-          <Cover image={media.art} shape={shape} size={coverSize} />
+          <Cover image={art} shape={shape} size={coverSize} />
           {text}
+          {lyricsArea}
           {showProgress && <Progress media={media} seconds={position} id={w.id} accent={accent} times={showTimes} />}
           {c.pcControls !== false && <Controls media={media} id={w.id} small={false} />}
         </div>
       ) : (
         <div className={cn("relative flex h-full min-w-0 items-center",
           compact ? "gap-3 p-3" : "gap-[18px] p-5")}>
-          <Cover image={media.art} shape={shape} size={coverSize} />
+          <Cover image={art} shape={shape} size={coverSize} />
           <div className={cn("flex h-full min-w-0 flex-1 flex-col justify-center",
             compact ? "gap-2" : "gap-3")}>
             {text}
+            {lyricsArea}
             {showProgress && <Progress media={media} seconds={position} id={w.id} accent={accent} times={showTimes} />}
             {c.pcControls !== false && <Controls media={media} id={w.id} small={compact} tiny={tiny} />}
           </div>
@@ -327,10 +399,11 @@ export function PcMusicSettings({ w, set }: { w: Widget; set: (p: Record<string,
         <Switch checked={c.pcProgress !== false} onChange={(v) => set({ pcProgress: v })} label="Progresso da música" />
         <Switch checked={c.pcSource === true} onChange={(v) => set({ pcSource: v })} label="Mostrar aplicativo e estado" />
         <Switch checked={c.pcAlbum === true} onChange={(v) => set({ pcAlbum: v })} label="Mostrar álbum" />
+        <Switch checked={c.pcLyrics === true} onChange={(v) => set({ pcLyrics: v })} label="Letras sincronizadas (Spotify / música do PC)" />
         {c.pcProgress !== false && <Switch checked={c.pcTimes === true} onChange={(v) => set({ pcTimes: v })} label="Mostrar os tempos" />}
       </div>
       <p className="text-[11px] leading-relaxed text-fg-muted">
-        A capa é recebida da central de mídia do Windows. Caso o aplicativo não forneça a arte, o Widgy mostra um ícone neutro no mesmo espaço.
+        A capa vem da central de mídia do Windows. No Spotify, quando ela faltar, o Widgy tenta encontrar a mesma faixa e artista no catálogo público do iTunes. As letras são buscadas na LRCLIB e dependem da disponibilidade de cada música.
       </p>
     </div>
   )
