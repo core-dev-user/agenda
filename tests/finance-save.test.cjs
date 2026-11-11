@@ -62,3 +62,18 @@ test("financial writes are rejected while locked", () => {
     assert.equal(fs.existsSync(path.join(h.dir, "finance.dat")), false)
   } finally { h.clean() }
 })
+
+test("recovers last fsync checkpoint after a partial Windows shutdown", () => {
+  const h = harness()
+  try {
+    h.handles.get("finance:open")(null)
+    const event = { returnValue: false }
+    h.events.get("finance:saveSync")(event, '{"saldo":789}')
+    assert.equal(event.returnValue, true)
+    const original = path.join(h.dir, "finance.dat")
+    fs.renameSync(original, original + ".exit.tmp")
+    assert.equal(h.handles.get("finance:open")(null).data, '{"saldo":789}')
+    assert.equal(fs.existsSync(original), true)
+    assert.equal(fs.existsSync(original + ".exit.tmp"), false)
+  } finally { h.clean() }
+})
