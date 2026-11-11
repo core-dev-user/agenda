@@ -4,7 +4,8 @@ No Windows, selecione o modo Área de trabalho e ative a substituição da barra
 
 | Teclas | Ação com a substituição ativa |
 | --- | --- |
-| Win+D | Alterna a área de trabalho mantendo a barra Widgy visível |
+| Win+D | Alterna a área de trabalho mantendo a barra Widgy visível nos aplicativos comuns |
+| Ctrl+Alt+D | Alternativa global para mostrar/restaurar a área de trabalho, inclusive quando o capturador de teclas do Widgy está desligado |
 | Windows ou Ctrl+Esc | Iniciar do Agenda |
 | Win+S / Win+Q | Pesquisa do Agenda |
 | Win+I | Configurações do Agenda |
@@ -13,7 +14,7 @@ No Windows, selecione o modo Área de trabalho e ative a substituição da barra
 | Win+1 até Win+9 | Abrir o programa fixado na posição correspondente |
 | Ctrl+Alt+Backspace | Desativar a substituição e restaurar a barra original |
 
-Iniciar, pesquisa e painéis usam o monitor onde está o mouse. As combinações com modificadores adicionais, como Win+Shift+S, continuam chegando ao Windows. Alt+Tab, Win+Tab, Win+E, Win+R, Win+L, Win+V e os atalhos de posicionamento de janelas permanecem nativos. Ctrl+Alt+Del pertence à área protegida do Windows. O Agenda não substitui o shell nem intercepta literalmente todos os atalhos. Durante jogos detectados pelo aplicativo, o gancho de teclado continua desativado para compatibilidade com anti-cheat.
+Iniciar, pesquisa e painéis usam o monitor onde está o mouse. As combinações com modificadores adicionais, como Win+Shift+S, continuam chegando ao Windows. Alt+Tab, Win+Tab, Win+E, Win+R, Win+L, Win+V e os atalhos de posicionamento de janelas permanecem nativos. Ctrl+Alt+Del pertence à área protegida do Windows. O Agenda não substitui o shell nem intercepta literalmente todos os atalhos. O capturador deixa de ser desativado só porque algum jogo está aberto em segundo plano. Em programas comuns e jogos sem proteção identificada, os atalhos do Widgy funcionam mesmo com a janela em primeiro plano. Em jogos conhecidos com anti-cheat, como VALORANT, Fortnite, CS2 e Roblox, o capturador é desativado quando o jogo está efetivamente em primeiro plano, e os atalhos nativos do Windows têm prioridade. Ctrl+Alt+D é uma alternativa global sem gancho de teclado, quando o sistema permitir o registro e o jogo não bloquear a combinação. Não é possível garantir atalhos globais em telas exclusivas, aplicativos elevados ou jogos que os bloqueiem.
 
 A barra original é ocultada em todos os monitores e a ocultação é reaplicada na atualização periódica das janelas. O acesso temporário à bandeja original dura no máximo dez segundos. Uma falha ou travamento detectado no renderizador da barra desativa a substituição. O atalho de recuperação depende do processo principal do Agenda estar responsivo e de a combinação estar disponível.
 
@@ -31,6 +32,8 @@ Antes de publicar um instalador, validar em Windows 10/11:
 
 - Ativar/desativar, reiniciar o Agenda e verificar a restauração da barra original.
 - Pressionar e manter os atalhos da tabela; conferir que o Iniciar original não aparece junto e que soltar teclas não deixa modificadores presos.
+- Testar Win+D e Win+S com Chrome/VS Code na frente enquanto um jogo está aberto em segundo plano.
+- Testar Win+D nativo e Ctrl+Alt+D com VALORANT/Roblox em primeiro plano; não fazer captura do teclado em processos protegidos.
 - Testar Ctrl+Esc, Win+Shift+S, Alt+Tab, Win+L e jogos detectados.
 - Repetir com dois monitores, escalas diferentes e desconexão de monitor.
 - Reiniciar o Explorer; verificar ocultação e área reservada das janelas maximizadas.

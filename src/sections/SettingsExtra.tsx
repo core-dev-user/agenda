@@ -409,7 +409,7 @@ function MainBarSwitch() {
               onChange={async (v) => setWinKey((await bridge.bar.set({ winKey: v ? "agenda" : "windows" })).winKey)}
             />
           )}
-          <div className="text-xs text-fg-muted">Os programas fixados na barra normal do Windows aparecem também na do Widgy (tirar um deles da barra do Widgy não mexe na do Windows). Os outros atalhos (Win+E, Win+D, Win+Shift+S…) continuam iguais. Com um jogo aberto, o Widgy não mexe no teclado.</div>
+          <div className="text-xs text-fg-muted">Os programas fixados na barra do Windows aparecem também na do Widgy. Os atalhos Win+D e Win+S funcionam em outros aplicativos, mesmo com jogos abertos em segundo plano. Em jogos protegidos por anti-cheat, o Widgy não instala um capturador de teclado sobre o jogo: use Win+D nativo ou Ctrl+Alt+D para mostrar a área de trabalho (caso a combinação esteja disponível). Jogos em tela cheia exclusiva podem limitar atalhos globais.</div>
         </>
       )}
     </div>

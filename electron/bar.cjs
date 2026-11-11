@@ -13,6 +13,7 @@ const winh = require("./winhelper.cjs")
 const modes = require("./mode.cjs")
 const keys = require("./keys.cjs")
 const games = require("./games.cjs")
+const { foregroundInfo, shouldCaptureKeys } = require("./taskbar-key-policy.cjs")
 const { collectStartApps, isAppsFolderTarget } = require("./startapps.cjs")
 
 const cfgFile = () => path.join(app.getPath("userData"), "bar.json")
@@ -85,6 +86,8 @@ let polling = false
 let helperFailures = 0
 let helperGeneration = 0
 let recoveryShortcut = false
+let desktopShortcut = false
+let foreground = null // updated from the real foreground window, not from any background game process
 const barFailureTimes = []
 let settleT = null, warmupT = null, peekT = null
 const hiddenOn = new Set() // monitores com jogo/vídeo em tela cheia: a barra some
@@ -236,6 +239,11 @@ async function tickWindows() {
   }
   let j
   try { j = JSON.parse(raw) } catch { return }
+  const nextForeground = foregroundInfo(j)
+  if (!foreground || foreground.exe !== nextForeground.exe || foreground.unresolvedFullscreen !== nextForeground.unresolvedFullscreen) {
+    foreground = nextForeground
+    syncKeys()
+  }
   const own = process.execPath.toLowerCase()
   // janelas maximizadas por monitor (esconder a barra e deixar a janela ocupar a tela toda)
   const maxNow = new Set()
@@ -338,6 +346,9 @@ function makeDesk(d) {
 function create() {
   if (bars.size || !active()) return
   recoveryShortcut = globalShortcut.register("Control+Alt+Backspace", () => { cfg.on = false; save(); teardown() })
+  // Global hotkey uses RegisterHotKey, NOT a low-level keyboard hook. It is a
+  // safe alternative to Win+D while an anti-cheat game owns the foreground.
+  desktopShortcut = globalShortcut.register("Control+Alt+D", () => toggleDesktop())
   const main = modes.target().id
   // com a área de trabalho em todos os monitores, o Agenda já cobre todos: não precisa de fundo
   const span = modes.spans()
@@ -535,19 +546,24 @@ function leavePreview() {
 }
 
 /* ---------------- tecla Windows ---------------- */
-function syncKeys() { keys.winKey(cfg.winKey === "agenda"); keys.enable(!!bars.size && cfg.keys !== false && games.playing() === false) }
+function syncKeys() {
+  keys.winKey(cfg.winKey === "agenda")
+  keys.enable(shouldCaptureKeys({ barActive: bars.size > 0, enabled: cfg.keys !== false, foreground }))
+}
+function toggleDesktop() {
+  if (!bars.size) return
+  closeMenu()
+  hidePreview()
+  void winh.call("desktop").then(() => {
+    for (const [id, b] of bars)
+      if (!b.isDestroyed() && !hiddenOn.has(id) && !b.isVisible()) b.showInactive()
+  })
+}
 keys.onKey((ev) => {
   if (!bars.size) return
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
   const target = bars.get(display.id) || primaryBar()
-  if (ev === "desktop") {
-    closeMenu()
-    hidePreview()
-    void winh.call("desktop").then(() => {
-      for (const [id, b] of bars) if (!b.isDestroyed() && !hiddenOn.has(id) && !b.isVisible()) b.showInactive()
-    })
-    return
-  }
+  if (ev === "desktop") { toggleDesktop(); return }
   if (ev === "start" || ev === "search") { openMenu("start", null, 640, 660, target, ev); return }
   if (ev.startsWith("pin:")) {
     const pin = withWinPins(lastSync)?.pins?.[Number(ev.slice(4))]
@@ -560,12 +576,16 @@ keys.onKey((ev) => {
   main.webContents.send("bar:main", { ...message, screen: display.id })
   main.show(); main.focus(); winh.call("activate " + winh.hwndOf(main))
 })
-games.onPlaying(() => syncKeys())
+// Running games are not a reason to disable shortcuts in another foreground app.
+// Foreground changes are detected by tickWindows() above.
 
 function teardown(restore = true) {
   clearTimeout(settleT); clearTimeout(warmupT); clearTimeout(rebuildT); clearTimeout(peekT)
   if (recoveryShortcut) globalShortcut.unregister("Control+Alt+Backspace")
+  if (desktopShortcut) globalShortcut.unregister("Control+Alt+D")
   recoveryShortcut = false
+  desktopShortcut = false
+  foreground = null
   if (poll) { clearInterval(poll); poll = null }
   for (const ev of ["display-added", "display-removed"]) screen.removeListener(ev, rebuild)
   screen.removeListener("display-metrics-changed", onMetrics)
@@ -697,7 +717,7 @@ function register(ipcMain, mainGetter) {
     return winh.call("activate " + h)
   })
   ipcMain.handle("bar:win", (_e, cmd, h) => { if (["activate", "minimize", "close"].includes(cmd) && /^\d+$/.test(String(h))) return winh.call(cmd + " " + h) })
-  ipcMain.handle("bar:desktop", () => winh.call("desktop"))
+  ipcMain.handle("bar:desktop", () => toggleDesktop())
   ipcMain.handle("bar:winstart", () => { closeMenu(); hidePreview(); return winh.call("winstart") })
   ipcMain.handle("bar:peek", (_e, on) => {
     clearTimeout(peekT)
