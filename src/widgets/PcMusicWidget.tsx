@@ -94,7 +94,7 @@ function Cover({ image, shape, size }: { image?: string | null; shape: CoverShap
     >
       {showImage ? (
         <img key={image} src={image} alt="Capa da música" draggable={false}
-          className="block h-full w-full object-cover" onError={() => setFailedImage(image)} />
+          className="block h-full w-full object-cover" onError={() => setFailedImage(image ?? null)} />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#273340] via-[#18222D] to-[#111A25] text-[#BAC9D8]">
           <Disc3 size={Math.min(42, size * .4)} strokeWidth={1.1} aria-hidden="true" />
