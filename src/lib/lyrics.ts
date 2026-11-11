@@ -10,6 +10,7 @@ export interface Lyrics { synced: LyricLine[] | null; plain: string | null; sour
 
 const API = "https://lrclib.net/api"
 const cache = new Map<string, Promise<Lyrics | null>>()
+const MAX_LYRICS_CACHE = 128
 
 /** "Song (Official Music Video) [4K]" -> "Song"; "Artista - Topic" -> "Artista" */
 export const cleanTitle = (t: string) =>
@@ -62,7 +63,12 @@ export function findLyrics(title: string, artist: string, duration: number): Pro
       return { synced: synced && synced.length ? synced : null, plain: best.plainLyrics, source: `${best.artistName} — ${best.trackName}` }
     })())
   }
-  return cache.get(key)!
+  const result = cache.get(key)!
+  // Evita reter letras completas de milhares de faixas após semanas aberto.
+  cache.delete(key)
+  cache.set(key, result)
+  while (cache.size > MAX_LYRICS_CACHE) cache.delete(cache.keys().next().value!)
+  return result
 }
 
 /** Letra da música atual. `null` enquanto busca; `false` se não encontrou. */
