@@ -476,6 +476,7 @@ export function SystemExtra() {
         <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-fg-muted">
           Limite atual: <strong className="text-fg">{budget.fps} FPS</strong> nas animações do Widgy, <strong className="text-fg">{budget.embedHz} verificações/s</strong> para posicionar Discord, WhatsApp e iFood.
           Pré-carregamento: <strong className="text-fg">{budget.preload === "all" ? "todas as abas" : budget.preload === "none" ? "somente quando abrir" : "somente essenciais"}</strong>.
+          <div className="mt-1">Monitor de CPU/GPU: atualização a cada {(budget.monitorMs / 1000).toLocaleString("pt-BR")} segundos quando estiver aberto.</div>
           {profile === "auto" && <div className="mt-1">Detecta jogo aberto e reduz o trabalho visual automaticamente; ao interagir com o Widgy, ele continua responsivo.</div>}
           {profile === "quality" && <div className="mt-1">Mantém limites semelhantes aos anteriores. O benchmark A/B puro continua usando separadamente a versão original 0.3.12.</div>}
         </div>
@@ -489,6 +490,11 @@ export function SystemExtra() {
             <label className="flex items-center justify-between gap-2 text-xs">Painéis web
               <select className="field !w-auto" value={s.perfEmbedHz ?? 12} onChange={(e) => set({ perfEmbedHz: Number(e.target.value) })}>
                 {[2, 4, 6, 8, 12, 15, 20, 30].map((v) => <option key={v} value={v}>{v} vezes/s</option>)}
+              </select>
+            </label>
+            <label className="flex items-center justify-between gap-2 text-xs sm:col-span-2">Monitor do PC
+              <select className="field !w-auto" value={s.perfMonitorMs ?? 3000} onChange={(e) => set({ perfMonitorMs: Number(e.target.value) })}>
+                {[1500, 2000, 3000, 4000, 6000, 8000].map((v) => <option key={v} value={v}>{(v / 1000).toLocaleString("pt-BR")} segundos</option>)}
               </select>
             </label>
             <label className="flex items-center justify-between gap-2 text-xs sm:col-span-2">Pré-carregar abas
