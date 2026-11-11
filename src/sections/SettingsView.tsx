@@ -471,7 +471,7 @@ function WallpaperEnginePanel() {
       {mode !== "desktop" ? (
         <div className="space-y-2">
           <div className="text-xs text-[#f2b978]">É necessário usar o modo Área de trabalho do Widgy. No modo Aplicativo ou Tela própria o Wallpaper Engine não pode aparecer atrás da janela.</div>
-          {isDesktop && <ThemedButton size="sm" onClick={() => { bridge.store.flush?.(); void bridge.mode.set("desktop") }}>Ativar modo Área de trabalho</ThemedButton>}
+          {isDesktop && <ThemedButton size="sm" onClick={() => { void (async () => { const saved = await bridge.store.drain?.(); if (saved !== false) await bridge.mode.set("desktop") })() }}>Ativar modo Área de trabalho</ThemedButton>}
         </div>
       ) : (
         <div className="text-xs text-fg-muted">
@@ -515,7 +515,12 @@ function WallpaperTab() {
     const needsRestart = hasEngineWallpaper(s) !== hasEngineWallpaper(next) && useUiMode.getState().mode === "desktop" && isDesktop
     set(patch)
     // Persistence is sent to Electron synchronously before the native relaunch.
-    if (needsRestart) { bridge.store.flush?.(); void bridge.wallpaperEngine.restart() }
+    if (needsRestart) {
+      void (async () => {
+        const saved = await bridge.store.drain?.()
+        if (saved !== false) await bridge.wallpaperEngine.restart()
+      })()
+    }
   }
   const p = (patch: Partial<Settings["wallpaper"]>) =>
     target == null
