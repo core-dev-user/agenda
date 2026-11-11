@@ -10,6 +10,7 @@ const GREEN = "#25D366"
 export function WhatsappWidget({ w }: { w: Widget }) {
   const open = useStore((s) => s.openWindow)
   const [data, setData] = useState<WhatsRead | null>(null)
+  const [nativeError, setNativeError] = useState(false)
   useEffect(() => {
     let alive = true
     const load = () => bridge.webapp.whatsapp().then((r) => alive && setData(r)).catch(() => {})
@@ -34,8 +35,20 @@ export function WhatsappWidget({ w }: { w: Widget }) {
       <div className="flex h-full flex-col gap-3 p-3.5">
         {header}
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-sm text-fg-muted">
-          Conecte uma vez lendo o QR code com o celular.
-          <button className="btn !py-1 text-xs text-black" style={{ background: GREEN, borderColor: GREEN }} onClick={() => open("whatsapp")}>Conectar o WhatsApp</button>
+          <span>{data.unsupported
+            ? "O WhatsApp Web recusou o navegador incorporado. Abra o painel para tentar novamente."
+            : data.nativeOpen
+              ? "O WhatsApp do PC já está aberto. Para mostrar conversas aqui, conecte o Widgy uma vez pelo QR."
+              : "Conecte o Widgy uma vez pelo QR Code. A sessão ficará salva neste computador."}</span>
+          <button type="button" className="btn !py-1 text-xs text-black" style={{ background: GREEN, borderColor: GREEN }}
+            onClick={() => { void bridge.webapp.nav("whatsapp", "home"); open("whatsapp") }}>
+            {data.unsupported ? "Tentar novamente no Widgy" : "Conectar pelo QR Code"}
+          </button>
+          <button type="button" className="btn btn-ghost !py-1 text-xs"
+            onClick={() => { void bridge.webapp.whatsappNative().then((ok) => setNativeError(!ok)) }}>
+            {data.nativeOpen ? "Ir para o WhatsApp do PC" : "Abrir WhatsApp do PC"}
+          </button>
+          {nativeError && <span className="text-[11px]">Não foi possível abrir o aplicativo instalado.</span>}
         </div>
       </div>
     )

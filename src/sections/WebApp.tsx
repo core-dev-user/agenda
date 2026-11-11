@@ -1,11 +1,11 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ArrowLeft, ExternalLink, Globe, Home, Loader2, MonitorDown, RotateCw } from "lucide-react"
 import { bridge, type WebAppId } from "@/lib/bridge"
 import { useEmbedSlot, useWebApps } from "@/lib/webapps"
 
 const INFO: Record<WebAppId, { name: string; logo: string; bg: string; hint: string }> = {
   discord: { name: "Discord", logo: "logos/discord.svg", bg: "#313338", hint: "Fechar esta janela não te tira da call: o Discord continua rodando em segundo plano. Use o widget do Discord para mutar ou sair." },
-  whatsapp: { name: "WhatsApp", logo: "logos/whatsapp.svg", bg: "#111b21", hint: "Na primeira vez, leia o QR code com o celular (WhatsApp > Aparelhos conectados). O login fica salvo e as mensagens chegam mesmo com a janela fechada." },
+  whatsapp: { name: "WhatsApp", logo: "logos/whatsapp.svg", bg: "#111b21", hint: "Conecte pelo QR Code neste painel (WhatsApp no celular > Aparelhos conectados). A sessão do app Windows é separada e não pode ser copiada automaticamente." },
   ifood: { name: "iFood", logo: "logos/ifood.svg", bg: "#ffffff", hint: "Faça seu pedido aqui; o widget do iFood acompanha o status pela página de pedidos da sua conta." },
 }
 
@@ -13,6 +13,7 @@ const INFO: Record<WebAppId, { name: string; logo: string; bg: string; hint: str
 function WebAppView({ id }: { id: WebAppId }) {
   const st = useWebApps((s) => s[id])
   const slot = useRef<HTMLDivElement>(null)
+  const [nativeError, setNativeError] = useState(false)
   const info = INFO[id]
   useEffect(() => { bridge.webapp.open(id) }, [id])
   useEmbedSlot(id, slot, !st?.popped)
@@ -24,7 +25,8 @@ function WebAppView({ id }: { id: WebAppId }) {
         <button className="btn btn-ghost btn-icon" title="Voltar" onClick={() => bridge.webapp.nav(id, "back")}><ArrowLeft size={15} /></button>
         <button className="btn btn-ghost btn-icon" title="Recarregar" onClick={() => bridge.webapp.nav(id, "reload")}><RotateCw size={14} /></button>
         <button className="btn btn-ghost btn-icon" title="Início" onClick={() => bridge.webapp.nav(id, "home")}><Home size={14} /></button>
-        <button className="btn btn-ghost btn-icon" title="Abrir esta página no seu navegador" onClick={async () => { const u = await bridge.webapp.url(id); if (u) bridge.app.openExternal(u) }}><Globe size={14} /></button>
+        {id !== "whatsapp" && <button className="btn btn-ghost btn-icon" title="Abrir esta página no seu navegador" onClick={async () => { const u = await bridge.webapp.url(id); if (u) bridge.app.openExternal(u) }}><Globe size={14} /></button>}
+        {id === "whatsapp" && <button className="btn" title="Abrir o aplicativo oficial já instalado" onClick={() => { void bridge.webapp.whatsappNative().then((ok) => setNativeError(!ok)) }}>WhatsApp do PC</button>}
         {st?.popped ? (
           <button className="btn" onClick={() => bridge.webapp.dock(id)}><MonitorDown size={14} /> Trazer para o Widgy</button>
         ) : (
@@ -47,7 +49,7 @@ function WebAppView({ id }: { id: WebAppId }) {
           </div>
         )}
       </div>
-      <div className="border-t border-line px-4 py-1.5 text-xs text-fg-muted">{info.hint}</div>
+      <div className="border-t border-line px-4 py-1.5 text-xs text-fg-muted">{nativeError ? "Não foi possível abrir o WhatsApp instalado. Continue pelo QR Code neste painel." : info.hint}</div>
     </div>
   )
 }

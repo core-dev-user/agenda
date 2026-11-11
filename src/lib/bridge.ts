@@ -162,6 +162,7 @@ export interface AgendaBridge {
     url(id: WebAppId): Promise<string>
     whatsapp(): Promise<WhatsRead>
     whatsappOpen(name: string): Promise<void>
+    whatsappNative(): Promise<boolean>
     /** silencia o som do app (modo foco) */
     mute(id: WebAppId, on: boolean): Promise<void>
     /** minutos sem uso até o app dormir (0 = nunca) */
@@ -258,7 +259,7 @@ export interface PcMedia {
 }
 export interface SysConfig { closeToTray: boolean; hotkey: string; cloudDir: string; cloudOn: boolean; lastCloud: number; cloudError: string; guesses: { path: string; label: string }[]; hotkeyOk?: boolean }
 export interface WhatsChat { name: string; last: string; unread: number; time: string; avatar: string }
-export interface WhatsRead { loggedIn: boolean; qr?: boolean; loading?: boolean; totalUnread: number; chats: WhatsChat[] }
+export interface WhatsRead { loggedIn: boolean; qr?: boolean; loading?: boolean; unsupported?: boolean; nativeOpen?: boolean; totalUnread: number; chats: WhatsChat[] }
 export interface DiscordPerson { name: string; avatar: string; speaking: boolean; muted: boolean; deaf: boolean }
 export interface DiscordCall { loggedIn: boolean; inCall: boolean; channel: string; server: string; status: string; muted: boolean; deafened: boolean; people: DiscordPerson[]; myAvatar: string; myName?: string; meSpeaking?: boolean }
 export interface WebAppState { id: WebAppId; open: boolean; popped: boolean; embedded: boolean; discord?: DiscordCall }
@@ -376,7 +377,7 @@ const browserFallback: AgendaBridge = {
   ai: { status: async () => ({ installed: false, sharp: false }), install: async () => false, onProgress: noop },
   net: { text: async (u) => (await fetch(u)).text() },
   sports: { get: async () => [], teams: async () => [] },
-  webapp: { open: async () => {}, embed: async () => {}, popout: async () => {}, dock: async () => {}, nav: async () => {}, watch: async () => {}, discord: async () => {}, ifoodOrders: async () => ({ loggedOut: false, orders: [] as IfoodOrder[] }), whatsapp: async () => ({ loggedIn: false, totalUnread: 0, chats: [] }), ifoodMap: async () => null, url: async () => "", whatsappOpen: async () => {}, mute: async () => {}, hibernate: async () => {}, status: async () => ({} as any), onState: noop },
+  webapp: { open: async () => {}, embed: async () => {}, popout: async () => {}, dock: async () => {}, nav: async () => {}, watch: async () => {}, discord: async () => {}, ifoodOrders: async () => ({ loggedOut: false, orders: [] as IfoodOrder[] }), whatsapp: async () => ({ loggedIn: false, totalUnread: 0, chats: [] }), ifoodMap: async () => null, url: async () => "", whatsappOpen: async () => {}, whatsappNative: async () => false, mute: async () => {}, hibernate: async () => {}, status: async () => ({} as any), onState: noop },
   music: { open: async () => {}, embed: async () => {}, clip: async () => {}, queue: async () => [], popout: async () => {}, dock: async () => {}, cmd: async () => {}, logout: async () => {}, video: async () => {}, onState: noop, onFrame: noop },
 }
 
