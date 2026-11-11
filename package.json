@@ -108,5 +108,8 @@
   "allowScripts": {
     "electron@44.10.2": true,
     "electron-winstaller@5.4.0": true
+  },
+  "overrides": {
+    "sharp": "$sharp"
   }
 }
