@@ -22,4 +22,18 @@ function mergeArtwork(raw, cache) {
   return { ...raw, art }
 }
 
-module.exports = { pickSession, mergeArtwork }
+// Windows SMTC can return an empty list for a single poll while the player is still open.
+// Retain the last valid session briefly, without keeping stale sessions forever.
+function retainRecentSessions(previous, incoming, lastSeen, now = Date.now(), graceMs = 9000) {
+  const fresh = (Array.isArray(incoming) ? incoming : []).filter((s) => s && s.app)
+  const present = new Set(fresh.map((s) => s.app))
+  for (const item of fresh) lastSeen.set(item.app, now)
+  const retained = (Array.isArray(previous) ? previous : []).filter((s) =>
+    s && s.app && !present.has(s.app) && now - (lastSeen.get(s.app) ?? -Infinity) < graceMs)
+  for (const [app, timestamp] of lastSeen) {
+    if (!present.has(app) && now - timestamp >= graceMs) lastSeen.delete(app)
+  }
+  return [...fresh, ...retained]
+}
+
+module.exports = { pickSession, mergeArtwork, retainRecentSessions }
