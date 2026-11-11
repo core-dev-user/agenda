@@ -47,6 +47,17 @@ jobs:
             exit 1
           }
 
+      - name: Validar e exercitar medição de RAM/CPU em Windows
+        shell: powershell
+        run: |
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) 'scripts/perf-live.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Host $_.ToString() }; exit 1 }
+          & ./scripts/perf-live.ps1 -Seconds 5 -IntervalMs 1000 -OutputPath "$env:RUNNER_TEMP/perf-live-smoke.json"
+          $result = Get-Content "$env:RUNNER_TEMP/perf-live-smoke.json" -Raw | ConvertFrom-Json
+          if ($result.samples.Count -lt 2 -or $result.summary.Count -ne 3) { throw "Relatório de desempenho incompleto" }
+
   windows-native-compile:
     runs-on: windows-latest
     steps:
