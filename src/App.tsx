@@ -173,11 +173,12 @@ function wallCss(wp: ReturnType<typeof useStore.getState>["settings"]["wallpaper
 
 export function useThemeVars() {
   const s = useStore((x) => x.settings)
+  const mode = useUiMode((x) => x.mode)
   useEffect(() => {
     const r = document.documentElement
     r.dataset.theme = s.theme
     // Native desktop is transparent only when an external wallpaper is selected.
-    r.dataset.wallpaperEngine = String(useUiMode.getState().mode === "desktop" && (s.wallpaper.type === "engine" || Object.values(s.wallpaperBy ?? {}).some((v) => v.type === "engine")))
+    r.dataset.wallpaperEngine = String(mode === "desktop" && (s.wallpaper.type === "engine" || Object.values(s.wallpaperBy ?? {}).some((v) => v.type === "engine")))
     r.classList.toggle("dark", s.dark)
     r.classList.toggle("no-anim", !s.animations)
     const set = (k: string, v: string) => r.style.setProperty(k, v)
@@ -191,7 +192,7 @@ export function useThemeVars() {
     for (const id of [s.uiFont, s.numFont, s.displayFont]) void ensureFont(id)
     set("--tb-size", s.taskbar.size + "px")
     r.style.fontSize = 16 * s.fontScale + "px"
-  }, [s])
+  }, [s, mode])
 }
 
 export default function App() {
