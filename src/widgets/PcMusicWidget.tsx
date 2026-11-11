@@ -93,6 +93,7 @@ function usePcMedia(id: string, app: string) {
 // Some Windows players do not expose a thumbnail through SMTC. Only use an
 // independently verified title + artist match, never an unrelated album cover.
 const fallbackCovers = new Map<string, string | null>()
+const MAX_FALLBACK_COVERS = 160
 const normal = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, " ").toLowerCase().trim()
 function useFallbackCover(media: PcMedia | null) {
   const title = media?.title || ""
@@ -120,6 +121,7 @@ function useFallbackCover(media: PcMedia | null) {
       // O Widgy pode ficar semanas aberto: não acumular capas antigas sem limite.
       fallbackCovers.delete(key)
       fallbackCovers.set(key, art)
+      while (fallbackCovers.size > MAX_FALLBACK_COVERS) fallbackCovers.delete(fallbackCovers.keys().next().value!)
       if (fallbackCovers.size > 100) {
         fallbackCovers.delete(fallbackCovers.keys().next().value!)
       }
