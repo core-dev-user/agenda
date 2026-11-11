@@ -9,7 +9,7 @@ import { bridge, type PcMedia, type SysStats } from "@/lib/bridge"
 import { useNow } from "@/widgets/Clock"
 import { LABEL, WxIcon, loadWeather, type Wx } from "@/widgets/Weather"
 import { useLyrics, lineAt } from "@/lib/lyrics"
-import { perfPaused } from "@/lib/perf"
+import { rafLoop } from "@/lib/perf"
 import { Logo } from "@/components/Logo"
 import { ensureFont, fontFamily } from "@/lib/fonts"
 
@@ -42,7 +42,7 @@ function useMedia() {
   }, [])
   useEffect(() => {
     if (!m?.playing) return
-    const t = window.setInterval(() => setNow(performance.now()), 250)
+    const t = window.setInterval(() => setNow(performance.now()), 500)
     return () => clearInterval(t)
   }, [m?.playing])
   const pos = m?.pos != null ? Math.min(m.dur || Infinity, m.pos + (m.playing ? (now - at) / 1000 : 0)) : 0
@@ -284,12 +284,9 @@ function Spikes({ art, playing, size }: { art?: string | null; playing: boolean;
   const N = 72
   const r0 = size * 0.37
   useEffect(() => {
-    let raf = 0
     let energy = playing ? 1 : 0
     const t0 = performance.now()
     const draw = (now: number) => {
-      raf = requestAnimationFrame(draw)
-      if (perfPaused()) return
       energy += ((playing ? 1 : 0.12) - energy) * 0.06
       const t = (now - t0) / 1000
       let d = ""
@@ -303,8 +300,8 @@ function Spikes({ art, playing, size }: { art?: string | null; playing: boolean;
       }
       path.current?.setAttribute("d", d)
     }
-    raf = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(raf)
+    if (!playing) { path.current?.setAttribute("d", ""); return }
+    return rafLoop(draw)
   }, [playing, size, r0])
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -334,18 +331,16 @@ function WaveProgress({ value, playing, onSeek }: { value: number; playing: bool
   }, [])
   const v = Math.max(0, Math.min(1, value))
   useEffect(() => {
-    let raf = 0, amp = playing ? 3 : 0
+    let amp = playing ? 3 : 0
     const draw = (now: number) => {
-      raf = requestAnimationFrame(draw)
-      if (perfPaused()) return
       amp += ((playing ? 3 : 0) - amp) * 0.08
       const end = Math.max(0, v * w - 6)
       let d = "M0 8"
       for (let x = 2; x <= end; x += 2) d += `L${x} ${(8 + Math.sin(x / 7 - now / 260) * amp).toFixed(2)}`
       path.current?.setAttribute("d", d)
     }
-    raf = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(raf)
+    if (!playing) { draw(0); return }
+    return rafLoop(draw)
   }, [playing, v, w])
   return (
     <div ref={box} className={cn("relative h-4 flex-1", onSeek && "cursor-pointer")} role="slider" aria-label="Posição na música" aria-valuenow={Math.round(v * 100)} aria-valuemin={0} aria-valuemax={100}
