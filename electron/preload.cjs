@@ -119,6 +119,8 @@ contextBridge.exposeInMainWorld("agenda", {
     open: (pin) => ipcRenderer.invoke("finance:open", pin),
     lock: () => ipcRenderer.invoke("finance:lock"),
     save: (txt) => ipcRenderer.invoke("finance:save", txt),
+    saveSync: (txt) => ipcRenderer.sendSync("finance:saveSync", txt),
+    drain: () => ipcRenderer.invoke("finance:drain"),
     setPin: (oldPin, newPin) => ipcRenderer.invoke("finance:setPin", oldPin, newPin),
   },
   media: {
