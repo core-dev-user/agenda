@@ -427,8 +427,25 @@ function register(ipcMain, mainGetter, app) {
     setTimeout(pollDiscord, 200)
   })
   // widgets do Discord avisam que estão na tela -> leitura rápida (quem está falando)
+  // Só mantém o polling de 300 ms enquanto há um widget ouvindo o Discord.
+  let dTick = 0
+  let discordTimer = null
+  const syncDiscordTimer = () => {
+    if (discordWatchers > 0 && !discordTimer) {
+      discordTimer = setInterval(() => {
+        dTick++
+        if ((S.discord && S.discord.inCall) || dTick % 10 === 0) pollDiscord()
+      }, 300)
+    } else if (discordWatchers === 0 && discordTimer) {
+      clearInterval(discordTimer)
+      discordTimer = null
+      dTick = 0
+    }
+  }
   ipcMain.handle("webapp:watch", (_e, id, on) => {
-    if (id === "discord") discordWatchers = Math.max(0, discordWatchers + (on ? 1 : -1))
+    if (id !== "discord") return
+    discordWatchers = Math.max(0, discordWatchers + (on ? 1 : -1))
+    syncDiscordTimer()
     if (on) ensure(id)
   })
   ipcMain.handle("webapp:ifoodOrders", () => ifoodOrders())
@@ -451,13 +468,7 @@ function register(ipcMain, mainGetter, app) {
     const js = `(() => { const n = ${JSON.stringify(String(name || ""))}; const s = Array.from(document.querySelectorAll('#pane-side span[title]')).find((x) => x.getAttribute('title') === n); if (!s) return false; const row = s.closest('[role="listitem"], [role="row"]') || s; for (const t of ['mousedown', 'mouseup', 'click']) row.dispatchEvent(new MouseEvent(t, { bubbles: true })); return true; })()`
     try { await wc("whatsapp").executeJavaScript(js, true) } catch {}
   })
-  // leitura rápida (quem está falando) só durante uma call; fora dela, a cada 3 s
-  let dTick = 0
-  setInterval(() => {
-    if (discordWatchers <= 0) return
-    dTick++
-    if ((S.discord && S.discord.inCall) || dTick % 10 === 0) pollDiscord()
-  }, 300)
+  // O timer do Discord é iniciado/parado por webapp:watch.
 
   // modo foco: silencia o som do app (Discord numa call nunca é silenciado)
   ipcMain.handle("webapp:mute", (_e, id, on) => {
