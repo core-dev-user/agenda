@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react"
 import { useSettings } from "@/lib/store"
+import { useUiMode } from "@/lib/uimode"
 import { mediaUrl } from "@/lib/bridge"
 import { perfPaused } from "@/lib/perf"
 import { LockClock, LOCK_DEFAULT } from "./LockClock"
@@ -28,12 +29,14 @@ export const GRADIENTS: Record<string, { label: string; css: string }> = {
 /** screenId: monitor (cada um pode ter um papel de parede próprio) */
 export function Wallpaper({ screenId }: { screenId?: number }) {
   const s = useSettings()
+  const desktop = useUiMode((m) => m.mode === "desktop")
   const own = screenId != null ? s.wallpaperBy?.[String(screenId)] : undefined
   const wp = own ? { ...s.wallpaper, ...own } : s.wallpaper
+  const external = wp.type === "engine" && desktop
   const layer = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!wp.parallax || !s.animations) {
+    if (external || !wp.parallax || !s.animations) {
       if (layer.current) layer.current.style.transform = "scale(1.0)"
       return
     }
@@ -62,7 +65,7 @@ export function Wallpaper({ screenId }: { screenId?: number }) {
       window.removeEventListener("pointermove", move)
       cancelAnimationFrame(raf)
     }
-  }, [wp.parallax, s.animations])
+  }, [external, wp.parallax, s.animations])
 
   const bg =
     wp.type === "image" && wp.image
@@ -81,7 +84,7 @@ export function Wallpaper({ screenId }: { screenId?: number }) {
     <div className="absolute inset-0 overflow-hidden">
       {/* camadas que se movem juntas (parallax): fundo → relógio → assunto na frente */}
       <div ref={layer} className="absolute -inset-4 will-change-transform" style={{ transform: "scale(1.05)" }}>
-        {anim ? <AnimWall file={anim} filter={filter} /> : <div className="absolute inset-0" style={{ ...bg, filter }} />}
+        {external ? null : anim ? <AnimWall file={anim} filter={filter} /> : <div className="absolute inset-0" style={{ ...bg, filter }} />}
         {lock && <LockClock c={lock} />}
         {fg && <div className="absolute inset-0" style={{ backgroundImage: `url("${mediaUrl(fg)}")`, backgroundSize: "cover", backgroundPosition: "center", filter }} />}
       </div>
