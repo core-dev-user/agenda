@@ -301,6 +301,15 @@ ipcMain.on("store:set", (_e, data) => {
   pending = data
   flush()
 })
+// Aguarda a gravação real antes de reiniciar para aplicar transparência.
+ipcMain.handle("store:drain", async () => {
+  const deadline = Date.now() + 10000
+  while ((writing || pending != null) && Date.now() < deadline) {
+    if (!writing && pending != null) await flush()
+    else await new Promise((resolve) => setTimeout(resolve, 40))
+  }
+  return !writing && pending == null
+})
 function flushSync() {
   if (pending == null) return
   try {
