@@ -150,6 +150,7 @@ contextBridge.exposeInMainWorld("agenda", {
     url: (id) => ipcRenderer.invoke("webapp:url", id),
     whatsapp: () => ipcRenderer.invoke("webapp:whatsapp"),
     whatsappOpen: (name) => ipcRenderer.invoke("webapp:whatsappOpen", name),
+    whatsappNative: () => ipcRenderer.invoke("webapp:whatsappNative"),
     mute: (id, on) => ipcRenderer.invoke("webapp:mute", id, on),
     hibernate: (min) => ipcRenderer.invoke("webapp:hibernate", min),
     status: () => ipcRenderer.invoke("webapp:status"),
