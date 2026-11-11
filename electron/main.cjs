@@ -25,6 +25,7 @@ if (process.env.AGENDA_SHOT) {
 const system = require("./system.cjs")
 const modes = require("./mode.cjs")
 const wallpaperEngine = require("./wallpaper-engine.cjs")
+const { fetchSafeText } = require("./net-guard.cjs")
 const userDir = app.getPath("userData")
 const mediaDir = path.join(userDir, "media")
 const toolsDir = path.join(userDir, "tools")
@@ -659,8 +660,4 @@ ipcMain.handle("media:saveAnimation", async (_e, { width, height, frames, delay,
 })
 
 /* ---------------- Notícias (RSS sem CORS) ---------------- */
-ipcMain.handle("net:text", async (_e, url) => {
-  if (!/^https?:\/\//.test(url)) throw new Error("URL inválida")
-  const r = await net.fetch(url, { headers: { "User-Agent": "Widgy/0.3 (desktop app)" } })
-  return await r.text()
-})
+ipcMain.handle("net:text", async (_e, url) => fetchSafeText(net.fetch.bind(net), url))
