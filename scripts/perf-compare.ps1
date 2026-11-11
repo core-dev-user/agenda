@@ -111,7 +111,7 @@ function Measure-Run([string]$label, [string]$appDir, [string]$layout, [int]$ite
    elapsedSec = [math]::Round($clock.Elapsed.TotalSeconds, 2)
    stableSamples = $steady.Count
    medianPrivateMB = [math]::Round((Median @($steady | ForEach-Object { [double]$_.privateMB })), 2)
-   peakPrivateMB = [math]::Round(($samples | Measure-Object privateMB -Maximum).Maximum, 2)
+   peakPrivateMB = [math]::Round((@($samples | ForEach-Object { [double]$_.privateMB }) | Measure-Object -Maximum).Maximum, 2)
    medianWorkingSetMB = [math]::Round((Median @($steady | ForEach-Object { [double]$_.workingMB })), 2)
    cpuCorePercent = [math]::Round(($cpuSeconds / [math]::Max(1, $clock.Elapsed.TotalSeconds)) * 100, 2)
    samples = @($samples)
@@ -135,10 +135,11 @@ foreach ($layout in @("classic", "carbono")) {
  $b = @($results | Where-Object { $_.layout -eq $layout -and $_.label -eq "baseline" -and $_.rendered })
  $o = @($results | Where-Object { $_.layout -eq $layout -and $_.label -eq "optimized" -and $_.rendered })
  if ($b.Count -ne 2 -or $o.Count -ne 2) { continue }
- $bm = [double](($b | Measure-Object medianPrivateMB -Average).Average)
- $om = [double](($o | Measure-Object medianPrivateMB -Average).Average)
- $bc = [double](($b | Measure-Object cpuCorePercent -Average).Average)
- $oc = [double](($o | Measure-Object cpuCorePercent -Average).Average)
+ $bm = [double](($b | ForEach-Object { [double]$_.medianPrivateMB } | Measure-Object -Average).Average)
+ $om = [double](($o | ForEach-Object { [double]$_.medianPrivateMB } | Measure-Object -Average).Average)
+ $bc = [double](($b | ForEach-Object { [double]$_.cpuCorePercent } | Measure-Object -Average).Average)
+ $oc = [double](($o | ForEach-Object { [double]$_.cpuCorePercent } | Measure-Object -Average).Average)
+ if ($bm -le 0 -or $om -le 0) { throw "Resumo invalido: memoria privada nao pode ser zero em uma renderizacao real" }
  $comparison += [ordered]@{
    layout = $layout; baselineRAMMB = [math]::Round($bm, 2); optimizedRAMMB = [math]::Round($om, 2)
    ramChangePct = $(if ($bm -gt 0) { [math]::Round(($om / $bm - 1) * 100, 2) } else { $null })
