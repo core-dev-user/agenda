@@ -59,7 +59,14 @@ function usePcMedia(id: string, app: string) {
     }
     const unsubscribe = bridge.pcmedia.onState(receive)
     void bridge.pcmedia.sub(id, app).then((state) => {
-      if (alive && !received && state) receive(state)
+      // The browser fallback may not contain widgetId; snapshots belong to
+      // the specific subscriber, unlike broadcast events.
+      if (alive && !received && state) {
+        const at = performance.now()
+        setMedia(state)
+        setCaptured(at)
+        setNow(at)
+      }
     }).catch(() => {
       if (alive) setMedia({ none: true, error: "Não foi possível conectar à mídia do Windows." })
     })
@@ -104,28 +111,28 @@ function Cover({ image, shape, size }: { image?: string | null; shape: CoverShap
   )
 }
 
-function Controls({ media, id, small }: { media: PcMedia; id: string; small: boolean }) {
+function Controls({ media, id, small, tiny = false }: { media: PcMedia; id: string; small: boolean; tiny?: boolean }) {
   const cmd = (name: "toggle" | "next" | "prev") => { void bridge.pcmedia.cmd(name, id) }
   const side = small ? "size-[30px]" : "size-9"
   const iconSize = small ? 16 : 18
   return (
     <div className="flex items-center gap-2.5" data-nodrag>
-      <button type="button" title="Anterior" aria-label="Faixa anterior"
+      {!tiny && <button type="button" title="Anterior" aria-label="Faixa anterior"
         disabled={media.canPrev === false} onClick={() => cmd("prev")}
         className={cn("grid shrink-0 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/[.08] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70 disabled:opacity-25", side)}>
         <SkipBack size={iconSize} fill="currentColor" strokeWidth={1.5} />
-      </button>
+      </button>}
       <button type="button" title={media.playing ? "Pausar" : "Reproduzir"}
         aria-label={media.playing ? "Pausar" : "Reproduzir"} onClick={() => cmd("toggle")}
         className={cn("grid shrink-0 place-items-center rounded-full bg-[#F7F9FC] text-[#141B24] shadow-[0_2px_12px_rgba(0,0,0,.18)] transition-transform hover:scale-[1.06] active:scale-[.96] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#A8CFFF]", small ? "size-9" : "size-10")}>
         {media.playing ? <Pause size={small ? 17 : 19} fill="currentColor" strokeWidth={1.5} /> :
           <Play size={small ? 17 : 19} fill="currentColor" strokeWidth={1.5} className="translate-x-px" />}
       </button>
-      <button type="button" title="Próxima" aria-label="Próxima faixa"
+      {!tiny && <button type="button" title="Próxima" aria-label="Próxima faixa"
         disabled={media.canNext === false} onClick={() => cmd("next")}
         className={cn("grid shrink-0 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/[.08] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70 disabled:opacity-25", side)}>
         <SkipForward size={iconSize} fill="currentColor" strokeWidth={1.5} />
-      </button>
+      </button>}
     </div>
   )
 }
@@ -201,7 +208,7 @@ export function PcMusicWidget({ w }: { w: Widget }) {
   const tint: Accent = c.pcAccent ?? "blue"
   // Color is an accent, never a giant green play button.
   const accent = tint === "theme" ? "var(--accent)" : tint === "spotify" ? "#55D995" : "#8AC7FF"
-  const vertical = selectedLayout === "poster" && w.h >= 275 && w.w >= 215
+  const vertical = selectedLayout === "poster" && w.h >= 310 && w.w >= 215
   const compact = !vertical && (selectedLayout === "compact" || w.w < 370 ||
     w.h < 180 || (selectedLayout === "auto" && w.h < 202))
   const tiny = w.h < 138 || w.w < 255
@@ -268,7 +275,7 @@ export function PcMusicWidget({ w }: { w: Widget }) {
             compact ? "gap-2" : "gap-3")}>
             {text}
             {showProgress && <Progress media={media} seconds={position} id={w.id} accent={accent} times={showTimes} />}
-            {c.pcControls !== false && <Controls media={media} id={w.id} small={compact} />}
+            {c.pcControls !== false && <Controls media={media} id={w.id} small={compact} tiny={tiny} />}
           </div>
         </div>
       )}
