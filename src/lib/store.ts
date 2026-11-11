@@ -16,7 +16,7 @@ import type {
 } from "./types"
 
 /** Preferências que não são "visual" e por isso não entram nos templates. */
-const NOT_LOOK: (keyof Settings)[] = ["musicAutostart", "layoutRef", "weatherCity", "newsFeed", "notify", "calendars", "favTeams", "favBySport", "pet", "focus", "todayOnStart", "hibernateMin", "perfLite", "perfPauseInGame", "perfPreset", "perfFps", "perfEmbedHz", "perfPreload", "pcPins", "nick", "savedRooms", "ai"]
+const NOT_LOOK: (keyof Settings)[] = ["musicAutostart", "layoutRef", "weatherCity", "newsFeed", "notify", "calendars", "favTeams", "favBySport", "pet", "focus", "todayOnStart", "hibernateMin", "perfLite", "perfPauseInGame", "perfPreset", "perfFps", "perfEmbedHz", "perfMonitorMs", "perfPreload", "pcPins", "nick", "savedRooms", "ai"]
 
 export const DEFAULT_NOTIFY: NotifyPrefs = {
   on: { tasks: true, whatsapp: true, ifood: true, sports: true, budgets: true, services: true, calendar: true, focus: true, system: true },
@@ -63,6 +63,7 @@ export const DEFAULT_SETTINGS: Settings = {
   perfPreset: "auto",
   perfFps: 30,
   perfEmbedHz: 12,
+  perfMonitorMs: 3000,
   perfPreload: "essential",
   // seta do Windows por padrão (a personalizada fica como opção nas configurações)
   cursorStyle: "system",
