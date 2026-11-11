@@ -76,6 +76,7 @@ function barHarness(t) {
     './winhelper.cjs': { call: cmd => { commands.push(cmd); return Promise.resolve('0') }, hwndOf: w => String(windows.indexOf(w) + 1) },
     './mode.cjs': { mode: () => 'desktop', target: () => all[0], spans: () => false },
     './keys.cjs': { onKey() {}, enable() {}, winKey() {} }, './games.cjs': { onPlaying() {}, playing: () => false },
+    './taskbar-key-policy.cjs': require('../electron/taskbar-key-policy.cjs'),
     './startapps.cjs': { collectStartApps: async () => [], isAppsFolderTarget: () => false },
   })
   api.register(ipc, () => null)
