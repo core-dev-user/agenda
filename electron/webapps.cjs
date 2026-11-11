@@ -2,6 +2,7 @@
 // ou vai para uma janela separada, e continuam rodando em segundo plano (a call não cai ao fechar).
 const { BrowserWindow, WebContentsView, session, shell, desktopCapturer } = require("electron")
 const path = require("node:path")
+const { execFile } = require("node:child_process")
 
 const APPS = {
   discord: { home: "https://discord.com/app", title: "Discord", partition: "persist:discord", bg: "#313338", allowPopup: /discord\.com|discordapp\.com|hcaptcha\.com/ },
@@ -15,7 +16,23 @@ const APPS = {
 const S = {}
 let getMain = () => null
 
-const ua = () => session.defaultSession.getUserAgent().replace(/\s*Electron\/\S+/i, "").replace(/\s*agenda\/\S+/i, "")
+// The product is now Widgy: do not advertise Widgy/Electron to WhatsApp Web.
+const ua = () => session.defaultSession.getUserAgent().replace(/\s*(?:Electron|agenda|widgy)\/\S+/gi, "").trim()
+const updateBrowserLink = (url) => /^https?:\/\/(?:www\.)?(?:google\.com\/chrome|chrome\.google\.com|microsoft\.com\/edge)(?:\/|$)/i.test(url)
+
+let nativeCheckedAt = 0
+let nativeRunning = false
+function whatsappNativeRunning() {
+  if (process.platform !== "win32") return Promise.resolve(false)
+  if (Date.now() - nativeCheckedAt < 15000) return Promise.resolve(nativeRunning)
+  nativeCheckedAt = Date.now()
+  return new Promise((resolve) => {
+    execFile("tasklist.exe", ["/FI", "IMAGENAME eq WhatsApp.exe", "/FO", "CSV", "/NH"], { windowsHide: true, timeout: 2500 }, (error, stdout) => {
+      nativeRunning = !error && /"WhatsApp\.exe"/i.test(stdout)
+      resolve(nativeRunning)
+    })
+  })
+}
 const alive = (id) => !!S[id] && !!S[id].view && !S[id].view.webContents.isDestroyed()
 const touch = (id) => { if (S[id]) S[id].lastUse = Date.now() }
 /** minutos sem uso até o app "dormir" (0 = nunca) */
@@ -135,7 +152,9 @@ const DISCORD_CMD = {
 const WHATSAPP_POLL = `(() => {
   const pane = document.querySelector('#pane-side');
   const loggedIn = !!pane;
-  const qr = !!document.querySelector('canvas[aria-label], [data-ref]') && !pane;
+  const qr = !!document.querySelector('canvas[aria-label], [data-ref], [data-testid*="qr" i]') && !pane;
+  const message = (document.body && document.body.innerText || '').slice(0, 1200);
+  const unsupported = !pane && /(atualiz|update|outdated|incompat[ií]vel|unsupported)/i.test(message) && /(chrome|navegador|browser)/i.test(message);
   const tm = (document.title || '').match(/\\((\\d+)\\)/);
   const totalUnread = tm ? Number(tm[1]) : 0;
   const rows = pane ? Array.from(pane.querySelectorAll('[role="listitem"], [role="row"]')) : [];
@@ -152,7 +171,7 @@ const WHATSAPP_POLL = `(() => {
     if (name && !chats.some((c) => c.name === name)) chats.push({ name, last, unread: n, time, avatar: img ? img.src : '' });
     if (chats.length >= 25) break;
   }
-  return { loggedIn, qr, totalUnread, chats };
+  return { loggedIn, qr, unsupported, totalUnread, chats };
 })()`
 
 /* ---------------- iFood: lê a página de pedidos da conta ---------------- */
@@ -234,10 +253,12 @@ function ensure(id) {
   const view = new WebContentsView({ webPreferences: { partition: cfg.partition, backgroundThrottling: id === "whatsapp", contextIsolation: true, nodeIntegration: false, autoplayPolicy: "no-user-gesture-required" } })
   view.setBackgroundColor(cfg.bg)
   view.webContents.setWindowOpenHandler(({ url }) => {
+    if (id === "whatsapp" && updateBrowserLink(url)) return { action: "deny" }
     if (cfg.allowPopup.test(url)) return { action: "allow" }
     if (/^https?:/.test(url)) shell.openExternal(url)
     return { action: "deny" }
   })
+  if (id === "whatsapp") view.webContents.on("will-navigate", (event, url) => { if (updateBrowserLink(url)) event.preventDefault() })
   if (id === "discord") view.webContents.on("dom-ready", () => { view.webContents.executeJavaScript(MIC_HOOK, true).catch(() => {}) })
   view.setBounds({ x: 0, y: 0, width: 1280, height: 860 })
   view.webContents.loadURL(cfg.home)
@@ -398,7 +419,15 @@ function register(ipcMain, mainGetter, app) {
   ipcMain.handle("webapp:whatsapp", async () => {
     if (!alive("whatsapp")) { ensure("whatsapp"); return { loggedIn: false, loading: true, chats: [], totalUnread: 0 } }
     touch("whatsapp")
-    try { return await wc("whatsapp").executeJavaScript(WHATSAPP_POLL, true) } catch { return { loggedIn: false, chats: [], totalUnread: 0 } }
+    if (wc("whatsapp").isLoadingMainFrame()) return { loggedIn: false, loading: true, chats: [], totalUnread: 0 }
+    try {
+      const state = await wc("whatsapp").executeJavaScript(WHATSAPP_POLL, true)
+      return { ...state, nativeOpen: state.loggedIn ? false : await whatsappNativeRunning() }
+    } catch { return { loggedIn: false, loading: true, chats: [], totalUnread: 0 } }
+  })
+  ipcMain.handle("webapp:whatsappNative", async () => {
+    if (process.platform !== "win32") return false
+    try { await shell.openExternal("whatsapp://"); return true } catch { return false }
   })
   // abre uma conversa pelo nome (como clicar nela na lista)
   ipcMain.handle("webapp:whatsappOpen", async (_e, name) => {
