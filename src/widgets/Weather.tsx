@@ -4,7 +4,6 @@ import { useStore } from "@/lib/store"
 import { bridge, friendlyError } from "@/lib/bridge"
 import type { Widget } from "@/lib/types"
 const getJSON = async (u: string) => JSON.parse(await bridge.net.text(u))
-import type { Widget } from "@/lib/types"
 
 export interface Wx {
   city: string
