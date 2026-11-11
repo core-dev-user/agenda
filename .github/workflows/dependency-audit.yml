@@ -1,0 +1,40 @@
+name: Inspecionar dependências
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 9 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verificar vulnerabilidades sem atualizar versões automaticamente
+        shell: bash
+        run: |
+          npm audit --json > audit.json || true
+          node - <<'NODE'
+          const fs = require("node:fs")
+          const report = JSON.parse(fs.readFileSync("audit.json", "utf8"))
+          const vulnerabilities = Object.entries(report.vulnerabilities || {})
+            .map(([name, v]) => ({ name, severity: v.severity, isDirect: v.isDirect,
+              via: (v.via || []).map(x => typeof x === "string" ? x : x.title).slice(0, 4),
+              fix: v.fixAvailable }))
+          console.log("Auditoria npm (produção e desenvolvimento):")
+          console.log(JSON.stringify(vulnerabilities, null, 2))
+          const n = report.metadata?.vulnerabilities || {}
+          console.log("RESUMO:", JSON.stringify(n))
+          if (n.high || n.critical) console.log("::warning::Dependências com vulnerabilidades altas: revisar npm audit antes da próxima versão")
+          NODE

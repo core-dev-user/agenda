@@ -81,7 +81,7 @@ function usePcMedia(id: string, app: string) {
 
   useEffect(() => {
     if (!media?.playing) return
-    const timer = window.setInterval(() => setNow(performance.now()), 500)
+    const timer = window.setInterval(() => { if (!document.hidden) setNow(performance.now()) }, 1000)
     return () => window.clearInterval(timer)
   }, [media?.playing])
 
@@ -117,7 +117,12 @@ function useFallbackCover(media: PcMedia | null) {
           normal(item.artistName || "").includes(normal(artist)) ||
           normal(artist).includes(normal(item.artistName || ""))))
       const art = found?.artworkUrl100?.replace(/100x100bb/, "600x600bb") || null
+      // O Widgy pode ficar semanas aberto: não acumular capas antigas sem limite.
+      fallbackCovers.delete(key)
       fallbackCovers.set(key, art)
+      if (fallbackCovers.size > 100) {
+        fallbackCovers.delete(fallbackCovers.keys().next().value!)
+      }
       if (active) setFallback({ key, url: art })
     }).catch(() => { if (active) setFallback({ key, url: null }) })
     return () => { active = false }

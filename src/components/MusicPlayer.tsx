@@ -16,7 +16,7 @@ export function useMusicTime() {
   const [, force] = useState(0)
   useEffect(() => {
     if (!m.playing) return
-    const id = setInterval(() => force((x) => x + 1), 200)
+    const id = setInterval(() => { if (!document.hidden) force((x) => x + 1) }, 500)
     return () => clearInterval(id)
   }, [m.playing])
   const t = (m.time ?? 0) + (m.playing ? (performance.now() - m.at) / 1000 : 0)

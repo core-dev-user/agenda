@@ -25,6 +25,7 @@ if (process.env.AGENDA_SHOT) {
 const system = require("./system.cjs")
 const modes = require("./mode.cjs")
 const wallpaperEngine = require("./wallpaper-engine.cjs")
+const { fetchSafeText } = require("./net-guard.cjs")
 const userDir = app.getPath("userData")
 const mediaDir = path.join(userDir, "media")
 const toolsDir = path.join(userDir, "tools")
@@ -32,11 +33,22 @@ const dataFile = path.join(userDir, "agenda-data.json")
 fs.mkdirSync(mediaDir, { recursive: true })
 fs.mkdirSync(toolsDir, { recursive: true })
 
-let sharp = null
-try {
-  sharp = require("sharp")
-} catch (e) {
-  console.error("sharp indisponível:", e)
+// Sharp carrega um addon nativo: só inicializar quando editar/importar
+// imagens ou abrir o painel de upscale. Não reservar memória no boot.
+let sharpInstance = null
+let sharpTried = false
+function getSharp() {
+  if (!sharpTried) {
+    sharpTried = true
+    try { sharpInstance = require("sharp") }
+    catch (e) { console.error("sharp indisponível:", e) }
+  }
+  return sharpInstance
+}
+function sharp(...args) {
+  const module = getSharp()
+  if (!module) throw new Error("Módulo de imagem indisponível")
+  return module(...args)
 }
 
 protocol.registerSchemesAsPrivileged([
@@ -334,7 +346,7 @@ async function describe(file, name) {
   let width = 0
   let height = 0
   let animated = false
-  if (sharp) {
+  if (getSharp()) {
     try {
       const m = await sharp(path.join(mediaDir, file)).metadata()
       const rotated = (m.orientation || 1) >= 5
@@ -448,7 +460,7 @@ ipcMain.handle("media:paste", async () => {
 
 /** editor: girar, espelhar, recortar e ajustar cor, em qualidade total */
 ipcMain.handle("media:edit", async (_e, file, ops) => {
-  if (!sharp) throw new Error("Módulo de imagem indisponível")
+  if (!getSharp()) throw new Error("Módulo de imagem indisponível")
   const src = path.join(mediaDir, path.basename(file))
   const meta0 = await sharp(src).metadata()
   if ((meta0.pages || 1) > 1) throw new Error("GIFs animados não podem ser editados")
@@ -532,7 +544,7 @@ function findExe(dir, name = "realesrgan-ncnn-vulkan.exe", depth = 0) {
   return null
 }
 
-ipcMain.handle("ai:status", () => ({ installed: !!findExe(toolsDir), sharp: !!sharp }))
+ipcMain.handle("ai:status", () => ({ installed: !!findExe(toolsDir), sharp: !!getSharp() }))
 
 const ESRGAN_URL =
   "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-windows.zip"
@@ -594,7 +606,7 @@ ipcMain.handle("app:screenInfo", () => ({ long: screenLong() }))
  * opts: { model: "photo" | "art", enhance: 0..2 }   target 0 = ideal para a tela (2x o lado maior)
  */
 ipcMain.handle("media:upscale", async (_e, file, target = 7680, preferAI = true, opts = {}) => {
-  if (!sharp) throw new Error("Módulo de imagem indisponível")
+  if (!getSharp()) throw new Error("Módulo de imagem indisponível")
   const pre = await sharp(path.join(mediaDir, path.basename(file))).metadata()
   if ((pre.pages || 1) > 1) throw new Error("Imagens animadas (GIF) não podem ser ampliadas sem perder a animação")
   if (!target) target = Math.min(7680, Math.max(2560, Math.round(screenLong() * 2)))
@@ -648,7 +660,7 @@ ipcMain.handle("media:upscale", async (_e, file, target = 7680, preferAI = true,
 
 /* ------- Salvar animação gerada no app (imagem viva) como GIF ------- */
 ipcMain.handle("media:saveAnimation", async (_e, { width, height, frames, delay, name, loopName }) => {
-  if (!sharp) throw new Error("Módulo de imagem indisponível")
+  if (!getSharp()) throw new Error("Módulo de imagem indisponível")
   const buf = Buffer.from(frames.buffer, frames.byteOffset, frames.byteLength)
   const n = Math.round(buf.length / (width * height * 4))
   const file = `${Date.now().toString(36)}-${(loopName || "viva").replace(/[^a-z0-9-]/gi, "").slice(0, 20) || "viva"}.gif`
@@ -659,8 +671,4 @@ ipcMain.handle("media:saveAnimation", async (_e, { width, height, frames, delay,
 })
 
 /* ---------------- Notícias (RSS sem CORS) ---------------- */
-ipcMain.handle("net:text", async (_e, url) => {
-  if (!/^https?:\/\//.test(url)) throw new Error("URL inválida")
-  const r = await net.fetch(url, { headers: { "User-Agent": "Widgy/0.3 (desktop app)" } })
-  return await r.text()
-})
+ipcMain.handle("net:text", async (_e, url) => fetchSafeText(net.fetch.bind(net), url))

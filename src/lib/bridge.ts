@@ -121,6 +121,8 @@ export interface AgendaBridge {
     open(pin?: string): Promise<{ ok: boolean; data?: string | null; error?: "pin" | "wait"; waitMs?: number }>
     lock(): Promise<boolean>
     save(txt: string): Promise<boolean>
+    saveSync(txt: string): boolean
+    drain(): Promise<boolean>
     setPin(oldPin: string, newPin: string | null): Promise<boolean>
   }
   media: {
@@ -364,6 +366,8 @@ const browserFallback: AgendaBridge = {
     open: async () => ({ ok: true, data: localStorage.getItem("agenda-finance") }),
     lock: async () => true,
     save: async (t) => (localStorage.setItem("agenda-finance", t), true),
+    saveSync: (t) => (localStorage.setItem("agenda-finance", t), true),
+    drain: async () => true,
     setPin: async () => false,
   },
   media: {

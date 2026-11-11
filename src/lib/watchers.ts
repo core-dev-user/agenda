@@ -60,8 +60,8 @@ export function useBackground() {
       wa.current = next
     }
     const id = setInterval(tick, 30000)
-    setTimeout(tick, 8000)
-    return () => clearInterval(id)
+    const initial = setTimeout(tick, 8000)
+    return () => { clearInterval(id); clearTimeout(initial) }
   }, [])
 
   /* ---------- iFood: mudança de status do pedido ---------- */
@@ -117,10 +117,10 @@ export function useBackground() {
       games.current = now
     }
     const id = setInterval(tick, 90000)
-    setTimeout(tick, 15000)
+    const initial = setTimeout(tick, 15000)
     // favoritos antigos (uma lista só) → separados por esporte
-    setTimeout(() => migrateFavTeams().catch(() => {}), 5000)
-    return () => clearInterval(id)
+    const migration = setTimeout(() => migrateFavTeams().catch(() => {}), 5000)
+    return () => { clearInterval(id); clearTimeout(initial); clearTimeout(migration) }
   }, [])
 
   /* ---------- orçamento (quando a aba Finanças estiver desbloqueada) ---------- */
