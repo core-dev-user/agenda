@@ -76,7 +76,8 @@ function start() {
     if (subscribers.size) {
       retryTimer = setTimeout(start, 3500)
       setTimeout(() => {
-        if (worker || !subscribers.size) return
+        if (!subscribers.size) return
+        // Expire old data even if the replacement worker started but has not produced a poll.
         sessions = retainRecentSessions(sessions, [], lastSeen)
         notify()
       }, 9500)
