@@ -21,6 +21,7 @@ import { AppIcon, ICON_STYLES, sectionColor } from "@/components/AppIcon"
 import { IconPackSettings } from "@/components/IconPackSettings"
 import { SECTIONS } from "@/components/sections-meta"
 import { TemplatesTab } from "./Templates"
+import { peekShareLink } from "@/lib/templateShare"
 import { PetTab } from "@/pet/PetSettings"
 import { UpdatesSection } from "@/components/Updates"
 import { IntegrationsTab, ModeTab, RoutineTab, SystemExtra } from "./SettingsExtra"
@@ -52,7 +53,12 @@ const THEMES: { id: ThemeId; label: string; desc: string }[] = [
 ]
 
 export default function SettingsView() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("look")
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>(() => peekShareLink() ? "templates" : "look")
+  useEffect(() => {
+    const selectTemplates = () => setTab("templates")
+    window.addEventListener("widgy:template-link", selectTemplates)
+    return () => window.removeEventListener("widgy:template-link", selectTemplates)
+  }, [])
   return (
     <div className="flex h-full">
       <aside className="w-52 shrink-0 space-y-0.5 border-r border-line p-3">

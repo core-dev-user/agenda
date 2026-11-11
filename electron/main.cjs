@@ -186,12 +186,35 @@ function createWindow() {
 }
 
 app.setName("Widgy")
+// Links de templates passam por validação antes de chegar ao renderizador.
+// Somente o esquema widgy://template/WDG1-... é aceito.
+const TEMPLATE_URI = /^widgy:\/\/template\/WDG1-[A-Za-z0-9_-]{25,7500}$/
+let pendingTemplateLink = process.argv.find((s) => TEMPLATE_URI.test(s)) || ""
+function acceptTemplateLink(url) {
+  if (typeof url !== "string" || !TEMPLATE_URI.test(url)) return
+  pendingTemplateLink = url
+  if (win && !win.isDestroyed() && !win.webContents.isLoadingMainFrame()) {
+    win.webContents.send("templates:link", url)
+    pendingTemplateLink = ""
+  }
+}
+app.on("open-url", (e, url) => { e.preventDefault(); acceptTemplateLink(url); system.show() })
+ipcMain.handle("templates:take", () => {
+  const link = pendingTemplateLink
+  pendingTemplateLink = ""
+  return link
+})
 // só uma cópia aberta: abrir de novo traz a janela que já está rodando (inclusive da bandeja)
 if (!process.env.AGENDA_SHOT && !app.requestSingleInstanceLock()) { app.quit(); process.exit(0) }
-app.on("second-instance", () => system.show())
+app.on("second-instance", (_event, argv) => {
+  const link = argv.find((s) => TEMPLATE_URI.test(s))
+  if (link) acceptTemplateLink(link)
+  system.show()
+})
 if (process.platform === "win32") app.setAppUserModelId("com.agenda.desktop")
 
 app.whenReady().then(() => {
+  if (app.isPackaged && !process.env.AGENDA_SHOT) app.setAsDefaultProtocolClient("widgy")
   protocol.handle("agenda", async (req) => {
     const u = new URL(req.url)
     if (u.host !== "media") return new Response("not found", { status: 404 })

@@ -59,6 +59,7 @@ jobs:
         if: steps.version.outputs.skip != 'true'
         run: |
           npm run test:media
+          npm run test:templates
           npm run test:wallpaper
           npm run test:security
           npm run test:finance
