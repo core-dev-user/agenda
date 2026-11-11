@@ -1,0 +1,53 @@
+# Publica a manutenção da barra do Windows, teclado e catálogo de aplicativos.
+name: Publicar Widgy 0.3.5
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v0.3.5.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    if: "startsWith(github.event.head_commit.message, 'release: publicar v0.3.5')"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Conferir versão
+        shell: bash
+        run: test "$(node -p "require('./package.json').version")" = "0.3.5"
+      - name: Instalar dependências
+        run: npm ci
+      - name: Verificar Spotify e mídia do Windows
+        run: npm run test:media
+      - name: Testar barra, teclas e descoberta de apps
+        run: npm run test:taskbar
+      - name: Compilar interface, ícones e instalador
+        run: npm run build
+      - name: Validar prévias Electron/DWM em Windows
+        run: npm run test:taskbar:windows
+      - name: Criar release Widgy 0.3.5
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.5 >/dev/null 2>&1 || gh release create v0.3.5 --target "$GITHUB_SHA" --title "Widgy 0.3.5 — Barra estável, Win+D e aplicativos" --notes "Reforça a recuperação automática da barra personalizada e do auxiliar de teclado, corrige Win+D para mostrar/restaurar a área de trabalho e amplia o menu Iniciar com aplicativos da Microsoft Store, atalhos de desktop e programas registrados. Preserva dados, ícones e configurações existentes. A transmissão de teclas, reinício do Explorer e aplicativos Store devem ser confirmados em um Windows real."
+      - name: Publicar instalador e metadados do atualizador
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis --publish always
+      - name: Verificar arquivos publicados
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.3.5 --json assets --jq '.assets[].name' | grep -Fx 'Widgy-Setup-0.3.5.exe'
+          gh release view v0.3.5 --json assets --jq '.assets[].name' | grep -Fx 'Widgy-Setup-0.3.5.exe.blockmap'
+          gh release view v0.3.5 --json assets --jq '.assets[].name' | grep -Fx 'latest.yml'
