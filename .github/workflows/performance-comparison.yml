@@ -1,0 +1,65 @@
+name: Comparar desempenho Windows
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/perf-compare.ps1"
+      - ".github/workflows/performance-comparison.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  performance-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Obter Widgy otimizado
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+      - name: Obter Widgy original v0.3.12
+        uses: actions/checkout@v4
+        with:
+          path: baseline
+          ref: v0.3.12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            candidate/package-lock.json
+            baseline/package-lock.json
+      - name: Validar sintaxe PowerShell do benchmark
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $code = Get-Content ./candidate/scripts/perf-compare.ps1 -Raw
+          $null = [System.Management.Automation.Language.Parser]::ParseInput($code, [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { $errors | ForEach-Object { Write-Host $_.ToString() }; exit 1 }
+      - name: Instalar dependências da versão original
+        working-directory: baseline
+        run: npm ci
+      - name: Compilar versão original
+        working-directory: baseline
+        run: npm run build
+      - name: Instalar dependências da versão otimizada
+        working-directory: candidate
+        run: npm ci
+      - name: Compilar versão otimizada
+        working-directory: candidate
+        run: npm run build
+      - name: Medir RAM, CPU e inicialização nos dois visuais
+        shell: pwsh
+        run: ./candidate/scripts/perf-compare.ps1 -BaselineDir ./baseline -CandidateDir ./candidate -OutputDir ./results
+      - name: Salvar relatório e capturas mesmo quando a GUI não estiver disponível
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: widgy-perf-windows
+          path: results/
+          if-no-files-found: warn
+          retention-days: 7
