@@ -273,7 +273,7 @@ export function WeatherWidget({ w }: { w: Widget }) {
             <div className="text-[10px] font-semibold uppercase tracking-wider text-white/60">Próximos dias</div>
             {wx.days.map((day, i) => (
               <div key={i} className="flex items-center justify-between gap-2 border-b border-white/10 pb-1.5 text-[12px]">
-                <span className="w-10 capitalize text-white/85">{day.d}</span>
+                <span className="w-10 inline-block cap-first text-white/85">{day.d}</span>
                 <WxIcon code={day.code} size={25} />
                 <span className="font-num">{Math.round(day.min)}° <span className="text-white/55">—</span> {Math.round(day.max)}°</span>
               </div>

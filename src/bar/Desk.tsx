@@ -18,7 +18,7 @@ export function Desk() {
         <div className="font-display text-[132px] leading-none font-semibold tracking-tight tabular-nums">
           {now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
         </div>
-        <div className="mt-3 text-xl font-medium capitalize opacity-85">
+        <div className="mt-3 text-xl font-medium cap-first opacity-85">
           {now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
         </div>
       </div>

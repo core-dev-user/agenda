@@ -70,7 +70,7 @@ export function ClockWidget({ w }: { w: Widget }) {
         </div>
         {(showDate || seconds || suffix) && (
           <div className="flex flex-col justify-center" style={{ fontSize: 15 * scale }}>
-            {showDate && <div className="font-semibold capitalize">{now.toLocaleDateString("pt-BR", { weekday: "long" })}</div>}
+            {showDate && <div className="font-semibold cap-first">{now.toLocaleDateString("pt-BR", { weekday: "long" })}</div>}
             {showDate && <div className="text-fg-muted">{now.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}</div>}
             {(seconds || suffix) && <div className="font-num mt-1 text-fg-muted">{seconds && `${z(now.getSeconds())}s`} {suffix}</div>}
           </div>
@@ -120,7 +120,7 @@ export function ClockWidget({ w }: { w: Widget }) {
         <div style={{ fontFamily: font ? ff : "var(--font-display)", fontWeight: weight ?? 600, color, textShadow: glowCss }}>
           {hourWord}{mm ? <> e <span style={{ color: color ?? "var(--accent)" }}>{ext(mm, false)}</span></> : <> em ponto</>}
         </div>
-        {showDate && <div className="mt-1 capitalize text-fg-muted" style={{ fontSize: "0.6em" }}>{date}</div>}
+        {showDate && <div className="mt-1 cap-first text-fg-muted" style={{ fontSize: "0.6em" }}>{date}</div>}
       </div>
     )
   }
@@ -143,7 +143,7 @@ export function ClockWidget({ w }: { w: Widget }) {
           ))}
           <text x="50" y="55" textAnchor="middle" fontSize="15" fontWeight={weight ?? 700} fill={color ?? "currentColor"} style={{ fontFamily: ff }}>{z(h)}:{z(now.getMinutes())}</text>
         </svg>
-        {showDate && w.w > 300 && <div className="text-sm capitalize text-fg-muted">{date}</div>}
+        {showDate && w.w > 300 && <div className="text-sm cap-first text-fg-muted">{date}</div>}
       </div>
     )
   }
@@ -154,7 +154,7 @@ export function ClockWidget({ w }: { w: Widget }) {
         <div className="clock-gradient font-num" style={{ fontFamily: ff, fontSize: 74 * scale, fontWeight: weight ?? 800, lineHeight: 1, letterSpacing: "-0.03em", backgroundImage: `linear-gradient(90deg, ${color ?? "var(--accent)"}, #c49bff, #7cc8ff, ${color ?? "var(--accent)"})`, backgroundSize: "300% 100%", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", filter: glow ? `drop-shadow(0 0 ${8 * scale}px ${color ?? "var(--accent)"})` : undefined }}>
           {z(h)}{sep}{z(now.getMinutes())}{seconds && <span style={{ fontSize: "0.4em" }}> {z(now.getSeconds())}</span>}{suf(0.3)}
         </div>
-        {showDate && <div className="mt-2 text-sm capitalize text-fg-muted">{date}</div>}
+        {showDate && <div className="mt-2 text-sm cap-first text-fg-muted">{date}</div>}
       </div>
     )
 
@@ -166,7 +166,7 @@ export function ClockWidget({ w }: { w: Widget }) {
           {seconds && (<><span className="opacity-60">:</span><Flip v={z(now.getSeconds())} small color={color} /></>)}
           {suf(0.35)}
         </div>
-        {showDate && <div className="text-sm capitalize text-fg-muted">{date}</div>}
+        {showDate && <div className="text-sm cap-first text-fg-muted">{date}</div>}
       </div>
     )
 
@@ -191,7 +191,7 @@ export function ClockWidget({ w }: { w: Widget }) {
   if (style === "minimal")
     return (
       <div className="flex h-full flex-col justify-end p-5">
-        {showDate && <div className="text-sm capitalize text-fg-muted">{now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>}
+        {showDate && <div className="text-sm cap-first text-fg-muted">{now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>}
         <div style={{ fontFamily: ff, fontSize: 72 * scale, lineHeight: 0.95, fontWeight: weight ?? 200, letterSpacing: "-0.04em", color, textShadow: glowCss }}>
           {z(h)}<span className={cn("text-brand", blink && now.getSeconds() % 2 && "opacity-25")}>.</span>{z(now.getMinutes())}
           {seconds && <span className="text-fg-muted" style={{ fontSize: "0.35em", letterSpacing: 0 }}> {z(now.getSeconds())}</span>}{suf(0.3)}
@@ -210,7 +210,7 @@ export function ClockWidget({ w }: { w: Widget }) {
         {seconds && <span className="font-num ml-2 text-fg-muted" style={{ fontSize: 26 * scale }}>{z(now.getSeconds())}</span>}
         {suffix && <span className="ml-2 text-fg-muted" style={{ fontSize: 18 * scale }}>{suffix}</span>}
       </div>
-      {showDate && <div className="mt-2 text-sm capitalize text-fg-muted">{date}</div>}
+      {showDate && <div className="mt-2 text-sm cap-first text-fg-muted">{date}</div>}
     </div>
   )
 }

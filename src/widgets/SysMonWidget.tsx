@@ -123,7 +123,9 @@ function Row({ icon, label, value, pct, color, data, detail }: { icon: ReactNode
         <Spark data={data} color={color} h={22} />
       ) : pct != null ? (
         <div className="h-1.5 overflow-hidden rounded-full" style={{ background: "color-mix(in srgb, var(--fg) 12%, transparent)" }}>
-          <div className="h-full rounded-full" style={{ width: `${Math.max(2, Math.min(100, pct))}%`, background: color, transition: "width .8s cubic-bezier(.2,.8,.2,1)" }} />
+          {/* a barra cheia desliza para dentro da trilha (transform): mesmo efeito de antes, mas animado pela
+              placa de vídeo. Animar a largura refazia o layout do widget a cada quadro, a cada leitura. */}
+          <div className="h-full w-full rounded-full" style={{ transform: `translateX(${Math.max(2, Math.min(100, pct)) - 100}%)`, background: color, transition: "transform .8s cubic-bezier(.2,.8,.2,1), background-color .4s" }} />
         </div>
       ) : null}
     </div>

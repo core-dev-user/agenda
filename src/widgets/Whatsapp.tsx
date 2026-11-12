@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { perfPaused } from "@/lib/perf"
 import { bridge, type WhatsRead } from "@/lib/bridge"
 import { useStore } from "@/lib/store"
 import type { Widget } from "@/lib/types"
@@ -13,8 +14,10 @@ export function WhatsappWidget({ w }: { w: Widget }) {
   const [nativeError, setNativeError] = useState(false)
   useEffect(() => {
     let alive = true
-    const load = () => bridge.webapp.whatsapp().then((r) => alive && setData(r)).catch(() => {})
-    load()
+    const fetchNow = () => bridge.webapp.whatsapp().then((r) => alive && setData(r)).catch(() => {})
+    /* com o Widgy escondido ou em pausa (jogo em foco) ninguém está vendo: não acorda a página do serviço */
+    const load = () => { if (!document.hidden && !perfPaused()) void fetchNow() }
+    void fetchNow()
     const id = setInterval(load, 4000)
     return () => { alive = false; clearInterval(id) }
   }, [])

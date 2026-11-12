@@ -46,7 +46,7 @@ export function LockClock({ c, preview }: { c: LC; preview?: boolean }) {
       style={{ left: `${c.x}%`, top: `${c.y}%`, transform: `translateX(${tx})`, textAlign: c.align }}
     >
       {c.showDate && (
-        <div style={{ fontFamily: family, fontWeight: 600, fontSize: `${base * 0.13}vh`, color: c.color, opacity: c.opacity * 0.9, letterSpacing: "0.01em", marginBottom: `${base * 0.02}vh`, textTransform: "capitalize", textShadow: "0 0.3vh 1.5vh rgb(0 0 0 / .3)" }}>
+        <div style={{ fontFamily: family, fontWeight: 600, fontSize: `${base * 0.13}vh`, color: c.color, opacity: c.opacity * 0.9, letterSpacing: "0.01em", marginBottom: `${base * 0.02}vh`, textTransform: "cap-first", textShadow: "0 0.3vh 1.5vh rgb(0 0 0 / .3)" }}>
           {date}
         </div>
       )}

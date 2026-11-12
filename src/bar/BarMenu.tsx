@@ -131,9 +131,9 @@ function ClockMenu() {
   return (
     <div className="flex h-full flex-col p-5" onKeyDown={(e) => e.key === "Escape" && done()} tabIndex={-1}>
       <div className="font-num text-4xl font-semibold">{now.toLocaleTimeString("pt-BR")}</div>
-      <div className="mb-4 text-sm text-fg-muted capitalize">{now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
+      <div className="mb-4 text-sm text-fg-muted cap-first">{now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
       <div className="mb-2 flex items-center">
-        <div className="flex-1 text-sm font-semibold capitalize">{month.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div>
+        <div className="flex-1 text-sm font-semibold cap-first">{month.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div>
         <button className="bar-btn size-7" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft size={15} /></button>
         <button className="bar-btn size-7" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={15} /></button>
       </div>

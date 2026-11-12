@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { perfPaused } from "@/lib/perf"
 import { RefreshCw, Map as MapIcon } from "lucide-react"
 import { bridge, type IfoodOrder, type IfoodRead } from "@/lib/bridge"
 import { useStore } from "@/lib/store"
@@ -39,8 +40,10 @@ export function IfoodWidget({ w }: { w: Widget }) {
   useEffect(() => {
     if (!data?.mapRect) { setMap(null); return }
     let alive = true
-    const snap = () => bridge.webapp.ifoodMap(data.mapRect!).then((m) => alive && m && setMap(m)).catch(() => {})
-    snap()
+    const fetchNow = () => bridge.webapp.ifoodMap(data.mapRect!).then((m) => alive && m && setMap(m)).catch(() => {})
+    /* com o Widgy escondido ou em pausa (jogo em foco) ninguém está vendo: não acorda a página do serviço */
+    const snap = () => { if (!document.hidden && !perfPaused()) void fetchNow() }
+    void fetchNow()
     const id = setInterval(snap, 6000)
     return () => { alive = false; clearInterval(id) }
   }, [rectKey])

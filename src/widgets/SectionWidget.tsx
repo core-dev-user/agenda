@@ -106,7 +106,7 @@ function ServicesPreview() {
   const late = openAll.filter((s) => s.dueDate && s.dueDate < todayISO()).length
   return (
     <div className="space-y-2 text-sm">
-      <div className="text-xs text-fg-muted capitalize">{new Date().toLocaleDateString("pt-BR", { month: "long" })} · {month.length} serviço(s)</div>
+      <div className="text-xs text-fg-muted cap-first">{new Date().toLocaleDateString("pt-BR", { month: "long" })} · {month.length} serviço(s)</div>
       <div className="grid grid-cols-3 gap-2">
         {[
           { l: "Total", v: total, c: undefined },

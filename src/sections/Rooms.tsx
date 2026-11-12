@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react"
-import { Cast, Copy, Crown, Expand, LogOut, MessageSquare, Mic, MicOff, MonitorUp, Plus, Send, Trash2, Users, X } from "lucide-react"
+import { Cast, Copy, Crown, Expand, Lock, LockOpen, LogOut, MessageSquare, Mic, MicOff, MonitorUp, Plus, Send, Trash2, Users, X } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge, type ShareSource } from "@/lib/bridge"
-import { cleanCode, joinRoom, leaveRoom, newCode, refreshLatency, sendChat, setMic, setShareQuality, startShare, stopShare, useRoom, type ShareOpts, type ShareState } from "@/lib/rooms"
+import { cleanCode, joinRoom, kickMember, leaveRoom, lockRoom, newCode, refreshLatency, sendChat, setMic, setShareQuality, startShare, stopShare, useRoom, type ShareOpts, type ShareState } from "@/lib/rooms"
 import { QUALITIES, type LinkStats, type ShareCodec, type ShareQuality } from "@/lib/rtcTuning"
 import { toast } from "@/lib/toast"
 import { createPortal } from "react-dom"
@@ -307,15 +307,28 @@ function InRoom() {
         <button className="mb-3 flex items-center gap-1.5 font-num text-xs tracking-widest text-fg-muted hover:text-fg" title="Copiar o código" onClick={() => { navigator.clipboard.writeText(st.code); toast("Código copiado") }}>
           {st.code} <Copy size={11} />
         </button>
-        <div className="mb-1.5 text-xs font-semibold text-fg-muted">Na sala · {st.members.length}</div>
+        <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-fg-muted">
+          <span>Na sala · {st.members.length}</span>
+          {st.host
+            ? <button type="button" aria-pressed={!!st.locked} title={st.locked ? "Sala trancada: ninguém novo entra. Clique para destrancar." : "Trancar a sala: ninguém novo entra, mesmo com o código"}
+                className={cn("flex items-center gap-1 rounded px-1.5 py-0.5 font-medium transition-colors", st.locked ? "bg-amber-500/20 text-amber-200" : "hover:text-fg")}
+                onClick={() => lockRoom(!st.locked)}>{st.locked ? <Lock size={11} /> : <LockOpen size={11} />}{st.locked ? "Trancada" : "Trancar"}</button>
+            : st.locked && <span className="flex items-center gap-1 font-medium text-amber-200" title="O anfitrião trancou a sala: ninguém novo entra"><Lock size={11} /> Trancada</span>}
+        </div>
         <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
           {st.members.map((m, i) => (
-            <div key={m.id} className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-sm">
+            <div key={m.id} className="group/m flex items-center gap-2 rounded-lg px-1.5 py-1 text-sm">
               <span className="flex size-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--accent)_30%,transparent)] text-xs font-semibold">{m.name.slice(0, 1).toUpperCase()}</span>
               <span className="min-w-0 flex-1 truncate">{m.name}{m.id === st.myId && <span className="text-fg-muted"> (você)</span>}</span>
               {i === 0 && <span title="Anfitrião (guarda a sala)"><Crown size={12} className="text-amber-400" /></span>}
               {m.sharing && <span title="Transmitindo"><Cast size={13} className="text-[var(--accent)]" /></span>}
               {m.mic ? <Mic size={13} className="text-emerald-400" /> : <MicOff size={13} className="text-fg-muted opacity-50" />}
+              {/* anfitrião: remover alguém (aparece ao passar o mouse ou ao focar pelo teclado) */}
+              {st.host && m.id !== st.myId && (
+                <button type="button" title={`Remover ${m.name} da sala`} aria-label={`Remover ${m.name} da sala`}
+                  className="rounded p-0.5 text-fg-muted opacity-0 transition-opacity hover:text-red-400 focus-visible:opacity-100 group-hover/m:opacity-100"
+                  onClick={() => { kickMember(m.id); toast(`${m.name} foi removido da sala`) }}><X size={13} /></button>
+              )}
             </div>
           ))}
         </div>

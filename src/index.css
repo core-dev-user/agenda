@@ -398,3 +398,7 @@ html:has([data-dim]) [data-desktop] .surface, html:has([data-dim]) [data-desktop
 /* Configurações: seção encontrada pela busca pisca de leve para o olho achar */
 .settings-section { border-radius: 6px; transition: background-color .5s ease, box-shadow .5s ease; }
 .settings-found { background-color: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 9%, transparent); }
+
+/* Datas em português: maiúscula só na primeira letra ("Quinta-feira, 12 de novembro").
+   A classe capitalize do Tailwind punha maiúscula em todas as palavras ("Quinta-Feira, 12 De Novembro"). */
+.cap-first::first-letter { text-transform: uppercase; }

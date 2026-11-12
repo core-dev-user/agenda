@@ -49,12 +49,13 @@ export function NewsWidget({ w }: { w: Widget }) {
   const [items, setItems] = useState<Item[]>([])
   const [err, setErr] = useState("")
   const [loading, setLoading] = useState(false)
+  const [loaded, setLoaded] = useState(false)
   const run = () => {
     setLoading(true)
     loadFeed(url)
       .then((it) => { setItems(it); setErr("") })
       .catch((e) => setErr(friendlyError(e)))
-      .finally(() => setLoading(false))
+      .finally(() => { setLoading(false); setLoaded(true) })
   }
   useEffect(() => {
     run()
@@ -70,6 +71,8 @@ export function NewsWidget({ w }: { w: Widget }) {
       </div>
       <div className="flex-1 space-y-1 overflow-auto px-2 pb-2">
         {err && <div className="p-3 text-sm text-fg-muted">Não foi possível carregar: {err}</div>}
+        {/* endereço respondeu, mas sem notícias (feed vazio ou que não é RSS): antes o widget ficava em branco */}
+        {!err && loaded && !loading && !items.length && <div className="p-3 text-sm text-fg-muted">Nenhuma notícia neste endereço. Confira o endereço do feed nas opções do widget.</div>}
         {items.map((it, i) => (
           <button
             key={i}

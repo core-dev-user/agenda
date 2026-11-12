@@ -26,11 +26,15 @@ function loadAgents(): Promise<Agent[]> {
   }
   return agentsLoading
 }
-export function useAgents() {
+/** lista de agentes + se a busca falhou (sem internet e sem cópia guardada) + tentar de novo */
+export function useAgentsState() {
   const [list, setList] = useState<Agent[]>(agentsCache ?? [])
-  useEffect(() => { if (!agentsCache) loadAgents().then(setList) }, [])
-  return list
+  const [failed, setFailed] = useState(false)
+  const load = () => { setFailed(false); void loadAgents().then((l) => { setList(l); setFailed(!l.length) }) }
+  useEffect(() => { if (!agentsCache) load() }, [])
+  return { list, failed, retry: load }
 }
+export function useAgents() { return useAgentsState().list }
 const hex = (c?: string) => (c ? "#" + c.slice(0, 6) : "#1b1b2b")
 
 /* ---------------- aparência ---------------- */
@@ -64,7 +68,7 @@ const lookOf = (c: Record<string, any>): ValLook => ({ ...DEFAULT_LOOK, ...(c.lo
 
 /** Widget do Valorant: o agente com o visual que você montar (e troca sozinho para o agente que você está jogando). */
 export function ValAgentWidget({ w }: { w: Widget }) {
-  const agents = useAgents()
+  const { list: agents, failed, retry } = useAgentsState()
   const now = useStore((s) => s.valAgentNow)
   const templates = useStore((s) => s.valTemplates)
   const running = useStore((s) => s.gamesRunning.find((g) => g.id === "valorant"))
@@ -76,8 +80,15 @@ export function ValAgentWidget({ w }: { w: Widget }) {
   // template ligado a este agente (no modo automático) ou o visual do widget
   const bound = auto ? templates.find((t) => t.agent === agentId) : undefined
   const L: ValLook = { ...lookOf(c), ...(bound?.look ?? {}) }
-  const clock = useNow(1000)
-  if (!a) return <div className="flex h-full items-center justify-center text-sm text-fg-muted"><span className="animate-pulse">Carregando agentes…</span></div>
+  // o relógio só serve para o tempo de partida: sem o Valorant aberto, 30 s bastam (antes: todo segundo)
+  const clock = useNow(running ? 1000 : 30000)
+  if (!a) return failed
+    // antes ficava em "Carregando agentes…" para sempre quando a busca falhava
+    ? <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-fg-muted">
+        <span>Não deu para carregar os agentes. Confira a internet.</span>
+        <button type="button" data-nodrag className="btn !py-1 text-xs" onClick={retry}>Tentar de novo</button>
+      </div>
+    : <div className="flex h-full items-center justify-center text-sm text-fg-muted"><span className="animate-pulse">Carregando agentes…</span></div>
 
   const [g1, g2] = [L.c1 || hex(a.backgroundGradientColors[0]), L.c2 || hex(a.backgroundGradientColors[2] ?? a.backgroundGradientColors[1])]
   const custom = L.customId ? media.find((m) => m.id === L.customId) : undefined

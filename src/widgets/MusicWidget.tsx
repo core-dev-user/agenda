@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { perfPaused } from "@/lib/perf"
 import { AnimatePresence, motion } from "framer-motion"
 import { Clapperboard, ImageIcon, ListMusic, MicVocal, X } from "lucide-react"
 import { useStore } from "@/lib/store"
@@ -16,8 +17,10 @@ function useQueue(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
     let alive = true
-    const load = () => bridge.music.queue().then((r) => alive && setQ(r)).catch(() => {})
-    load()
+    const fetchNow = () => bridge.music.queue().then((r) => alive && setQ(r)).catch(() => {})
+    /* com o Widgy escondido ou em pausa (jogo em foco) ninguém está vendo: não acorda a página do serviço */
+    const load = () => { if (!document.hidden && !perfPaused()) void fetchNow() }
+    void fetchNow()
     const id = setInterval(load, 4000)
     return () => { alive = false; clearInterval(id) }
   }, [enabled, title])

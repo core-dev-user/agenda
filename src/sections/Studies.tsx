@@ -108,7 +108,7 @@ export default function Studies() {
                 <div className="flex w-full flex-col-reverse overflow-hidden rounded-md" style={{ height: 40 }}>
                   {d.per.map((p, i) => <motion.div key={i} initial={{ height: 0 }} animate={{ height: (p.m / maxDay) * 40 }} style={{ background: p.c }} />)}
                 </div>
-                <span className="text-[10px] text-fg-muted capitalize">{d.label}</span>
+                <span className="text-[10px] text-fg-muted inline-block cap-first">{d.label}</span>
               </div>
             ))}
           </div>

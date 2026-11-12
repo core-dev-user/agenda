@@ -23,6 +23,18 @@ limite da qualidade escolhida. "Priorizar movimento" mantém os quadros e reduz 
 - Tela e voz só são aceitas de quem está na lista da sala.
 - "Parar transmissão" encerra as trilhas de captura na hora; fechar a fonte ou sair da sala também.
 
+## Controle da sala (anfitrião)
+
+- **Trancar**: ninguém novo entra, mesmo com o código; quem tenta recebe "A sala está trancada pelo anfitrião".
+- **Remover**: a pessoa é avisada, sai da lista de todos e a tela/voz dela deixam de ser aceitas. Para ela não
+  voltar com o código, tranque a sala depois de remover.
+- No chat, o nome exibido é o que a pessoa registrou ao entrar (não o que vem na mensagem), e só fala quem entrou.
+- Limite conhecido: se o anfitrião sair, outro participante assume a sala; a tranca continua, mas a lista de
+  removidos (que fica só no PC do anfitrião) recomeça vazia.
+
+Testado de ponta a ponta com o código real e um servidor PeerJS local (anfitrião + dois convidados em páginas
+separadas): entrar, chat, trancar, recusa com mensagem, destrancar, remover.
+
 ## Bancada de medição (reproduzível)
 
 `npx vite` e abrir `http://localhost:5173/tools/rtc-bench.html?s=10` com os parâmetros:

@@ -649,7 +649,7 @@ function WeatherTab() {
       <div className="grid grid-cols-5 gap-2.5">
         {wx.days.slice(0, 5).map((d) => (
           <div key={d.d} className="sh-card flex flex-col items-center gap-1 py-3 text-[11px]">
-            <span className="capitalize" style={{ color: "var(--sh-muted)" }}>{d.d}</span>
+            <span className="inline-block cap-first" style={{ color: "var(--sh-muted)" }}>{d.d}</span>
             <WxIcon code={d.code} size={28} />
             <span className="tabular-nums"><b className="font-semibold">{Math.round(d.max)}°</b> <span style={{ color: "var(--sh-dim)" }}>{Math.round(d.min)}°</span></span>
           </div>

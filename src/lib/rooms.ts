@@ -17,7 +17,9 @@ export type ShareState = "idle" | "preparing" | "connecting" | "live" | "reconne
 
 type Msg =
   | { t: "hello"; name: string; sharing: boolean; mic: boolean }
-  | { t: "members"; list: Member[] }
+  | { t: "members"; list: Member[]; locked?: boolean }
+  | { t: "denied"; reason: "locked" | "removed" }
+  | { t: "kicked" }
   | { t: "state"; sharing: boolean; mic: boolean }
   | { t: "chat"; msg: ChatMsg }
 
@@ -34,6 +36,8 @@ interface RoomState {
   mic: boolean
   chat: ChatMsg[]
   shareInfo: string
+  /** sala trancada pelo anfitrião: ninguém novo entra */
+  locked?: boolean
   /** sua transmissão: preparando a captura, conectando a quem assiste, no ar ou reconectando */
   shareState?: ShareState
   /** medições reais da sua transmissão (até o primeiro PC que está assistindo) e quantos estão recebendo */
@@ -96,13 +100,42 @@ function hostBroadcast(msg: Msg) { for (const c of conns.values()) if (c.open) c
 function hostUpdate() {
   const list = hostMembers()
   set({ members: list })
-  hostBroadcast({ t: "members", list })
+  hostBroadcast({ t: "members", list, locked: !!useRoom.getState().locked })
   linkMedia(list)
+}
+/** quem o anfitrião removeu nesta sessão não volta com o mesmo identificador */
+const removed = new Set<string>()
+/** anfitrião: tranca/destranca a sala (trancada, ninguém novo entra; quem já está continua) */
+export function lockRoom(on: boolean) {
+  if (!useRoom.getState().host) return
+  set({ locked: on })
+  hostUpdate()
+}
+/** anfitrião: remove alguém da sala. A pessoa é avisada, a conexão fecha e tela/voz dela deixam de ser aceitas. */
+export function kickMember(id: string) {
+  const s = useRoom.getState()
+  if (!s.host || id === s.myId) return
+  const c = conns.get(id)
+  removed.add(id)
+  if (c) {
+    try { c.send({ t: "kicked" } satisfies Msg) } catch { /* já caiu */ }
+    setTimeout(() => { try { c.close() } catch { /* já fechada */ } }, 150)
+  }
+  conns.delete(id)
+  dropPeer(id)
+  hostUpdate()
 }
 function onHostConn(c: DataConnection) {
   c.on("data", (raw) => {
     const m = raw as Msg
     if (m.t === "hello") {
+      // sala trancada ou pessoa removida: avisa o motivo e fecha (ela não entra na lista nem recebe nada)
+      const st = useRoom.getState()
+      if (removed.has(c.peer) || (st.locked && !conns.has(c.peer))) {
+        try { c.send({ t: "denied", reason: removed.has(c.peer) ? "removed" : "locked" } satisfies Msg) } catch { /* já caiu */ }
+        setTimeout(() => { try { c.close() } catch { /* já fechada */ } }, 150)
+        return
+      }
       ;(c as any).__member = { id: c.peer, name: String(m.name || "Amigo").slice(0, 40), sharing: !!m.sharing, mic: !!m.mic }
       conns.set(c.peer, c)
       toast(`${(c as any).__member.name} entrou na sala`)
@@ -111,7 +144,11 @@ function onHostConn(c: DataConnection) {
       const mm = (c as any).__member as Member | undefined
       if (mm) { mm.sharing = !!m.sharing; mm.mic = !!m.mic; hostUpdate() }
     } else if (m.t === "chat") {
-      const msg = { ...m.msg, from: c.peer, text: String(m.msg.text || "").slice(0, 2000) }
+      // só quem entrou na sala fala no chat, e o nome é o que a pessoa registrou ao entrar
+      // (antes vinha da própria mensagem: dava para falar antes de entrar e para usar o nome de outro)
+      const mm = (c as any).__member as Member | undefined
+      if (!mm || !m.msg) return
+      const msg: ChatMsg = { id: String(m.msg.id || "").slice(0, 40) || String(Date.now()), from: c.peer, name: mm.name, text: String(m.msg.text || "").slice(0, 2000), at: Date.now() }
       pushChat(msg)
       hostBroadcast({ t: "chat", msg })
     }
@@ -132,10 +169,15 @@ function onMemberData(raw: unknown) {
     const list = m.list.map((x) => (x.id === useRoom.getState().myId ? me() : x))
     // quem saiu: larga a tela e a voz dele
     for (const old of useRoom.getState().members) if (!list.some((x) => x.id === old.id)) dropPeer(old.id)
-    set({ members: list })
+    set({ members: list, locked: !!m.locked })
     linkMedia(list)
   } else if (m.t === "chat") pushChat(m.msg)
+  else if (m.t === "kicked") {
+    void leaveRoom(true).then(() => set({ status: "error", error: "O anfitrião removeu você da sala.", code: "", members: [], screens: {}, chat: [], host: false }))
+  } else if (m.t === "denied") deniedReason = m.reason
 }
+/** motivo da recusa ao tentar entrar (sala trancada ou você foi removido) */
+let deniedReason: "" | "locked" | "removed" = ""
 function sendState() {
   const s = useRoom.getState()
   if (s.host) hostUpdate()
@@ -508,6 +550,14 @@ function connectHost(code: string, wait = 12000): Promise<void> {
     c.on("close", () => {
       if (leaving || toHost !== c) return
       toHost = null
+      // o anfitrião recusou a entrada (sala trancada ou você foi removido): não é "o anfitrião saiu"
+      if (deniedReason) {
+        const why = deniedReason
+        deniedReason = ""
+        void leaveRoom(true).then(() => set({ status: "error", code: "", members: [], screens: {}, chat: [], host: false,
+          error: why === "locked" ? "A sala está trancada pelo anfitrião. Peça para ele destrancar." : "O anfitrião removeu você desta sala." }))
+        return
+      }
       // o anfitrião saiu: alguém assume a sala (quem conseguir pegar o nome dela primeiro)
       toast("O anfitrião saiu — reconectando a sala…")
       setTimeout(() => takeOver(code), 600 + Math.random() * 2400)
@@ -552,7 +602,8 @@ export async function leaveRoom(silent = false) {
   toHost = null
   peer?.destroy()
   peer = null
-  set({ reconnecting: false, netHint: "" })
+  removed.clear(); deniedReason = ""
+  set({ reconnecting: false, netHint: "", locked: false })
   if (!silent) set({ status: "idle", code: "", members: [], screens: {}, chat: [], host: false, error: "" })
 }
 
