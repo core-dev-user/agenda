@@ -16,7 +16,7 @@
     "test:media": "node --experimental-strip-types --test tests/pcmedia.test.cjs tests/spectrum.test.cjs tests/cover-match.test.mjs",
     "test:security": "node --test tests/security-network.test.cjs",
     "test:finance": "node --test tests/finance-save.test.cjs",
-    "test:perf": "node --test tests/perf-policy.test.cjs",
+    "test:perf": "node --experimental-strip-types --test tests/perf-policy.test.cjs tests/carbono-icons.test.mjs",
     "test:wallpaper": "node --test tests/wallpaper-engine.test.cjs",
     "test:taskbar": "node --test tests/taskbar*.test.cjs",
     "test:taskbar:windows": "electron tests/taskbar-preview-smoke.cjs",

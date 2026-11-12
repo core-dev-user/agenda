@@ -5,14 +5,21 @@ import { SECTIONS } from "@/components/sections-meta"
 import { GlyphTile } from "@/components/Glyph"
 import { cn } from "@/lib/utils"
 import { iconPackAppSrc, type IconPackStyle } from "@/lib/iconPack"
+import { MonoAppIcon, MonoSectionIcon } from "@/shell/MonoIcon"
 import { exeKey, useBarSync } from "./sync"
 
 const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
 const done = () => bridge.bar.closeMenu()
 
-function LnkIcon({ file, name, style }: { file: string; name: string; style: IconPackStyle }) {
+function LnkIcon({ file, name, style, mono }: { file: string; name: string; style: IconPackStyle; mono: boolean }) {
   const [url, setUrl] = useState("")
-  useEffect(() => { let ok = true; bridge.bar.icon(file).then((u) => ok && setUrl(u)); return () => { ok = false } }, [file])
+  useEffect(() => {
+    if (mono) return
+    let ok = true
+    void bridge.bar.icon(file).then((u) => { if (ok) setUrl(u) }).catch(() => {})
+    return () => { ok = false }
+  }, [file, mono])
+  if (mono) return <span className="flex size-7 items-center justify-center"><MonoAppIcon name={name} path={file} size={18} /></span>
   const packed = iconPackAppSrc(name, file, style)
   return packed ? <img src={packed} alt="" className="size-7" draggable={false} /> :
     url ? <img src={url} alt="" className="size-7" draggable={false} /> :
@@ -21,6 +28,7 @@ function LnkIcon({ file, name, style }: { file: string; name: string; style: Ico
 
 function StartMenu() {
   const sync = useBarSync()
+  const carbono = sync?.pack === "carbono"
   const [apps, setApps] = useState<{ name: string; path: string }[]>([])
   const [loaded, setLoaded] = useState(false)
   const [visible, setVisible] = useState(60)
@@ -61,7 +69,7 @@ function StartMenu() {
           <div className="grid shrink-0 grid-cols-6 gap-1">
             {sections.map((s) => (
               <button key={s.id} className="bar-btn flex-col gap-1.5 py-2.5 text-[11px]" onClick={() => { bridge.bar.toMain({ type: "open", id: s.id }); done() }}>
-                <GlyphTile icon={s.icon} color={s.color} size={32} />
+                {carbono ? <MonoSectionIcon id={s.id} size={22} /> : <GlyphTile icon={s.icon} color={s.color} size={32} />}
                 <span className="w-full truncate px-0.5">{s.label}</span>
               </button>
             ))}
@@ -82,7 +90,7 @@ function StartMenu() {
               onClick={() => launch(a.path)}
               onContextMenu={(e) => { e.preventDefault(); bridge.bar.toMain(pinned.has(exeKey(a.path)) ? { type: "unpin", path: a.path } : { type: "pin", app: { path: a.path, name: a.name } }) }}
             >
-              <LnkIcon file={a.path} name={a.name} style={sync?.icons?.iconPackStyle ?? "original"} />
+              <LnkIcon file={a.path} name={a.name} style={sync?.icons?.iconPackStyle ?? "original"} mono={carbono} />
               <span className="min-w-0 flex-1 truncate">{a.name}</span>
               {pinned.has(exeKey(a.path)) && <Pin size={12} className="shrink-0 text-fg-muted" />}
             </button>
