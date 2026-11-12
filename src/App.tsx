@@ -16,6 +16,7 @@ import { Wallpaper, Overlays, GRADIENTS } from "@/components/Wallpaper"
 import { CursorLayer } from "@/components/CursorLayer"
 import { Taskbar, WidgetMenu } from "@/components/Taskbar"
 import { CarbonoChrome, CarbonoPanels, useCarbonoVars } from "@/shell/Carbono"
+import { useIsImmersive } from "@/lib/immersive"
 import { shellPrefs, useShell } from "@/shell/pack"
 import { NotificationPanel } from "@/components/NotificationCenter"
 import { useScreenList, useActiveScreen, setActiveScreen } from "@/lib/screens"
@@ -257,6 +258,7 @@ export default function App() {
   // pacote de interface (Carbono): troca a barra, a busca e ganha o painel de cima
   const shell = shellPrefs(useStore((s) => s.settings))
   const packed = shell.pack === "carbono"
+  const immersive = useIsImmersive()
   useCarbonoVars(packed, shell)
   useDesktopDrop()
   useHistory()
@@ -305,7 +307,8 @@ export default function App() {
           {!showSplash && <Pet />}
         </div>
         <AnimatePresence>{windows.map((w) => <AppWindow key={w.id} win={w} />)}</AnimatePresence>
-        {!mainBar && <ScreenFrame sc={home}>{packed ? <CarbonoChrome /> : <Taskbar />}</ScreenFrame>}
+        {/* transmissão expandida ou vídeo em tela cheia: a barra (e a moldura do Carbono) saem da frente */}
+        {!mainBar && !immersive && <ScreenFrame sc={home}>{packed ? <CarbonoChrome /> : <Taskbar />}</ScreenFrame>}
         <AnimatePresence>{ctx && <DesktopMenu at={ctx} close={() => setCtx(null)} />}</AnimatePresence>
       </motion.div>
       {/* busca, assistente e avisos abrem no monitor onde você está mexendo */}

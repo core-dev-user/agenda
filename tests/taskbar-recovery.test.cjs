@@ -7,7 +7,11 @@ test("transient failures get bounded exponential retries without changing the sa
   assert.deepEqual(budget.failure(1000), { retry: true, attempt: 1, delayMs: 1500 })
   assert.deepEqual(budget.failure(2000), { retry: true, attempt: 2, delayMs: 3000 })
   assert.deepEqual(budget.failure(3000), { retry: true, attempt: 3, delayMs: 6000 })
-  assert.deepEqual(budget.failure(4000), { retry: false, attempt: 4, delayMs: 0 })
+  // depois das tentativas rápidas, continua tentando com pausas maiores (nunca desliga a barra do Widgy)
+  assert.deepEqual(budget.failure(4000), { retry: true, attempt: 4, delayMs: 60000 })
+  assert.deepEqual(budget.failure(5000), { retry: true, attempt: 5, delayMs: 120000 })
+  for (let i = 0; i < 10; i++) budget.failure(6000 + i)
+  assert.equal(budget.failure(7000).delayMs, 300000)
 })
 test("recovery budget starts over after a sustained healthy period", () => {
   const budget = createRecoveryBudget()
@@ -18,6 +22,6 @@ test("recovery budget starts over after a sustained healthy period", () => {
 test("retry budget supports explicit thresholds for host environments", () => {
   const budget = createRecoveryBudget({ windowMs: 10000, maxRetries: 1, initialDelayMs: 4000 })
   assert.equal(budget.failure(0).delayMs, 4000)
-  assert.equal(budget.failure(1000).retry, false)
+  assert.deepEqual(budget.failure(1000), { retry: true, attempt: 2, delayMs: 60000 })
   assert.equal(budget.failure(12000).retry, true)
 })

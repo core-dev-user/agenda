@@ -72,3 +72,31 @@ test("desktop transparente do Widgy é não ativável em segundo plano e recuper
   assert.match(mode, /if \(!externalWallpaper \|\| passive === on/)
   assert.doesNotMatch(main, /wallpaperEngine\.resume\(/)
 })
+
+test("keeper asks Wallpaper Engine to keep playing, but not during a game", async () => {
+  const { createKeeper } = require("../electron/wallpaper-engine.cjs")
+  const calls = []
+  let game = false
+  const keeper = createKeeper({
+    every: 40, isEnabled: () => true, findExe: () => "wallpaper64.exe", playing: () => game,
+    run: (exe, args, _o, done) => { calls.push([exe, ...args]); setTimeout(done, 5) },
+  })
+  keeper.start()
+  await new Promise((r) => setTimeout(r, 130))
+  assert.ok(calls.length >= 2, "should send play periodically, got " + calls.length)
+  assert.deepEqual(calls[0], ["wallpaper64.exe", "-control", "play"])
+  game = true
+  const before = calls.length
+  await new Promise((r) => setTimeout(r, 120))
+  assert.equal(calls.length, before, "must not insist while a game is running")
+  keeper.stop()
+})
+test("keeper does nothing outside the Wallpaper Engine desktop mode", async () => {
+  const { createKeeper } = require("../electron/wallpaper-engine.cjs")
+  let n = 0
+  const keeper = createKeeper({ every: 20, isEnabled: () => false, findExe: () => "x", run: (_e, _a, _o, done) => { n++; done() } })
+  keeper.start()
+  await new Promise((r) => setTimeout(r, 80))
+  keeper.stop()
+  assert.equal(n, 0)
+})
