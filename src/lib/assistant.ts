@@ -138,7 +138,7 @@ const widgetList = () => (Object.keys({ clock: 1, stopwatch: 1, weather: 1, news
 function systemPrompt() {
   const st = useStore.getState()
   const have = [...new Set(st.widgets.map((w) => w.type))].join(", ") || "nenhum"
-  return `Você é o assistente do Agenda, um app de área de trabalho. Responda SOMENTE com um JSON no formato:
+  return `Você é o assistente do Widgy, um app de área de trabalho. Responda SOMENTE com um JSON no formato:
 {"acoes":[...], "resposta":"frase curta em português"}
 Ações possíveis:
 {"acao":"arrumar","estilo":"centro|esquerda|direita|topo"} - organiza/encaixa todos os widgets

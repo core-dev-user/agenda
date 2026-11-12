@@ -714,7 +714,7 @@ export async function startShare(o: ShareOpts) {
   if (o.audio !== "none") {
     try {
       const a = await pcAudioTrack(o.audio)
-      if (a) { stream.addTrack(a.track); info += a.excluded === "discord" ? " · som do PC sem o Discord" : " · som do PC (sem o Agenda)" }
+      if (a) { stream.addTrack(a.track); info += a.excluded === "discord" ? " · som do PC sem o Discord" : " · som do PC (sem o Widgy)" }
     } catch { toast("Não deu para pegar o som do PC — transmitindo só a imagem") }
   } else info += " · sem som"
   set({ myScreen: stream, shareInfo: info })

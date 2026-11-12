@@ -152,7 +152,7 @@ export function IfoodWidget({ w }: { w: Widget }) {
           ))}
         </div>
       )}
-      {data.orders.length === 0 && w.h >= 260 && <div className="text-center text-[11px] text-fg-muted">O widget lê a página de pedidos/acompanhamento aberta no app iFood do Agenda.</div>}
+      {data.orders.length === 0 && w.h >= 260 && <div className="text-center text-[11px] text-fg-muted">O widget lê a página de pedidos/acompanhamento aberta no app iFood do Widgy.</div>}
     </div>
   )
 }

@@ -236,7 +236,7 @@ function popOut() {
   popup = new BrowserWindow({
     width: 1240,
     height: 820,
-    title: "YouTube Music · Agenda",
+    title: "YouTube Music · Widgy",
     autoHideMenuBar: true,
     backgroundColor: "#030303",
     icon: path.join(__dirname, "..", "build", process.platform === "win32" ? "icon.ico" : "icon.png"),

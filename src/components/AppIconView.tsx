@@ -5,7 +5,7 @@ import { iconPackSectionSrc } from "@/lib/iconPack"
 
 export const ICON_STYLES: { id: IconStyle; label: string }[] = [
   { id: "auto", label: "Automático (do tema)" },
-  { id: "logos", label: "Logos do Agenda" },
+  { id: "logos", label: "Logos do Widgy" },
   { id: "color", label: "Colorido" },
   { id: "glass", label: "Vidro líquido" },
   { id: "metal", label: "Metal" },

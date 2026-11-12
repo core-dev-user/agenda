@@ -24,7 +24,7 @@ interface FontPickerProps {
 }
 
 /** Seletor compacto em formato de roda com pesquisa e carregamento de previews sob demanda. */
-export function FontPicker({ value, onChange, label = "Fonte", sample = "Agenda • 12:45", allowDefault = false, defaultLabel = "Do tema" }: FontPickerProps) {
+export function FontPicker({ value, onChange, label = "Fonte", sample = "Widgy • 12:45", allowDefault = false, defaultLabel = "Do tema" }: FontPickerProps) {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState<Filter>("all")
   const [query, setQuery] = useState("")

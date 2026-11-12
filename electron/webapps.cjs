@@ -337,7 +337,7 @@ function popOut(id) {
   if (s.popup && !s.popup.isDestroyed()) { s.popup.show(); s.popup.focus(); return }
   detach(id)
   const p = new BrowserWindow({
-    width: id === "discord" ? 1280 : 1100, height: 820, title: `${APPS[id].title} · Agenda`, autoHideMenuBar: true, backgroundColor: APPS[id].bg,
+    width: id === "discord" ? 1280 : 1100, height: 820, title: `${APPS[id].title} · Widgy`, autoHideMenuBar: true, backgroundColor: APPS[id].bg,
     icon: path.join(__dirname, "..", "build", process.platform === "win32" ? "icon.ico" : "icon.png"),
   })
   s.popup = p

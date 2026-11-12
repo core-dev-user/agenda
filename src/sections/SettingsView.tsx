@@ -27,6 +27,7 @@ import { PetTab } from "@/pet/PetSettings"
 import { UpdatesSection } from "@/components/Updates"
 import { IntegrationsTab, ModeTab, RoutineTab, SystemExtra } from "./SettingsExtra"
 import { PacksTab } from "@/shell/PackSettings"
+import { iconSupport } from "@/lib/iconSupport"
 
 const TABS = [
   { id: "mode", label: "Modo de uso", e: MonitorSmartphone, c: "#6ea8ff" },
@@ -360,8 +361,12 @@ function Cursor() {
 }
 
 /* ------------------------- Barra de tarefas ------------------------- */
+/** tira o controle também do teclado e dos leitores de tela (o React 18 só aceita `inert` como texto) */
+const INERT = { inert: "" } as unknown as Record<string, never>
+
 function IconsSection() {
   const [s, set] = useS()
+  const support = iconSupport({ iconStyle: s.iconStyle, theme: s.theme, iconPackStyle: s.iconPackStyle })
   return (
     <Section title="Ícones dos apps" desc="Muda o visual dos ícones na barra de tarefas, no menu Início, nas janelas e nos atalhos.">
       <IconPackSettings value={s.iconPackStyle ?? "original"} onChange={(value) => set({ iconPackStyle: value })} />
@@ -378,12 +383,14 @@ function IconsSection() {
           </button>
         ))}
       </div>
+      {/* formato e cor só aparecem ativos quando o estilo escolhido realmente os usa (ver lib/iconSupport) */}
       <div className="flex flex-wrap items-center gap-4 pt-3">
-        <div><div className="mb-1 text-sm">Formato</div>
+        <div className={cn(!support.shape && "pointer-events-none opacity-45")} aria-disabled={!support.shape} {...(support.shape ? {} : INERT)}><div className="mb-1 text-sm">Formato</div>
           <Segmented value={s.iconShape} onChange={(v) => set({ iconShape: v })} options={[{ value: "squircle", label: "Arredondado" }, { value: "circle", label: "Círculo" }, { value: "square", label: "Quadrado" }]} />
         </div>
       </div>
-      <div className="pt-3 text-sm">Cada app: cor e se aparece na barra de tarefas</div>
+      {support.why && <div className="pt-2 text-xs text-fg-muted">{support.why}</div>}
+      <div className="pt-3 text-sm">Cada app: {support.color ? "cor e " : ""}se aparece na barra de tarefas</div>
       <div className="grid grid-cols-2 gap-2 pt-1">
         {SECTIONS.map((sec) => (
           <div key={sec.id} className={cn("flex items-center gap-3 rounded-xl border border-line p-2 transition-opacity", s.taskbar.hide?.includes(sec.id) && "opacity-60")}>
@@ -394,10 +401,12 @@ function IconsSection() {
               title={s.taskbar.hide?.includes(sec.id) ? "Fora da barra de tarefas (clique para mostrar)" : "Na barra de tarefas (clique para tirar)"}
               onChange={(v) => { const h = new Set(s.taskbar.hide ?? []); if (v) h.delete(sec.id); else h.add(sec.id); set({ taskbar: { ...s.taskbar, hide: [...h] } }) }}
             />
-            <label className="clickable relative h-7 w-7 cursor-pointer overflow-hidden rounded-full border border-line" style={{ background: sectionColor(s, sec.id) }} title="Escolher cor">
-              <input type="color" className="absolute inset-0 opacity-0" value={sectionColor(s, sec.id)} onChange={(e) => set({ iconColors: { ...s.iconColors, [sec.id]: e.target.value } })} />
-            </label>
-            {s.iconColors?.[sec.id] && (
+            {support.color && (
+              <label className="clickable relative h-7 w-7 cursor-pointer overflow-hidden rounded-full border border-line" style={{ background: sectionColor(s, sec.id) }} title="Escolher cor">
+                <input type="color" className="absolute inset-0 opacity-0" value={sectionColor(s, sec.id)} onChange={(e) => set({ iconColors: { ...s.iconColors, [sec.id]: e.target.value } })} />
+              </label>
+            )}
+            {support.color && s.iconColors?.[sec.id] && (
               <button className="text-xs text-fg-muted hover:text-fg" onClick={() => { const c = { ...s.iconColors }; delete c[sec.id]; set({ iconColors: c }) }}>padrão</button>
             )}
           </div>
@@ -454,7 +463,7 @@ function PcBarChoice() {
       <div className="mt-1.5 text-xs text-fg-muted">
         {on
           ? "A barra do Widgy está no lugar da do Windows, com o jeito escolhido aqui embaixo. Ela tem o botão do Windows para abrir o Iniciar normal."
-          : "O Windows continua com a barra dele. As opções aqui embaixo valem para a barra de dentro do Agenda."}
+          : "O Windows continua com a barra dele. As opções aqui embaixo valem para a barra de dentro do Widgy."}
       </div>
     </Section>
   )
@@ -901,7 +910,7 @@ function System() {
   return (
     <>
       <Section title="Inicialização">
-        <Switch label="Abrir o Agenda ao ligar o computador" checked={auto} onChange={async (v) => setAuto(await bridge.app.autostart(v))} />
+        <Switch label="Abrir o Widgy ao ligar o computador" checked={auto} onChange={async (v) => setAuto(await bridge.app.autostart(v))} />
         {!isDesktop && <div className="text-xs text-fg-muted">Disponível no app desktop.</div>}
         <button className="btn mt-2" onClick={() => bridge.win.fullscreen(true)}>Entrar em tela cheia</button>
       </Section>
