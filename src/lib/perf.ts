@@ -4,7 +4,7 @@
  */
 import { useEffect } from "react"
 import { useStore } from "./store"
-import { performanceBudget } from "./perf-policy"
+import { performanceBudget, petAnimationFps } from "./perf-policy"
 import { bridge } from "./bridge"
 
 let paused = false
@@ -12,6 +12,10 @@ export const perfPaused = () => paused
 export const perfVisualFps = () => {
   const s = useStore.getState()
   return performanceBudget(s.settings, s.gamesRunning.length > 0).fps
+}
+export const perfPetFps = () => {
+  const s = useStore.getState()
+  return petAnimationFps(s.settings, s.gamesRunning.length > 0)
 }
 export const perfEmbedHz = () => {
   const s = useStore.getState()

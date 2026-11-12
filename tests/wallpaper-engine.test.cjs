@@ -42,14 +42,14 @@ test("desktop layer launches without stealing focus, and Wallpaper Engine resume
   assert.doesNotMatch(main, /wallpaperEngine\.resume\(/)
 })
 
-test("Carbono releases base64 icon cache when launcher closes", () => {
+test("Carbono renders local monochrome vector icons, without base64 Windows logos", () => {
   const fs = require("node:fs")
   const path = require("node:path")
   const source = fs.readFileSync(path.join(__dirname, "../src/shell/Carbono.tsx"), "utf8")
-  assert.match(source, /ICON_CACHE_BYTES = 1024 \* 1024/)
-  assert.match(source, /ICON_CACHE_LIMIT = 24/)
-  assert.match(source, /clearIconCache\(\)/)
-  assert.match(source, /appsCache = null/)
+  assert.match(source, /MonoAppIcon/)
+  assert.match(source, /MonoSectionIcon/)
+  assert.doesNotMatch(source, /bridge\.bar\.icon\(/)
+  assert.doesNotMatch(source, /<img src=\{src\}/)
 })
 
 test("desktop transparente do Widgy é não ativável em segundo plano e recupera foco para abas", () => {

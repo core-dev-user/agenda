@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useState } from "react"
 import { X } from "lucide-react"
 import { bridge, type PreviewTile } from "@/lib/bridge"
 import { useBarSync } from "./sync"
+import { MonoAppIcon } from "@/shell/MonoIcon"
 
 /**
  * Prévia das janelas de um programa (mouse em cima do botão na barra), como no Windows.
@@ -9,7 +10,8 @@ import { useBarSync } from "./sync"
  * aqui ficam o título, o fechar e o clique para trazer a janela.
  */
 export function Preview() {
-  useBarSync()
+  const sync = useBarSync()
+  const carbono = sync?.pack === "carbono"
   const [data, setData] = useState<{ tiles: PreviewTile[]; seq: number }>({ tiles: [], seq: 0 })
   useEffect(() => {
     const unsubscribe = bridge.bar.onPreview(setData)
@@ -39,7 +41,7 @@ export function Preview() {
           onAuxClick={(e) => { if (e.button === 1) { bridge.bar.previewHide(); bridge.bar.win("close", t.h) } }}
         >
           <div className="flex items-center gap-2 px-2" style={{ height: t.head }}>
-            {t.icon && <img src={t.icon} alt="" className="size-4 shrink-0" draggable={false} />}
+            {carbono ? <MonoAppIcon name={t.title} size={16} /> : t.icon && <img src={t.icon} alt="" className="size-4 shrink-0" draggable={false} />}
             <span className="min-w-0 flex-1 truncate text-xs">{t.title}</span>
             {t.min && <span className="shrink-0 text-[10px] text-fg-muted group-hover:hidden">minimizada</span>}
             <button
@@ -55,7 +57,7 @@ export function Preview() {
             className="absolute flex flex-col items-center justify-center gap-2 rounded-md bg-black/25"
             style={{ left: t.thumb.x - t.x, top: t.thumb.y - t.y, width: t.thumb.w, height: t.thumb.h }}
           >
-            {t.icon && <img src={t.icon} alt="" className="size-8 opacity-40" draggable={false} />}
+            {carbono ? <MonoAppIcon name={t.title} size={28} /> : t.icon && <img src={t.icon} alt="" className="size-8 opacity-40" draggable={false} />}
           </div>
         </div>
       ))}

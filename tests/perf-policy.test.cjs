@@ -38,6 +38,18 @@ test("automatic on a weak PC uses a lighter budget; explicit presets are respect
   assert.deepEqual(await budget({ perfPreset: "quality" }, false, true), { fps: 60, embedHz: 30, monitorMs: 1500, preload: "all" })
   assert.equal((await budget({}, true, true)).fps, 12)
 })
+test("pets stay smooth in auto while decorative effects stay budgeted", async () => {
+  const { petAnimationFps } = await modulePromise
+  assert.equal(petAnimationFps({}, false, false), 60)
+  assert.equal(petAnimationFps({}, false, true), 60)
+  assert.equal(petAnimationFps({}, true, false), 12)
+  assert.equal(petAnimationFps({ perfPreset: "quality" }), 60)
+  assert.equal(petAnimationFps({ perfPreset: "economy" }), 15)
+  assert.equal(petAnimationFps({ perfPreset: "gaming" }), 12)
+  assert.equal(petAnimationFps({ perfPreset: "custom", perfFps: 25 }), 25)
+  assert.equal((await budget({}, false, true)).fps, 20)
+})
+
 test("weak device detection: 4 cores or 4 GB or less", async () => {
   const { isWeakDevice } = await modulePromise
   assert.equal(isWeakDevice({ hardwareConcurrency: 4, deviceMemory: 8 }), true)

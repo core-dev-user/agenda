@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Bell, ChevronUp, Lock, Plus, Unlock, Volume2, Wifi } from "lucide-react"
+import { Bell, ChevronUp, Grid2X2, Lock, Plus, Search, Unlock, Volume2, Wifi } from "lucide-react"
 import { bridge, type BarMenu, type BarSync, type PcWindow } from "@/lib/bridge"
 import { Logo } from "@/components/Logo"
 import { AppIconView, type IconPrefs } from "@/components/AppIconView"
 import type { SectionId } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { iconPackAppSrc, type IconPackStyle } from "@/lib/iconPack"
+import { MonoAppIcon, MonoSectionIcon } from "@/shell/MonoIcon"
 import { exeKey, useBarSync } from "./sync"
 
 /**
@@ -19,13 +20,21 @@ type Pos = "bottom" | "top" | "left" | "right"
 const TB_DEFAULT: NonNullable<BarSync["tb"]> = { position: "bottom", style: "dock", size: 56, autoHide: false, magnify: true, showLabels: false }
 
 /** ícone de um programa (fixado e fechado não vem na lista de janelas: pede ao Windows) */
-function useIcon(file: string, given: string) {
-  const [url, setUrl] = useState(given)
-  useEffect(() => { if (given) setUrl(given); else if (file) bridge.bar.icon(file).then(setUrl) }, [file, given])
+function useIcon(file: string, given: string, enabled: boolean) {
+  const [url, setUrl] = useState(enabled ? given : "")
+  useEffect(() => {
+    if (!enabled) { setUrl(""); return }
+    if (given) { setUrl(given); return }
+    if (!file) { setUrl(""); return }
+    let mounted = true
+    void bridge.bar.icon(file).then((src) => { if (mounted) setUrl(src) }).catch(() => { if (mounted) setUrl("") })
+    return () => { mounted = false }
+  }, [file, given, enabled])
   return url
 }
-function ExeIcon({ g, size, style }: { g: Group; size: number; style: IconPackStyle }) {
-  const icon = useIcon(g.exe, g.icon)
+function ExeIcon({ g, size, style, mono }: { g: Group; size: number; style: IconPackStyle; mono: boolean }) {
+  const icon = useIcon(g.exe, g.icon, !mono)
+  if (mono) return <MonoAppIcon name={g.name} path={g.exe} size={size} />
   const packed = iconPackAppSrc(g.name, g.exe, style)
   return packed ? <img src={packed} alt="" draggable={false} style={{ width: size, height: size, objectFit: "contain" }} /> :
     icon ? <img src={icon} alt="" draggable={false} style={{ width: size, height: size }} /> :
@@ -34,6 +43,7 @@ function ExeIcon({ g, size, style }: { g: Group; size: number; style: IconPackSt
 
 export function SystemBar() {
   const sync = useBarSync()
+  const carbono = sync?.pack === "carbono"
   const t = { ...TB_DEFAULT, ...(sync?.tb ?? {}) }
   const pos = t.position as Pos
   const vertical = pos === "left" || pos === "right"
@@ -162,16 +172,24 @@ export function SystemBar() {
             t.style === "floating" && "!rounded-full",
             isDock && (vertical ? "px-0" : "px-2"),
           )}
-          style={vertical ? { width: size + 16 } : { height: size + 16 }}
+          style={{
+            ...(vertical ? { width: size + 16 } : { height: size + 16 }),
+            ...(carbono ? {
+              background: "var(--sh-rail-bg, #121212)",
+              color: "var(--sh-rail-fg, #ece7e8)",
+              borderColor: "var(--sh-rail-line, rgba(255,255,255,.06))",
+              boxShadow: "none",
+            } : {}),
+          }}
         >
           {/* Iniciar do Windows (igual ao de uma barra normal) e o Iniciar do Agenda */}
           {shows("winstart") && (
             <Btn {...btn} label="Iniciar do Windows" onClick={() => bridge.bar.winStart()}>
-              <WinLogo size={Math.round(size * 0.5)} />
+              {carbono ? <Grid2X2 size={Math.round(size * 0.5)} strokeWidth={1.8} /> : <WinLogo size={Math.round(size * 0.5)} />}
             </Btn>
           )}
           <Btn {...btn} label="Iniciar do Widgy" active={menu === "start"} onClick={(el) => openMenu("start", el, 640, 660)}>
-            <Logo size={Math.round(size * 0.78)} />
+            {carbono ? <Search size={Math.round(size * 0.46)} strokeWidth={1.8} /> : <Logo size={Math.round(size * 0.78)} />}
           </Btn>
           <Divider vertical={vertical} />
 
@@ -180,7 +198,9 @@ export function SystemBar() {
             const w = secs.find((x) => x.id === sec.id)
             return (
               <Btn key={sec.id} {...btn} label={sec.label} showLabel={t.showLabels && !vertical} running={!!w} focused={!!w?.top} onClick={() => bridge.bar.toMain({ type: "section", id: sec.id })}>
-                <AppIconView id={sec.id as SectionId} size={Math.round(size * 0.8)} s={icons} />
+                {carbono
+                  ? <MonoSectionIcon id={sec.id as SectionId} size={Math.round(size * 0.52)} />
+                  : <AppIconView id={sec.id as SectionId} size={Math.round(size * 0.8)} s={icons} />}
               </Btn>
             )
           })}
@@ -213,7 +233,7 @@ export function SystemBar() {
                 onRight={() => pin(g)}
                 onMiddle={() => bridge.bar.launch(g.exe)}
               >
-                <ExeIcon g={g} size={Math.round(size * 0.62)} style={packStyle} />
+                <ExeIcon g={g} size={Math.round(size * 0.62)} style={packStyle} mono={carbono} />
               </Btn>
             )
           })}

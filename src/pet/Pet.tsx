@@ -9,7 +9,7 @@
 import { screenList } from "@/lib/screens"
 import { useEffect, useRef } from "react"
 import { useStore } from "@/lib/store"
-import { perfPaused, perfVisualFps } from "@/lib/perf"
+import { perfPaused, perfPetFps } from "@/lib/perf"
 import { fontFamily } from "@/lib/fonts"
 import type { PetOne, PetPrefs } from "@/lib/types"
 import { frame, frameBox, GH, GW, isSpecies, SPECIES, type Pose, type Species } from "./sprites"
@@ -47,9 +47,10 @@ function petTick(ts: number) {
   const paused = perfPaused()
   const jobs = [...petJobs].filter((j) => !document.hidden && !(paused && !j.keep()))
   if (!jobs.length) { petTimer = window.setTimeout(() => { petTimer = 0; petRaf = requestAnimationFrame(petTick) }, 500); return }
-  const budget = perfVisualFps()
-  // modo Qualidade: ritmo da tela; automático: 30 com passos regulares; econômico/jogo: o orçamento
-  const fps = paused ? Math.min(30, budget) : budget >= 55 ? 0 : budget
+  // Pets têm orçamento de 60 FPS no Auto, independente dos efeitos decorativos.
+  // Jogos, economia e valores personalizados continuam respeitados.
+  const budget = perfPetFps()
+  const fps = paused ? Math.min(24, budget) : budget >= 55 ? 0 : budget
   if (fps) {
     const every = 1000 / fps
     // tolerância de 2 ms e fase preservada: evita o vai-e-vem 33/50 ms numa tela de 60 Hz
@@ -67,7 +68,7 @@ function petLoop(step: () => (() => void) | void, keepGoing: () => boolean) {
   if (!petRaf && !petTimer) petRaf = requestAnimationFrame(petTick)
   return () => {
     petJobs.delete(job)
-    if (!petJobs.size) { cancelAnimationFrame(petRaf); clearTimeout(petTimer); petRaf = 0; petTimer = 0 }
+    if (!petJobs.size) { cancelAnimationFrame(petRaf); clearTimeout(petTimer); petRaf = 0; petTimer = 0; petLast = 0 }
   }
 }
 
@@ -126,8 +127,10 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
       if (P.current.widgets) document.querySelectorAll("[data-widget]").forEach((el) => { const p = rectPlat("w:" + (el as HTMLElement).dataset.widget, el); if (p) out.push(p) })
       plats = out
     }
-    /** posição atual da plataforma onde o gato está (o widget pode ter sido arrastado) */
-    const live = (p: Plat): Plat | null => (p.id === "floor" ? floor() : p.el && p.el.isConnected ? rectPlat(p.id, p.el) : null)
+    /** Reusa as posições medidas no scan; evita getBoundingClientRect a cada frame/pet. */
+    const live = (p: Plat): Plat | null => p.id === "floor"
+      ? (plats[0] ?? floor())
+      : plats.find((item) => item.id === p.id) ?? null
 
     /* ---------------- estado ---------------- */
     const s0 = sc()
@@ -349,7 +352,7 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
       st.t += dt
       st.tailT += dt
 
-      if (now > scanAt) { scan(); scanAt = now + 700 }
+      if (now > scanAt) { scan(); scanAt = now + (st.plat?.id.startsWith("w:") ? 200 : 700) }
 
       // segue a plataforma (widget arrastado) ou cai se ela sumiu
       if (st.plat && st.act !== "drag") {

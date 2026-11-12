@@ -218,6 +218,8 @@ export interface PreviewTile extends PreviewItem { x: number; y: number; w: numb
 export interface BarSync {
   /** pacote de interface ativo (o Carbono troca o Iniciar/pesquisa pela busca dele) */
   pack?: string
+  /** Aparência do Carbono propagada para a barra em processo separado. */
+  shell?: { bg?: string; railBg?: string; accent?: string }
   vars: Record<string, string>
   theme: string
   dark: boolean

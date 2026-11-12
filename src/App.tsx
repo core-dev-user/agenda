@@ -15,7 +15,7 @@ import { AutoStylePrompt } from "@/components/AutoStylePrompt"
 import { Wallpaper, Overlays, GRADIENTS } from "@/components/Wallpaper"
 import { CursorLayer } from "@/components/CursorLayer"
 import { Taskbar, WidgetMenu } from "@/components/Taskbar"
-import { CarbonoChrome, CarbonoPanels, useCarbonoVars } from "@/shell/Carbono"
+import { CarbonoChrome, CarbonoBorder, CarbonoPanels, useCarbonoVars } from "@/shell/Carbono"
 import { useIsImmersive } from "@/lib/immersive"
 import { shellPrefs, useShell } from "@/shell/pack"
 import { NotificationPanel } from "@/components/NotificationCenter"
@@ -126,6 +126,7 @@ function useMainBar() {
       for (let i = 0; i < st.length; i++) if (st[i].startsWith("--")) vars[st[i]] = st.getPropertyValue(st[i])
       const data: BarSync = {
         pack: s.settings.shell?.pack ?? "none",
+        shell: { bg: s.settings.shell?.bg, railBg: s.settings.shell?.railBg, accent: s.settings.shell?.accent },
         vars, theme: s.settings.theme, dark: s.settings.dark, fontScale: s.settings.fontScale,
         style: s.settings.taskbar.style, showLabels: s.settings.taskbar.showLabels,
         pins: s.settings.pcPins ?? [], unread: s.notifications.filter((n) => !n.read).length,
@@ -308,7 +309,9 @@ export default function App() {
         </div>
         <AnimatePresence>{windows.map((w) => <AppWindow key={w.id} win={w} />)}</AnimatePresence>
         {/* transmissão expandida ou vídeo em tela cheia: a barra (e a moldura do Carbono) saem da frente */}
-        {!mainBar && !immersive && <ScreenFrame sc={home}>{packed ? <CarbonoChrome /> : <Taskbar />}</ScreenFrame>}
+        {!immersive && <ScreenFrame sc={home}>
+          {packed ? (mainBar ? <CarbonoBorder /> : <CarbonoChrome />) : (!mainBar ? <Taskbar /> : null)}
+        </ScreenFrame>}
         <AnimatePresence>{ctx && <DesktopMenu at={ctx} close={() => setCtx(null)} />}</AnimatePresence>
       </motion.div>
       {/* busca, assistente e avisos abrem no monitor onde você está mexendo */}

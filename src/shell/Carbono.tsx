@@ -2,13 +2,12 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import { AnimatePresence, motion } from "framer-motion"
 import {
   Bell, ChevronRight, CloudSun, Cpu, Image as ImageIcon, LayoutDashboard, Lock, LogOut, Moon, Music2, Palette,
-  Plus, Power, RotateCw, Search, Settings, Sparkles, Target, Volume2, Wifi, X,
+  Plus, Power, RotateCw, Search, Settings, Target, Volume2, Wifi, X,
 } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge, mediaUrl } from "@/lib/bridge"
 import { SECTIONS } from "@/components/sections-meta"
-import { AppIcon } from "@/components/AppIcon"
-import { Logo } from "@/components/Logo"
+import { MonoAppIcon, MonoSectionIcon } from "./MonoIcon"
 import { GRADIENTS } from "@/components/Wallpaper"
 import { NotificationPanel } from "@/components/NotificationCenter"
 import { WIDGET_CHOICES } from "@/widgets/WidgetFrame"
@@ -179,6 +178,12 @@ function Frame({ side, f }: { side: "left" | "right"; f: number }) {
 
 /* ───────────────────────────── moldura + barra ───────────────────────────── */
 
+/** Moldura do Carbono mantida mesmo com a barra do Windows substituída. */
+export function CarbonoBorder() {
+  const prefs = shellPrefs(useStore((s) => s.settings))
+  return prefs.frame ? <Frame side={prefs.side ?? "left"} f={FRAME} /> : null
+}
+
 /** Moldura, barra lateral e os painéis presos nela. Fica no lugar da barra de tarefas do Widgy. */
 export function CarbonoChrome() {
   const prefs = shellPrefs(useStore((s) => s.settings))
@@ -236,7 +241,7 @@ function Rail({ side, onBell, onPower, pop }: { side: "left" | "right"; onBell: 
 >
       <button type="button" className="sh-btn size-9" title="Buscar e abrir (Ctrl+K)" aria-label="Buscar e abrir"
         onClick={() => useStore.setState((s) => ({ paletteOpen: !s.paletteOpen }))}>
-        <span style={{ filter: "var(--sh-rail-logo, none)" }}><Logo size={22} glyphOnly /></span>
+        <Search size={19} aria-hidden="true" strokeWidth={1.8} />
       </button>
 
       {/* abas abertas: um ponto por aba, a da frente vira uma pílula */}
@@ -385,52 +390,11 @@ const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 
 let appsCache: Promise<{ name: string; path: string }[]> | null = null
 const loadApps = () => (appsCache ??= bridge.bar.apps().catch(() => { appsCache = null; return [] }))
-// Ícones base64 são strings grandes mantidas pelo Promise mesmo após fechar a busca.
-// LRU limitado tanto por quantidade quanto por bytes, sem reter erros ou ícones gigantes.
-const ICON_CACHE_LIMIT = 24
-const ICON_CACHE_BYTES = 1024 * 1024
-type CachedIcon = { promise: Promise<string>; bytes: number }
-const iconCache = new Map<string, CachedIcon>()
-let iconCacheBytes = 0
-function clearIconCache() { iconCache.clear(); iconCacheBytes = 0 }
-function trimIconCache() {
-  while (iconCache.size > ICON_CACHE_LIMIT || iconCacheBytes > ICON_CACHE_BYTES) {
-    const key = iconCache.keys().next().value
-    if (key === undefined) break
-    const oldest = iconCache.get(key)
-    iconCache.delete(key)
-    iconCacheBytes -= oldest?.bytes ?? 0
-  }
-}
-function getCachedIcon(path: string) {
-  const cached = iconCache.get(path)
-  if (cached) {
-    iconCache.delete(path)
-    iconCache.set(path, cached)
-    return cached.promise
-  }
-  const entry: CachedIcon = { bytes: 0, promise: Promise.resolve("") }
-  entry.promise = bridge.bar.icon(path).catch(() => "").then((src) => {
-    if (iconCache.get(path) !== entry) return src
-    if (!src || src.length > ICON_CACHE_BYTES / 2) { iconCache.delete(path); return src }
-    entry.bytes = src.length
-    iconCacheBytes += entry.bytes
-    trimIconCache()
-    return src
-  })
-  iconCache.set(path, entry)
-  trimIconCache()
-  return entry.promise
-}
-function PcIcon({ path }: { path: string }) {
-  const [src, setSrc] = useState("")
-  useEffect(() => {
-    let alive = true
-    void getCachedIcon(path).then((s) => { if (alive) setSrc(s || "") })
-    return () => { alive = false }
-  }, [path])
-  return src ? <img src={src} alt="" className="size-6 object-contain" draggable={false} />
-    : <span className="flex size-6 items-center justify-center rounded-md" style={{ background: "var(--sh-3)" }}><Sparkles size={12} style={{ color: "var(--sh-muted)" }} /></span>
+/** Todos os apps são pictogramas vetoriais locais; zero base64 ou logos com falha. */
+function PcIcon({ path, name }: { path: string; name: string }) {
+  return <span className="flex size-7 items-center justify-center rounded-lg" style={{ background: "var(--sh-2)", color: "var(--sh-fg)" }}>
+    <MonoAppIcon name={name} path={path} size={17} />
+  </span>
 }
 
 const CMD_ICON = (I: typeof Search) => <span className="flex size-7 items-center justify-center rounded-lg" style={{ background: "var(--sh-2)" }}><I size={14} style={{ color: "var(--sh-fg)" }} /></span>
@@ -456,7 +420,7 @@ function Launcher({ close }: { close: () => void }) {
       cancelAnimationFrame(t)
       // Ao fechar devolve os ícones (base64, pesados) à memória. A lista de programas é leve (nomes e caminhos)
       // e fica guardada: reabrir a busca mostra tudo na hora, sem esperar o Windows montar a lista de novo.
-      clearIconCache()
+      // Sem cache de imagens: cada ícone é um SVG leve e local.
     }
   }, [])
 
@@ -485,11 +449,11 @@ function Launcher({ close }: { close: () => void }) {
 
   const entries = useMemo<Entry[]>(() => {
     const run = (fn: () => void) => () => { close(); fn() }
-    const secs: Entry[] = SECTIONS.map((s) => ({ id: "s-" + s.id, title: s.label, sub: "Widgy", icon: <AppIcon id={s.id} size={26} />, run: run(() => st.openWindow(s.id)) }))
+    const secs: Entry[] = SECTIONS.map((s) => ({ id: "s-" + s.id, title: s.label, sub: "Widgy", icon: <span className="flex size-7 items-center justify-center" style={{ color: "var(--sh-fg)" }}><MonoSectionIcon id={s.id} size={19} /></span>, run: run(() => st.openWindow(s.id)) }))
     const pins = st.settings.pcPins ?? []
     const pinned = new Set(pins.map((p) => p.path.toLowerCase()))
     const pc = [...pins, ...apps.filter((a) => !pinned.has(a.path.toLowerCase()))]
-      .map((a) => ({ id: "a-" + a.path, title: a.name, sub: pinned.has(a.path.toLowerCase()) ? "Fixado" : "Programa do PC", icon: <PcIcon path={a.path} />, run: run(() => void bridge.bar.launch(a.path)) }))
+      .map((a) => ({ id: "a-" + a.path, title: a.name, sub: pinned.has(a.path.toLowerCase()) ? "Fixado" : "Programa do PC", icon: <PcIcon name={a.name} path={a.path} />, run: run(() => void bridge.bar.launch(a.path)) }))
     return [...pc.slice(0, pins.length), ...secs, ...pc.slice(pins.length)]
   }, [apps, close])
 

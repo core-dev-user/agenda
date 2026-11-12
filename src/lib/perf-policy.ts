@@ -29,6 +29,17 @@ export function isWeakDevice(nav: { hardwareConcurrency?: number; deviceMemory?:
 }
 const WEAK = isWeakDevice(typeof navigator === "undefined" ? null : (navigator as { hardwareConcurrency?: number; deviceMemory?: number }))
 
+/**
+ * Pets use cached pixel sprites. In Auto they move at 60 FPS even when other
+ * decorative effects are budgeted at 20-30 FPS. Explicit economy/gaming and
+ * custom presets retain their user-selected limits.
+ */
+export function petAnimationFps(options: PerfOptions, playingGame = false, weak = WEAK): number {
+  const preset = options.perfPreset ?? "auto"
+  const budget = performanceBudget(options, playingGame, weak).fps
+  return preset === "auto" && !playingGame ? 60 : budget
+}
+
 export function performanceBudget(options: PerfOptions, playingGame = false, weak = WEAK): PerfBudget {
   const preset = options.perfPreset ?? "auto"
   if (preset === "quality") return { fps: 60, embedHz: 30, monitorMs: 1500, preload: "all" }
