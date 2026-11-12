@@ -110,6 +110,8 @@ export interface Settings {
   pcPins?: { path: string; name: string }[]
   /** nome mostrado nas salas */
   nick?: string
+  /** Salas: servidor de retransmissão (TURN) para redes que bloqueiam conexão direta; nunca vai para templates */
+  roomTurn?: { urls: string; username?: string; credential?: string }
   /** salas salvas ("servidores" com os amigos) */
   savedRooms?: { code: string; name: string }[]
   /** assistente: IA local ligada (já baixada) e qual modelo */

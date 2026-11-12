@@ -10,7 +10,7 @@ import { Card, Switch } from "@/components/ui/controls"
 import { cn, uid } from "@/lib/utils"
 import type { NotifySource, SportKind } from "@/lib/types"
 import { SPORTS } from "@/lib/favs"
-import { performanceBudget, type PerfPreset, type PreloadMode } from "@/lib/perf-policy"
+import { isWeakDevice, performanceBudget, type PerfPreset, type PreloadMode } from "@/lib/perf-policy"
 
 function Section({ title, children, desc }: { title: string; desc?: ReactNode; children: ReactNode }) {
   return (
@@ -477,6 +477,9 @@ export function SystemExtra() {
           Limite atual: <strong className="text-fg">{budget.fps} FPS</strong> nas animações do Widgy, <strong className="text-fg">{budget.embedHz} verificações/s</strong> para posicionar Discord, WhatsApp e iFood.
           Pré-carregamento: <strong className="text-fg">{budget.preload === "all" ? "todas as abas" : budget.preload === "none" ? "somente quando abrir" : "somente essenciais"}</strong>.
           <div className="mt-1">Monitor de CPU/GPU: atualização a cada {(budget.monitorMs / 1000).toLocaleString("pt-BR")} segundos quando estiver aberto.</div>
+          {profile === "auto" && isWeakDevice(navigator as { hardwareConcurrency?: number; deviceMemory?: number }) && (
+            <div className="mt-1">Este PC tem até 4 núcleos ou até 4 GB de memória: o modo automático já usa um orçamento mais leve. Escolha Qualidade se preferir tudo no máximo.</div>
+          )}
           {profile === "auto" && <div className="mt-1">Detecta jogo aberto e reduz o trabalho visual automaticamente; ao interagir com o Widgy, ele continua responsivo.</div>}
           {profile === "quality" && <div className="mt-1">Mantém limites semelhantes aos anteriores. O benchmark A/B puro continua usando separadamente a versão original 0.3.12.</div>}
         </div>

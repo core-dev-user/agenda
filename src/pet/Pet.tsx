@@ -30,22 +30,45 @@ const pick = <T,>(items: [T, number][]): T => {
 const q = (v: number, steps: number) => Math.round(v * steps) / steps
 
 /**
- * Laço de animação do bichinho. Diferente do resto do Agenda, ele continua andando quando o Agenda
- * está em segundo plano ou com um jogo aberto (só fica mais leve: 30 quadros por segundo).
- * Para de verdade só quando a janela não está visível, ou se a opção "continuar com jogo aberto" estiver desligada.
+ * Laço de animação dos bichinhos — UM só para todos.
+ * Em cada quadro, primeiro todos leem a tela (onde estão os widgets) e calculam o movimento;
+ * depois todos escrevem a posição. Com um laço por bichinho, um lia logo depois de o outro escrever
+ * e o navegador recalculava o layout da página várias vezes por quadro: era o "travado".
+ * Segue o orçamento de desempenho (Qualidade = ritmo da tela), sempre com passos regulares.
+ * Continua quando o Agenda está em segundo plano ou com um jogo aberto (mais leve: 30 quadros por segundo);
+ * para de verdade só com a janela invisível, ou se a opção "continuar com jogo aberto" estiver desligada.
  */
-function petLoop(step: () => void, keepGoing: () => boolean) {
-  let raf = 0, t = 0, dead = false, lastRun = 0
-  const run = (ts: number) => {
-    if (dead) return
-    const paused = perfPaused()
-    if (document.hidden || (paused && !keepGoing())) { t = window.setTimeout(() => (raf = requestAnimationFrame(run)), 500); return }
-    const fps = Math.min(perfVisualFps(), paused ? 30 : 60)
-    if (ts - lastRun >= 1000 / fps) { lastRun = ts; step() }
-    raf = requestAnimationFrame(run)
+type PetJob = { step: () => (() => void) | void; keep: () => boolean }
+const petJobs = new Set<PetJob>()
+let petRaf = 0, petTimer = 0, petLast = 0
+function petTick(ts: number) {
+  petRaf = 0
+  if (!petJobs.size) return
+  const paused = perfPaused()
+  const jobs = [...petJobs].filter((j) => !document.hidden && !(paused && !j.keep()))
+  if (!jobs.length) { petTimer = window.setTimeout(() => { petTimer = 0; petRaf = requestAnimationFrame(petTick) }, 500); return }
+  const budget = perfVisualFps()
+  // modo Qualidade: ritmo da tela; automático: 30 com passos regulares; econômico/jogo: o orçamento
+  const fps = paused ? Math.min(30, budget) : budget >= 55 ? 0 : budget
+  if (fps) {
+    const every = 1000 / fps
+    // tolerância de 2 ms e fase preservada: evita o vai-e-vem 33/50 ms numa tela de 60 Hz
+    if (ts - petLast < every - 2) { petRaf = requestAnimationFrame(petTick); return }
+    petLast = ts - petLast > every * 2 ? ts : petLast + every
+  } else petLast = ts
+  const commits: (() => void)[] = []
+  for (const j of jobs) { const c = j.step(); if (c) commits.push(c) }
+  for (const c of commits) c()
+  petRaf = requestAnimationFrame(petTick)
+}
+function petLoop(step: () => (() => void) | void, keepGoing: () => boolean) {
+  const job: PetJob = { step, keep: keepGoing }
+  petJobs.add(job)
+  if (!petRaf && !petTimer) petRaf = requestAnimationFrame(petTick)
+  return () => {
+    petJobs.delete(job)
+    if (!petJobs.size) { cancelAnimationFrame(petRaf); clearTimeout(petTimer); petRaf = 0; petTimer = 0 }
   }
-  raf = requestAnimationFrame(run)
-  return () => { dead = true; cancelAnimationFrame(raf); clearTimeout(t) }
 }
 
 /** pede ao gatinho para vir até o meio da tela (Configurações › Bichinho) */
@@ -471,7 +494,8 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
         pose = { k: "fly", flap: q((Math.sin(st.flapT) + 1) / 2, 4), tail: tailWave(5), fire: firing }
       }
 
-      // ----- desenha (só quando o quadro muda) -----
+      // ----- desenha (só quando o quadro muda); as escritas na tela ficam para depois de todos lerem -----
+      return () => {
       const dpr = devicePixelRatio || 1
       const W = GW * s, H = GH * s
       const key = JSON.stringify(pose) + species() + coat() + s + dpr
@@ -481,14 +505,24 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
         if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; cv.style.width = W + "px"; cv.style.height = H + "px" }
         ctx.imageSmoothingEnabled = false
         ctx.clearRect(0, 0, pw, ph)
-        ctx.drawImage(frame(pose, coat(), species()), 0, 0, pw, ph)
+        const img = frame(pose, coat(), species())
+        // sombrinha de 1 px embaixo do contorno, desenhada aqui só quando a pose muda
+        // (antes era um filtro CSS refeito em todo quadro, porque a imagem estica e encolhe)
+        ctx.filter = "brightness(0)"
+        ctx.globalAlpha = 0.18
+        ctx.drawImage(img, 0, Math.max(1, Math.round(dpr)), pw, ph)
+        ctx.filter = "none"
+        ctx.globalAlpha = 1
+        ctx.drawImage(img, 0, 0, pw, ph)
       }
       const sx = 1 / Math.sqrt(Math.max(0.5, st.sq))
-      const x = Math.round(st.x - W / 2), y = Math.round(st.y - H - st.hov)
+      // pixel físico da tela (não o pixel inteiro): andar devagar não vira saltos de 0/1 pixel
+      const px = (v: number) => Math.round(v * dpr) / dpr
+      const x = px(st.x - W / 2), y = px(st.y - H - st.hov)
       wr.style.transform = `translate3d(${x}px,${y}px,0)`
       cv.style.transform = `scale(${st.dir * sx},${st.sq})`
       const grounded = !!st.plat && st.act !== "drag"
-      sh.style.transform = `translate3d(${Math.round(st.x - 9 * s)}px,${Math.round(st.y - 1.5 * s)}px,0)`
+      sh.style.transform = `translate3d(${px(st.x - 9 * s)}px,${px(st.y - 1.5 * s)}px,0)`
       sh.style.width = 18 * s + "px"
       sh.style.height = 3 * s + "px"
       sh.style.opacity = grounded ? "1" : "0"
@@ -506,6 +540,7 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
         lb.style.transform = `translate(${Math.round(cx)}px, ${Math.round(H - (H - hb.t * s) * st.sq)}px) translate(-50%, calc(-100% - 4px))`
       }
       if (css !== lastHit) { lastHit = css; hit.style.cssText = css }
+      }
     }, () => P.current.background !== false)
 
     return () => {
@@ -522,7 +557,7 @@ function Cat({ prefs, one, index }: { prefs: PetPrefs; one: PetOne; index: numbe
     <div className="pointer-events-none absolute inset-0 overflow-hidden" data-pet>
       <div ref={shadow} className="absolute top-0 left-0 rounded-[50%]" style={{ background: "radial-gradient(closest-side, rgb(0 0 0 / .32), transparent)", transition: "opacity .2s" }} />
       <div ref={wrap} className="absolute top-0 left-0" style={{ willChange: "transform" }}>
-        <canvas ref={canvas} style={{ imageRendering: "pixelated", transformOrigin: "50% 100%", display: "block", filter: "drop-shadow(0 1px 0 rgb(0 0 0 / .18))" }} />
+        <canvas ref={canvas} style={{ imageRendering: "pixelated", transformOrigin: "50% 100%", display: "block", willChange: "transform" }} />
         <div ref={label} className="pointer-events-none absolute top-0 left-0 rounded-md px-1.5 py-0.5 whitespace-nowrap" style={{ display: "none", fontFamily: fontFamily("press"), fontSize: 8 + Math.max(0, (prefs.scale || 3) - 3) * 1.5, lineHeight: 1.25, color: "#fff", background: "rgb(15 12 22 / .62)", boxShadow: "0 1px 0 rgb(255 255 255 / .12) inset, 0 2px 6px rgb(0 0 0 / .3)", textShadow: "0 1px 0 rgb(0 0 0 / .5)" }} />
         <div data-pet-hit title={`${one.name?.trim() || SPECIES[isSpecies(one.species) ? one.species : "cat"].name} — clique para ele mudar (anda, senta, dorme) · segure para pegar no colo`} onContextMenu={(e) => e.stopPropagation()} />
       </div>
