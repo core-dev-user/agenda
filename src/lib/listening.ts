@@ -114,6 +114,14 @@ async function lookupGenre(artist: string) {
   pending.delete(key)
 }
 
+/** apaga todo o histórico de escuta (mantém só o cache de gêneros, que não é histórico) */
+export function clearListening() {
+  buf = []
+  if (cur) { cur.acc = 0; cur.counted = true }
+  const g = useStore.getState().listening?.genres ?? {}
+  useStore.setState({ listening: { ...emptyListen(), genres: g } })
+}
+
 /** começa a registrar (chamado uma vez quando o Agenda abre) */
 export function startListening() {
   if (started) return

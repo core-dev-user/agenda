@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
-import { Clock, Disc3, Flame, Headphones, Music2, Sparkles, Users } from "lucide-react"
+import { Clock, Disc3, Flame, Headphones, Music2, Sparkles, Trash2, Users } from "lucide-react"
 import { useStore } from "@/lib/store"
-import { aggregate, emptyListen, fmtMin, type Period } from "@/lib/listening"
+import { aggregate, clearListening, emptyListen, fmtMin, type Period } from "@/lib/listening"
 import { bridge } from "@/lib/bridge"
 import { Card, Segmented } from "@/components/ui/controls"
 import { cn, todayISO } from "@/lib/utils"
@@ -26,6 +26,7 @@ export function MusicStats() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="font-display flex-1 text-xl font-semibold">O que você mais ouve</div>
         <Segmented value={p} onChange={setP} options={PERIODS} />
+        <button className="btn btn-ghost !py-1 text-xs hover:!text-red-400" title="Apaga tudo o que o Widgy registrou do YouTube Music neste PC" onClick={() => confirm("Limpar todo o histórico de escuta do YouTube Music? Músicas, tempos, artistas e tocadas recentemente serão apagados.") && clearListening()}><Trash2 size={13} /> Limpar histórico</button>
       </div>
       {empty ? (
         <Card className="py-10 text-center">
