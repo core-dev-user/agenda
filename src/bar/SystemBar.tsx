@@ -121,7 +121,9 @@ export function SystemBar() {
   const length = vertical ? vw.h : vw.w
   const fixed = isDock ? 60 : vertical ? 120 : 260
   const size = Math.max(carbono ? 20 : 26, Math.min(t.size, Math.floor((length - fixed) / Math.max(1, count)) - 6))
-  const icon = Math.round(size * 0.46)
+  // Carbono: ícones de 17–19 px centralizados em botões de 20 px.
+  // Os demais estilos preservam as proporções originais.
+  const icon = Math.round(size * (carbono ? 0.84 : 0.46))
 
   const magnify = (el: HTMLElement | null) => {
     if (!t.magnify || !isDock || mouse == null || !el) return 1
@@ -185,11 +187,11 @@ export function SystemBar() {
           {/* Iniciar do Windows (igual ao de uma barra normal) e o Iniciar do Agenda */}
           {shows("winstart") && (
             <Btn {...btn} label="Iniciar do Windows" onClick={() => bridge.bar.winStart()}>
-              {carbono ? <Grid2X2 size={Math.round(size * 0.5)} strokeWidth={1.8} /> : <WinLogo size={Math.round(size * 0.5)} />}
+              {carbono ? <Grid2X2 size={Math.round(size * 0.88)} strokeWidth={1.8} /> : <WinLogo size={Math.round(size * 0.5)} />}
             </Btn>
           )}
           <Btn {...btn} label="Iniciar do Widgy" active={menu === "start"} onClick={(el) => openMenu("start", el, 640, 660)}>
-            {carbono ? <Search size={Math.round(size * 0.46)} strokeWidth={1.8} /> : <Logo size={Math.round(size * 0.78)} />}
+            {carbono ? <Search size={Math.round(size * 0.88)} strokeWidth={1.8} /> : <Logo size={Math.round(size * 0.78)} />}
           </Btn>
           <Divider vertical={vertical} />
 
@@ -199,7 +201,7 @@ export function SystemBar() {
             return (
               <Btn key={sec.id} {...btn} label={sec.label} showLabel={t.showLabels && !vertical} running={!!w} focused={!!w?.top} onClick={() => bridge.bar.toMain({ type: "section", id: sec.id })}>
                 {carbono
-                  ? <MonoSectionIcon id={sec.id as SectionId} size={Math.round(size * 0.52)} />
+                  ? <MonoSectionIcon id={sec.id as SectionId} size={Math.round(size * 0.9)} />
                   : <AppIconView id={sec.id as SectionId} size={Math.round(size * 0.8)} s={icons} />}
               </Btn>
             )
@@ -233,7 +235,7 @@ export function SystemBar() {
                 onRight={() => pin(g)}
                 onMiddle={() => bridge.bar.launch(g.exe)}
               >
-                <ExeIcon g={g} size={Math.round(size * 0.62)} style={packStyle} mono={carbono} />
+                <ExeIcon g={g} size={Math.round(size * (carbono ? 0.92 : 0.62))} style={packStyle} mono={carbono} />
               </Btn>
             )
           })}
@@ -335,7 +337,7 @@ function Btn({
       onPointerLeave={() => { setHover(false); if (ref.current) onHover?.(ref.current, false) }}
       title={isDock || onHover ? undefined : label}
       className={cn("relative flex shrink-0 items-center justify-center gap-2 rounded-[calc(var(--r)*0.6)] transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_8%,transparent)]", (active || (showLabel && focused)) && "bg-[color-mix(in_srgb,var(--fg)_12%,transparent)]", showLabel && "px-2")}
-      style={{ height: size, minWidth: size }}
+      style={{ height: size, minWidth: size, ...(vertical ? { width: size } : {}) }}
     >
       <div style={{ transform: `${liftT} scale(${scale})`, transformOrigin: origin, transition: "transform .14s ease-out", willChange: "transform" }}>
         <motion.div whileTap={{ scale: 0.85, rotateX: 25 }} style={{ transformStyle: "preserve-3d" }}>{children}</motion.div>

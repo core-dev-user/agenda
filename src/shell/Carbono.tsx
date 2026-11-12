@@ -160,17 +160,28 @@ function EdgePanel({ edge, open, offset, inset = 0, style, center, className, ch
 
 /** Moldura: a tela inteira na cor da barra, com um retângulo arredondado vazado no meio (um desenho só, sem sombra gigante). */
 function Frame({ side, f }: { side: "left" | "right"; f: number }) {
+  const svgRef = useRef<SVGSVGElement>(null)
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight })
   useEffect(() => {
-    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight })
-    window.addEventListener("resize", on)
-    return () => window.removeEventListener("resize", on)
+    // ScreenFrame pode representar apenas um monitor, mesmo com desktop estendido.
+    // Usar innerWidth pintava a moldura por cima de outros monitores.
+    const frame = svgRef.current?.closest(".screen-frame") as HTMLElement | null
+    const target = frame ?? document.documentElement
+    const on = () => {
+      const w = target.clientWidth || window.innerWidth
+      const h = target.clientHeight || window.innerHeight
+      setVp((s) => s.w === w && s.h === h ? s : { w, h })
+    }
+    on()
+    const observer = new ResizeObserver(on)
+    observer.observe(target)
+    return () => observer.disconnect()
   }, [])
   const l = side === "left" ? RAIL : f, r = side === "right" ? RAIL : f
   const x0 = l, x1 = vp.w - r, y0 = f, y1 = vp.h - f, R = CORNER
   const hole = `M${x0 + R} ${y0}H${x1 - R}A${R} ${R} 0 0 1 ${x1} ${y0 + R}V${y1 - R}A${R} ${R} 0 0 1 ${x1 - R} ${y1}H${x0 + R}A${R} ${R} 0 0 1 ${x0} ${y1 - R}V${y0 + R}A${R} ${R} 0 0 1 ${x0 + R} ${y0}Z`
   return (
-    <svg aria-hidden className="pointer-events-none fixed inset-0 z-[795]" width={vp.w} height={vp.h} style={{ willChange: "transform" }}>
+    <svg ref={svgRef} aria-hidden className="pointer-events-none fixed inset-0 z-[795]" width={vp.w} height={vp.h}>
       <path fillRule="evenodd" fill="var(--sh-rail-bg, var(--sh-bg))" d={`M0 0H${vp.w}V${vp.h}H0Z${hole}`} />
     </svg>
   )

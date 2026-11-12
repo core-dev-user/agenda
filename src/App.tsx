@@ -18,6 +18,7 @@ import { Taskbar, WidgetMenu } from "@/components/Taskbar"
 import { CarbonoChrome, CarbonoBorder, CarbonoPanels, useCarbonoVars } from "@/shell/Carbono"
 import { useIsImmersive } from "@/lib/immersive"
 import { RAIL, shellPrefs, useShell } from "@/shell/pack"
+import { carbonoBorderViewport } from "@/shell/frameGeometry"
 import { NotificationPanel } from "@/components/NotificationCenter"
 import { useScreenList, useActiveScreen, setActiveScreen } from "@/lib/screens"
 import type { ScreenRect } from "@/lib/bridge"
@@ -315,7 +316,7 @@ export default function App() {
         </div>
         <AnimatePresence>{windows.map((w) => <AppWindow key={w.id} win={w} />)}</AnimatePresence>
         {/* transmissão expandida ou vídeo em tela cheia: a barra (e a moldura do Carbono) saem da frente */}
-        {!immersive && <ScreenFrame sc={home}>
+        {!immersive && <ScreenFrame sc={packed && mainBar ? carbonoBorderViewport(home) : home}>
           {packed ? (mainBar ? <CarbonoBorder /> : <CarbonoChrome />) : (!mainBar ? <Taskbar /> : null)}
         </ScreenFrame>}
         <AnimatePresence>{ctx && <DesktopMenu at={ctx} close={() => setCtx(null)} />}</AnimatePresence>

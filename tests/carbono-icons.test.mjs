@@ -95,3 +95,33 @@ test("o Carbono reutiliza silhuetas reais sem molduras; programas sem catálogo 
   assert.doesNotMatch(launcher, /<MonoAppIcon[^>]*?size=\{17\}/)
   assert.match(launcher, /size=\{22\}/)
 })
+
+test("a moldura do Carbono se sobrepõe à AppBar nativa, sem faixa preta dupla", async () => {
+  const { carbonoBorderViewport } = await import("../src/shell/frameGeometry.ts")
+  const screen = {
+    id: 1, x: 36, y: 0, w: 1884, h: 1080,
+    full: { x: 0, y: 0, w: 1920, h: 1080 },
+    primary: true, home: true,
+  }
+  const frame = carbonoBorderViewport(screen)
+  assert.equal(frame.x, 0)
+  assert.equal(frame.w, 1920)
+  assert.equal(frame.x + 36, screen.x, "a moldura deve terminar na borda da área útil")
+  assert.equal(screen.x, 36, "a reserva do Windows não deve ser alterada")
+  const withoutFull = { id: 2, x: 20, y: 0, w: 1200, h: 900, primary: false, home: false }
+  assert.equal(carbonoBorderViewport(withoutFull), withoutFull)
+  const { readFileSync } = await import("node:fs")
+  const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8")
+  const shell = readFileSync(new URL("../src/shell/Carbono.tsx", import.meta.url), "utf8")
+  assert.match(app, /packed && mainBar \? carbonoBorderViewport\(home\) : home/)
+  assert.match(shell, /closest\("\.screen-frame"\)/)
+})
+
+test("os ícones Carbono são ampliados e centralizados sem alargar os botões", async () => {
+  const { readFileSync } = await import("node:fs")
+  const bar = readFileSync(new URL("../src/bar/SystemBar.tsx", import.meta.url), "utf8")
+  assert.match(bar, /carbono \? 0\.84 : 0\.46/)
+  assert.match(bar, /size \* 0\.9/)
+  assert.match(bar, /carbono \? 0\.92 : 0\.62/)
+  assert.match(bar, /vertical \? \{ width: size \}/)
+})
