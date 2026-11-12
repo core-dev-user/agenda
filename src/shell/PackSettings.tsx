@@ -4,11 +4,10 @@ import { Card, Segmented, Switch } from "@/components/ui/controls"
 import { useEffect, useState, type ReactNode } from "react"
 import { bridge, type BarConfig } from "@/lib/bridge"
 import { cn } from "@/lib/utils"
-import { ACCENTS, applyCarbono, removePack, setShellPrefs, shellPrefs, type CarbonoAccent } from "./pack"
+import { ACCENTS, SURFACES, applyCarbono, removePack, setShellPrefs, shellPrefs, type CarbonoAccent } from "./pack"
 
 /** Miniatura desenhada do Carbono: moldura, barra fina, painel de cima e busca de baixo. */
-function CarbonoPreview({ accent }: { accent: string }) {
-  const bg = "#121212"
+function CarbonoPreview({ accent, bg, rail }: { accent: string; bg: string; rail: string }) {
   return (
     <svg viewBox="0 0 320 180" className="w-full rounded-xl" role="img" aria-label="Prévia do pacote Carbono">
       <defs>
@@ -18,7 +17,7 @@ function CarbonoPreview({ accent }: { accent: string }) {
         <mask id="cb-hole"><rect width="320" height="180" fill="#fff" /><rect x="18" y="4" width="298" height="172" rx="12" fill="#000" /></mask>
       </defs>
       <rect width="320" height="180" fill="url(#cb-wall)" />
-      <rect width="320" height="180" fill={bg} mask="url(#cb-hole)" />
+      <rect width="320" height="180" fill={rail} mask="url(#cb-hole)" />
       {/* barra */}
       <circle cx="9" cy="12" r="3.2" fill="#ECE7E8" />
       <rect x="6" y="22" width="6" height="22" rx="3" fill="#1b1b1c" />
@@ -63,6 +62,34 @@ function WinKeySwitch() {
   )
 }
 
+/** cores prontas + uma cor livre; `same` acrescenta a opção "igual aos painéis" (valor vazio) */
+function SurfacePicker({ label, hint, value, onChange, same }: { label: string; hint: string; value: string; onChange: (v: string) => void; same?: boolean }) {
+  // anel na cor do texto: aparece tanto no tema escuro quanto no claro
+  const swatch = (on: boolean) => cn("relative size-8 rounded-full border border-line transition-transform hover:scale-110", on && "ring-2 ring-[var(--fg)] ring-offset-2 ring-offset-transparent")
+  const custom = !!value && !SURFACES.some((x) => x.color.toLowerCase() === value.toLowerCase())
+  return (
+    <div>
+      <div className="text-xs font-medium text-fg-muted">{label}</div>
+      <div className="mb-2 text-[11px] text-fg-muted/80">{hint}</div>
+      <div className="flex flex-wrap items-center gap-2">
+        {same && (
+          <button type="button" title="Igual aos painéis" aria-label="Igual aos painéis" onClick={() => onChange("")}
+            className={cn(swatch(!value), "flex items-center justify-center text-[10px] font-semibold text-fg-muted")}>=</button>
+        )}
+        {SURFACES.map((x) => (
+          <button key={x.color} type="button" title={x.label} aria-label={x.label} onClick={() => onChange(x.color)}
+            className={swatch(value.toLowerCase() === x.color.toLowerCase())} style={{ background: x.color }} />
+        ))}
+        <label title="Outra cor" className={cn(swatch(custom), "flex cursor-pointer items-center justify-center overflow-hidden")}
+          style={{ background: custom ? value : "conic-gradient(#f87171, #fbbf24, #34d399, #60a5fa, #a78bfa, #f87171)" }}>
+          <input type="color" className="absolute inset-0 cursor-pointer opacity-0" aria-label={label + ": outra cor"}
+            value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#121212"} onChange={(e) => onChange(e.target.value)} />
+        </label>
+      </div>
+    </div>
+  )
+}
+
 export function PacksTab() {
   const settings = useStore((s) => s.settings)
   const p = shellPrefs(settings)
@@ -74,7 +101,7 @@ export function PacksTab() {
       <Section title="Pacotes de interface" desc="Um pacote troca o jeito do Widgy inteiro: barra, busca, painéis, cores e fontes. Seus widgets, abas e dados continuam iguais, e ao desativar o visual anterior volta exatamente como estava.">
         <div className={cn("overflow-hidden rounded-2xl border transition-colors", on ? "border-[var(--accent)]" : "border-line")}>
           <div className="grid gap-4 p-4 sm:grid-cols-[1.1fr_1fr]">
-            <CarbonoPreview accent={accent.startsWith("var") ? "#F1B9C6" : accent} />
+            <CarbonoPreview accent={accent.startsWith("var") ? "#F1B9C6" : accent} bg={p.bg || "#121212"} rail={p.railBg || p.bg || "#121212"} />
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold">Carbono</span>
@@ -111,6 +138,10 @@ export function PacksTab() {
               ))}
             </div>
           </div>
+          <SurfacePicker label="Cor dos painéis" hint="Painel de cima, busca, avisos e as janelas do Widgy."
+            value={p.bg || "#121212"} onChange={(v) => setShellPrefs({ bg: v })} />
+          <SurfacePicker label="Cor da barra lateral e da moldura" hint="Pode ser a mesma dos painéis ou outra."
+            value={p.railBg || ""} same onChange={(v) => setShellPrefs({ railBg: v })} />
           <div>
             <div className="mb-1.5 text-xs font-medium text-fg-muted">Lado da barra</div>
             <Segmented value={p.side ?? "left"} onChange={(v) => setShellPrefs({ side: v as "left" | "right" })}

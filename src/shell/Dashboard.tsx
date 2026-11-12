@@ -132,16 +132,17 @@ export function Dashboard() {
           </button>
         ))}
       </div>
-      <motion.div layout transition={{ type: "spring", stiffness: 380, damping: 36 }} className="pt-3">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.16 }}>
+      {/* troca de aba na hora: a nova entra com um leve fade, sem esperar a antiga sair nem medir o layout */}
+      <div className="pt-3">
+        <AnimatePresence initial={false}>
+          <motion.div key={tab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.12, ease: "easeOut" }}>
             {tab === "dash" && <DashTab />}
             {tab === "media" && <MediaTab />}
             {tab === "perf" && <PerfTab />}
             {tab === "weather" && <WeatherTab />}
           </motion.div>
         </AnimatePresence>
-      </motion.div>
+      </div>
     </div>
   )
 }
@@ -169,7 +170,7 @@ function DashTab() {
         </div>
       </div>
       <div className="sh-card flex items-center gap-3.5 px-4 py-3">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--sh-2)" }}><Logo size={26} glyphOnly /></span>
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--sh-2)" }}><span style={{ filter: "var(--sh-logo, none)" }}><Logo size={26} glyphOnly /></span></span>
         <div className="min-w-0 space-y-1 text-[12px]">
           <div className="flex items-center gap-2"><span className="font-semibold" style={{ color: "var(--sh-fg)" }}>{nick}</span></div>
           <div className="flex items-center gap-1.5 truncate" style={{ color: "var(--sh-muted)" }}><MonitorSmartphone size={12} /> {sys?.cpu.name ?? "Windows"}</div>
@@ -321,7 +322,7 @@ function PlayButton({ playing, disabled, onClick, small }: { playing: boolean; d
     <motion.button type="button" aria-label={playing ? "Pausar" : "Tocar"} disabled={disabled} onClick={onClick}
       animate={{ width: playing ? h * 1.4 : h, borderRadius: playing ? h * 0.34 : h / 2 }} whileTap={{ scale: 0.92 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
-      className="flex items-center justify-center disabled:opacity-40" style={{ height: h, background: "var(--sh-fg)", color: "#141414" }}>
+      className="flex items-center justify-center disabled:opacity-40" style={{ height: h, background: "var(--sh-fg)", color: "var(--sh-on-fg, #141414)" }}>
       {playing ? <Pause size={small ? 14 : 18} fill="currentColor" /> : <Play size={small ? 14 : 18} fill="currentColor" className="translate-x-px" />}
     </motion.button>
   )
@@ -431,9 +432,13 @@ function ReactiveCover({ art, playing, size }: { art?: string | null; playing: b
   useEffect(() => {
     let energy = playing ? 1 : 0
     const t0 = performance.now()
+    let last = 0
     const draw = () => {
       const now = performance.now()
-      energy += ((playing ? 1 : 0) - energy) * 0.08
+      // o espectro chega ~30 vezes por segundo: redesenhar a 60 quadros seria trabalho dobrado
+      if (now - last < 30) return
+      last = now
+      energy += ((playing ? 1 : 0) - energy) * 0.15
       const live = liveSpectrum()
       const t = (now - t0) / 1000
       let d = ""
@@ -464,13 +469,13 @@ function ReactiveCover({ art, playing, size }: { art?: string | null; playing: b
   }, [playing, size, r0])
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <div ref={glow} aria-hidden className="absolute rounded-full blur-2xl" style={{ inset: size / 2 - r0, background: "var(--sh-accent)", opacity: 0.15 }} />
+      <div ref={glow} aria-hidden className="absolute rounded-full blur-2xl" style={{ inset: size / 2 - r0, background: "var(--sh-accent)", opacity: 0.15, willChange: "opacity" }} />
       <svg width={size} height={size} className="absolute inset-0" aria-hidden>
         <path ref={path} stroke="var(--sh-accent)" strokeWidth={2.2} strokeLinecap="round" opacity={0.9} />
       </svg>
       <div ref={cover} className="absolute will-change-transform" style={{ inset: size / 2 - r0 }}>
-        <motion.div className="h-full w-full overflow-hidden" style={{ clipPath: clip, background: "var(--sh-2)" }}
-          animate={{ rotate: playing ? 360 : 0 }} transition={playing ? { duration: 30, ease: "linear", repeat: Infinity } : { duration: 0.8 }}>
+        {/* giro feito pela placa de vídeo (animação CSS): pausado, a capa para onde estava */}
+        <div className="relative h-full w-full overflow-hidden" style={{ clipPath: clip, background: "var(--sh-2)", animation: "vinyl-spin 30s linear infinite", animationPlayState: playing ? "running" : "paused" }}>
           <AnimatePresence initial={false}>
             {art ? <motion.img key={art} src={art} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} />
@@ -478,7 +483,7 @@ function ReactiveCover({ art, playing, size }: { art?: string | null; playing: b
                   <Music2 size={size * 0.14} style={{ color: "var(--sh-dim)" }} />
                 </motion.span>}
           </AnimatePresence>
-        </motion.div>
+        </div>
       </div>
     </div>
   )
@@ -499,9 +504,12 @@ function WaveProgress({ value, playing, onSeek }: { value: number; playing: bool
   const v = Math.max(0, Math.min(1, value))
   useEffect(() => {
     let amp = playing ? 3 : 0
+    let last = 0
     const draw = (now: number) => {
+      if (now && now - last < 30) return
+      last = now
       const target = !playing ? 0 : liveSpectrum() ? 1.5 + spectrum.level * 3 : 3
-      amp += (target - amp) * 0.12
+      amp += (target - amp) * 0.2
       const end = Math.max(0, v * w - 6)
       let d = "M0 8"
       for (let x = 2; x <= end; x += 2) d += `L${x} ${(8 + Math.sin(x / 7 - now / 260) * amp).toFixed(2)}`
