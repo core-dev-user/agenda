@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import {
   CalendarClock, CalendarDays, Hourglass, ChartColumn, Clapperboard, Clock, CloudSun, Cpu, Crop, Crosshair, Gamepad2, GripHorizontal, Headphones, Image, ImagePlus, Images, Link,
-  ClipboardPaste, Copy, ListChecks, MessageCircle, Mic, Moon, Move, Music, Sun, Newspaper, Settings2, StickyNote, Target, Timer, Trash2, Triangle, UtensilsCrossed, Volleyball, Wallet, Wand2, X,
+  ClipboardPaste, Copy, ListChecks, MessageCircle, Mic, Moon, Move, Music, Sun, Newspaper, Settings2, Shield, StickyNote, Target, Timer, Trash2, Triangle, UtensilsCrossed, Volleyball, Wallet, Wand2, X,
   type LucideIcon,
 } from "lucide-react"
 import { useStore } from "@/lib/store"
@@ -42,6 +42,7 @@ import { ValAgentWidget, ValAgentSettings } from "./ValAgentWidget"
 import { SysMonWidget, SysMonSettings } from "./SysMonWidget"
 import { PcMusicWidget, PcMusicSettings } from "./PcMusicWidget"
 import { CountdownWidget, CountdownSettings } from "./Countdown"
+import { TeamWidget, TeamSettings } from "./TeamWidget"
 import { hoverClass, lookLimits, lookOfWidget, lookStyle, LookSettings } from "./widgetLook"
 import { GlyphTile } from "@/components/Glyph"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
@@ -74,6 +75,7 @@ export const WIDGET_META: Record<WidgetType, { label: string; icon: LucideIcon; 
   sysmon: { label: "Desempenho do PC (CPU, GPU, RAM)", icon: Cpu, color: "#3ccfcf" },
   pcmusic: { label: "Spotify e música do PC", icon: Headphones, color: "#1db954" },
   countdown: { label: "Contagem regressiva (dias para…)", icon: Hourglass, color: "#ff8fb8" },
+  team: { label: "Meu time (logo, último e próximo jogo)", icon: Shield, color: "#ff4655" },
 }
 
 /** Tópicos do menu "Adicionar widget" (na ordem em que aparecem). */
@@ -94,7 +96,7 @@ const CAT_OF: Record<Exclude<WidgetType, "shortcut">, WidgetCat> = {
   clock: "rotina", stopwatch: "rotina", countdown: "rotina", calendar: "rotina", agenda: "rotina", tasks: "rotina", note: "rotina", finance: "rotina",
   weather: "info", news: "info",
   music: "musica", pcmusic: "musica", musicclip: "musica", lyrics: "musica", musicstats: "musica",
-  football: "esportes",
+  football: "esportes", team: "esportes",
   cs2: "esports", valorant: "esports", valagent: "esports", gaming: "esports",
   discord: "apps", whatsapp: "apps", ifood: "apps",
   photo: "fotos",
@@ -252,6 +254,7 @@ export const WidgetFrame = memo(function WidgetFrame({ w }: { w: Widget }) {
     case "sysmon": body = <SysMonWidget w={W} />; break
     case "pcmusic": body = <PcMusicWidget w={W} />; break
     case "countdown": body = <CountdownWidget w={W} />; break
+    case "team": body = <TeamWidget w={W} onConfigure={() => setCfgOpen(true)} />; break
   }
   if (resting) body = <RestingBody w={w} onWake={() => toggleRest(w.id)} />
   body = <ErrorBoundary label="widget" compact>{body}</ErrorBoundary>
@@ -412,6 +415,7 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
         {w.type === "sysmon" && <SysMonSettings w={w} set={set} />}
         {w.type === "pcmusic" && <PcMusicSettings w={w} set={set} />}
         {w.type === "countdown" && <CountdownSettings w={w} set={set} />}
+        {w.type === "team" && <TeamSettings w={w} set={set} />}
         {w.type === "whatsapp" && (
           <Switch label="Mostrar só conversas com mensagens novas" checked={!!c.onlyUnread} onChange={(v) => set({ onlyUnread: v })} />
         )}

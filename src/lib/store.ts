@@ -119,6 +119,7 @@ export const WIDGET_SIZES: Record<WidgetType, [number, number]> = {
   sysmon: [360, 260],
   pcmusic: [440, 220],
   countdown: [320, 200],
+  team: [420, 250],
 }
 
 const defaultWidgets = (): Widget[] => [

@@ -154,6 +154,7 @@ contextBridge.exposeInMainWorld("agenda", {
     onProgress: on("ai:progress"),
   },
   net: { text: (url) => ipcRenderer.invoke("net:text", url) },
+  team: { search: (game, q, opts) => ipcRenderer.invoke("team:search", game, q, opts), card: (game, t, opts) => ipcRenderer.invoke("team:card", game, t, opts) },
   sports: { get: (sport, opts) => ipcRenderer.invoke("sports:get", sport, opts), teams: (sport, opts) => ipcRenderer.invoke("sports:teams", sport, opts) },
   webapp: {
     open: (id) => ipcRenderer.invoke("webapp:open", id),

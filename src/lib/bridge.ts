@@ -155,6 +155,12 @@ export interface AgendaBridge {
   }
   ai: { status(): Promise<{ installed: boolean; sharp: boolean }>; install(): Promise<boolean>; onProgress(cb: (n: number) => void): Unsub }
   net: { text(url: string): Promise<string> }
+  team: {
+    /** busca times de um jogo (sem texto: lista inicial, quando o jogo tiver) */
+    search(game: string, q: string, opts?: { leagues?: string[] }): Promise<TeamHit[]>
+    /** logo, cores, último e próximo jogo; peek = só o que já está guardado */
+    card(game: string, t: TeamHit, opts?: { peek?: boolean }): Promise<TeamCard | null>
+  }
   sports: {
     get(sport: "cs2" | "valorant" | "football", opts?: { leagues?: string[]; teams?: { id?: string; league?: string }[] }): Promise<SportMatch[]>
     /** times para escolher como favoritos */
@@ -304,6 +310,32 @@ export interface UpdateState {
   enabled: boolean
 }
 export interface FavTeam { id?: string; name: string; short?: string; logo?: string; flag?: string; league?: string }
+export interface TeamHit { id: string; name: string; short?: string; logo?: string; league?: string; inactive?: boolean }
+export interface TeamGame {
+  id: string
+  start: number
+  state: "live" | "upcoming" | "done"
+  result?: "W" | "L" | "D"
+  us: { score?: string; win: boolean }
+  opp: { name: string; short?: string; logo: string; flag?: string; score?: string; win: boolean }
+  home?: boolean
+  league?: string
+  detail: string
+  event: string
+  eventLogo: string
+  link: string
+}
+export interface TeamCard {
+  team: { id: string; name: string; full?: string; short: string; logo: string; logoDark?: string; logoData?: string; banner?: string; colors: string[]; link: string }
+  live?: TeamGame
+  last?: TeamGame
+  next?: TeamGame
+  form: string[]
+  recent: TeamGame[]
+  at: number
+  stale?: boolean
+  error?: string
+}
 export interface SportMatch {
   id: string
   start: number
@@ -404,6 +436,7 @@ const browserFallback: AgendaBridge = {
   },
   ai: { status: async () => ({ installed: false, sharp: false }), install: async () => false, onProgress: noop },
   net: { text: async (u) => (await fetch(u)).text() },
+  team: { search: async () => [], card: async () => null },
   sports: { get: async () => [], teams: async () => [] },
   webapp: { open: async () => {}, embed: async () => {}, popout: async () => {}, dock: async () => {}, nav: async () => {}, watch: async () => {}, discord: async () => {}, ifoodOrders: async () => ({ loggedOut: false, orders: [] as IfoodOrder[] }), whatsapp: async () => ({ loggedIn: false, totalUnread: 0, chats: [] }), ifoodMap: async () => null, url: async () => "", whatsappOpen: async () => {}, whatsappNative: async () => false, mute: async () => {}, hibernate: async () => {}, status: async () => ({} as any), onState: noop },
   music: { open: async () => {}, embed: async () => {}, clip: async () => {}, queue: async () => [], popout: async () => {}, dock: async () => {}, cmd: async () => {}, logout: async () => {}, video: async () => {}, onState: noop, onFrame: noop },

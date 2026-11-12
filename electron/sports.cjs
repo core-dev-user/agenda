@@ -26,6 +26,19 @@ const decode = (s) => String(s || "").replace(/&amp;/g, "&").replace(/&#39;|&#03
 
 /* ------------------------------ CS2: Liquipedia ------------------------------ */
 const LP = "https://liquipedia.net"
+// regras da API da Liquipedia: "parse" no máx. 1 a cada 30 s, o resto 1 a cada 2 s (fila única para o app todo)
+let lpChain = Promise.resolve(), lpLastParse = 0, lpLast = 0
+function lpGet(url) {
+  const parse = /action=parse/.test(url)
+  const run = lpChain.then(async () => {
+    const wait = Math.max(parse ? lpLastParse + 30_500 - Date.now() : 0, lpLast + 2_100 - Date.now(), 0)
+    if (wait) await new Promise((r) => setTimeout(r, wait))
+    lpLast = Date.now(); if (parse) lpLastParse = lpLast
+    return getText(url, UA_APP)
+  })
+  lpChain = run.catch(() => {})
+  return run
+}
 const abs = (u) => (u ? (u.startsWith("//") ? "https:" + u : u.startsWith("/") ? LP + u : u) : "")
 
 function lpTeam(html) {
@@ -35,16 +48,24 @@ function lpTeam(html) {
   const nameTag = html.match(/<span class="name"[^>]*>([\s\S]*?)<\/span>/)
   const title = nameTag && nameTag[1].match(/title="([^"]+)"/)
   const short = nameTag ? decode(nameTag[1]) : ""
-  return { name: decode(title ? title[1] : short) || "A definir", short: short || "TBD", logo: dark ? abs(dark[2]) : "" }
+  return { name: decode(title ? title[1] : short).replace(/ \(page does not exist\)$/, "") || "A definir", short: short || "TBD", logo: dark ? abs(dark[2]) : "" }
 }
 
 function parseLiquipedia(html) {
   const out = []
   // a página tem a seção "upcoming" (inclui ao vivo) e "recent" (resultados)
   const parts = html.split(/data-filter-expansion-template="[^"]*type=(upcoming|recent)/)
-  for (let p = 1; p < parts.length; p += 2) {
-    const section = parts[p]
-    const blocks = parts[p + 1].split('<div class="match-info">').slice(1)
+  for (let p = 1; p < parts.length; p += 2) out.push(...parseLpBlocks(parts[p + 1], parts[p]))
+  // tira repetidos (a página às vezes lista o mesmo jogo em dois blocos)
+  const seen = new Set()
+  return out.filter((m) => (seen.has(m.id) ? false : seen.add(m.id)))
+}
+
+/** blocos "match-info" da Liquipedia (lista de partidas e "Upcoming Matches" da página de um time) */
+function parseLpBlocks(html, section = "upcoming", link = "https://www.hltv.org/matches") {
+  const out = []
+  {
+    const blocks = html.split('<div class="match-info">').slice(1)
     for (const b of blocks) {
       const ts = Number((b.match(/data-timestamp="(\d+)"/) || [])[1] || 0) * 1000
       // cabeçalho: [time da esquerda + placar] [time da direita] (as classes mudam: -left, -winner, -loser)
@@ -68,18 +89,16 @@ function parseLiquipedia(html) {
         detail: bo ? `MD${bo}` : "",
         event: tour ? decode(tour[2]) : "",
         eventLogo: abs(tourLogo),
-        link: "https://www.hltv.org/matches",
+        link,
       })
     }
   }
-  // tira repetidos (a página às vezes lista o mesmo jogo em dois blocos)
-  const seen = new Set()
-  return out.filter((m) => (seen.has(m.id) ? false : seen.add(m.id)))
+  return out
 }
 
 async function cs2() {
   return cached("cs2", 60_000, async () => {
-    const txt = await getText(`${LP}/counterstrike/api.php?action=parse&page=Liquipedia:Matches&format=json&prop=text`, UA_APP)
+    const txt = await lpGet(`${LP}/counterstrike/api.php?action=parse&page=Liquipedia:Matches&format=json&prop=text`)
     const html = JSON.parse(txt).parse.text["*"]
     return parseLiquipedia(html)
   })
@@ -266,4 +285,4 @@ function register(ipcMain) {
   ipcMain.handle("sports:teams", (_e, sport, opts = {}) => teams(sport, opts))
 }
 
-module.exports = { register, parseLiquipedia, parseVlr, parseEspn }
+module.exports = { register, teams, parseLiquipedia, parseLpBlocks, parseVlr, parseEspn, cached, getText, lpGet, lpTeam, decode, abs, ESPN, VLR, LP, UA_WEB, UA_APP }

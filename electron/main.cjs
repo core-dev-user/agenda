@@ -257,6 +257,7 @@ app.whenReady().then(() => {
 app.on("window-all-closed", () => app.quit())
 music.register(ipcMain, () => win, app)
 require("./sports.cjs").register(ipcMain)
+require("./teams.cjs").register(ipcMain, require("./sports.cjs").teams)
 require("./webapps.cjs").register(ipcMain, () => win, app)
 system.register(ipcMain, () => win)
 modes.register(ipcMain, () => win, () => system.quit())
