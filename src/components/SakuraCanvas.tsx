@@ -71,7 +71,8 @@ export function SakuraCanvas({
 
     const resize = () => {
       const fps = perfVisualFps()
-      dpr = Math.min(window.devicePixelRatio || 1, fps >= 55 ? 2 : fps >= 24 ? 1.5 : 1)
+      // pétalas são formas suaves: resolução 1x basta fora do modo qualidade (até 2,25x menos pixels por quadro)
+      dpr = Math.min(window.devicePixelRatio || 1, fps >= 55 ? 1.5 : 1)
       W = canvas.clientWidth
       H = canvas.clientHeight
       canvas.width = W * dpr
@@ -101,6 +102,12 @@ export function SakuraCanvas({
       }
     }
 
+    // cores prontas (8 tons de luz por cor): não monta uma string nova para cada pétala em cada quadro
+    const SHADES = PALETTE.map(([r, g, b]) => Array.from({ length: 8 }, (_, i) => {
+      const light = 0.63 + (i / 7) * 0.42
+      return `rgb(${Math.min(255, Math.round(r * light))},${Math.min(255, Math.round(g * light))},${Math.min(255, Math.round(b * light))})`
+    }))
+    let needSort = true
     let petals: Petal[] = []
     if (burst) {
       // explosão inicial saindo do centro (abertura)
@@ -151,11 +158,11 @@ export function SakuraCanvas({
       ctx.clearRect(0, 0, W, H)
 
       const target = count()
-      while (petals.length < target) petals.push(spawn(false))
+      while (petals.length < target) { petals.push(spawn(false)); needSort = true }
       if (petals.length > target + 20) petals.length = target
 
-      // ordena por profundidade: as mais distantes primeiro
-      petals.sort((a, b) => a.z - b.z)
+      // ordena por profundidade (as mais distantes primeiro) só quando alguma pétala renasceu
+      if (needSort) { petals.sort((a, b) => a.z - b.z); needSort = false }
 
       for (const p of petals) {
         // física: vento + balanço + arrasto
@@ -184,6 +191,7 @@ export function SakuraCanvas({
 
         if (p.x > W + 50 || p.y > H + 50 || p.x < -W * 0.5 || p.y < -H) {
           Object.assign(p, spawn(false))
+          needSort = true
           if (Math.random() < 0.5) {
             p.x = Math.random() * W
             p.y = -30
@@ -191,28 +199,30 @@ export function SakuraCanvas({
         }
 
         // projeção 3D simples: escala no eixo X/Y pela rotação -> efeito de virar
+        if (p.x < -30 || p.y < -30 || p.x > W + 30 || p.y > H + 30) continue
         const sx = Math.cos(p.ry)
         const sy = Math.cos(p.rx)
         const flip = sx * sy
-        const [r, g, b] = PALETTE[p.hue]
         const light = 0.75 + 0.25 * Math.abs(flip) + (flip < 0 ? -0.12 : 0.05)
         const alpha = Math.min(1, 0.35 + p.z * 0.55) * opacity
 
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-        ctx.translate(p.x, p.y)
-        ctx.rotate(p.rz)
-        ctx.scale(p.size * (0.15 + 0.85 * Math.abs(sx)), p.size * (0.2 + 0.8 * Math.abs(sy)))
+        // uma matriz só (antes: setTransform + translate + rotate + scale para cada pétala)
+        const cs = Math.cos(p.rz), sn = Math.sin(p.rz)
+        const kx = p.size * (0.15 + 0.85 * Math.abs(sx)) * dpr, ky = p.size * (0.2 + 0.8 * Math.abs(sy)) * dpr
+        ctx.setTransform(cs * kx, sn * kx, -sn * ky, cs * ky, p.x * dpr, p.y * dpr)
         ctx.globalAlpha = alpha
-        ctx.fillStyle = `rgb(${Math.min(255, r * light)},${Math.min(255, g * light)},${Math.min(255, b * light)})`
+        ctx.fillStyle = SHADES[p.hue][Math.max(0, Math.min(7, Math.round(((light - 0.63) / 0.42) * 7)))]
         ctx.fill(path)
-        // nervura central / brilho
-        ctx.globalAlpha = alpha * 0.35
-        ctx.strokeStyle = flip > 0 ? "rgba(255,255,255,0.9)" : palette === "pink" ? "rgba(200,80,130,0.6)" : "rgba(63,145,238,0.55)"
-        ctx.lineWidth = 0.6
-        ctx.beginPath()
-        ctx.moveTo(0, 9)
-        ctx.lineTo(0, -5)
-        ctx.stroke()
+        // nervura central / brilho: só nas pétalas grandes (nas pequenas nem aparece)
+        if (p.size > 0.75) {
+          ctx.globalAlpha = alpha * 0.35
+          ctx.strokeStyle = flip > 0 ? "rgba(255,255,255,0.9)" : palette === "pink" ? "rgba(200,80,130,0.6)" : "rgba(63,145,238,0.55)"
+          ctx.lineWidth = 0.6
+          ctx.beginPath()
+          ctx.moveTo(0, 9)
+          ctx.lineTo(0, -5)
+          ctx.stroke()
+        }
       }
       ctx.globalAlpha = 1
       mouse.vx *= 0.85

@@ -2,7 +2,7 @@ const { test } = require("node:test")
 const assert = require("node:assert/strict")
 
 let modulePromise = import("../src/lib/perf-policy.ts")
-const budget = async (settings, game = false) => (await modulePromise).performanceBudget(settings, game)
+const budget = async (settings, game = false, weak = false) => (await modulePromise).performanceBudget(settings, game, weak)
 
 test("automatic: balanced when idle, throttles visuals while a game runs", async () => {
   assert.deepEqual(await budget({}), { fps: 30, embedHz: 12, monitorMs: 3000, preload: "essential" })
@@ -31,4 +31,17 @@ test("monitor refresh has a safe lower and upper bound", async () => {
   assert.equal((await budget({ perfPreset: "custom", perfMonitorMs: 0 })).monitorMs, 1500)
   assert.equal((await budget({ perfPreset: "custom", perfMonitorMs: 40000 })).monitorMs, 8000)
   assert.equal((await budget({ perfPreset: "custom", perfMonitorMs: 4000 })).monitorMs, 4000)
+})
+
+test("automatic on a weak PC uses a lighter budget; explicit presets are respected", async () => {
+  assert.deepEqual(await budget({}, false, true), { fps: 20, embedHz: 8, monitorMs: 5000, preload: "none" })
+  assert.deepEqual(await budget({ perfPreset: "quality" }, false, true), { fps: 60, embedHz: 30, monitorMs: 1500, preload: "all" })
+  assert.equal((await budget({}, true, true)).fps, 12)
+})
+test("weak device detection: 4 cores or 4 GB or less", async () => {
+  const { isWeakDevice } = await modulePromise
+  assert.equal(isWeakDevice({ hardwareConcurrency: 4, deviceMemory: 8 }), true)
+  assert.equal(isWeakDevice({ hardwareConcurrency: 8, deviceMemory: 4 }), true)
+  assert.equal(isWeakDevice({ hardwareConcurrency: 12, deviceMemory: 16 }), false)
+  assert.equal(isWeakDevice(undefined), false)
 })

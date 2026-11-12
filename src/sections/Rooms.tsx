@@ -14,6 +14,36 @@ function Video({ stream, muted, className }: { stream: MediaStream; muted?: bool
 }
 
 /* ---------------- fora de uma sala: salas salvas, criar e entrar ---------------- */
+/** Conexão avançada: servidor de retransmissão (TURN) para quando a rede bloqueia a conexão direta */
+function TurnSettings() {
+  const t = useStore((x) => x.settings.roomTurn)
+  const set = useStore((x) => x.setSettings)
+  const [open, setOpen] = useState(!!t?.urls)
+  const v = { urls: t?.urls ?? "", username: t?.username ?? "", credential: t?.credential ?? "" }
+  const patch = (p: Partial<typeof v>) => set({ roomTurn: { ...v, ...p } })
+  return (
+    <div className="rounded-xl border border-line p-3 text-sm">
+      <button type="button" className="flex w-full items-center justify-between font-medium" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        Conexão <span className="text-xs text-fg-muted">{v.urls ? "servidor de retransmissão configurado" : open ? "fechar" : "avançado"}</span>
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs leading-relaxed text-fg-muted">
+            A tela e a voz vão direto de um PC para o outro. Algumas redes (internet com IP compartilhado da operadora, redes de empresa)
+            bloqueiam isso e a tela fica preta. Um servidor de retransmissão (TURN) resolve: o Widgy só usa ele quando a conexão direta falha.
+            Serviços como Metered, Twilio ou Cloudflare oferecem um; cole aqui os dados que eles dão. Vale para a próxima vez que você entrar numa sala.
+          </p>
+          <input className="field w-full" placeholder="turn:servidor.com:3478 (pode ser mais de um, separados por vírgula)" value={v.urls} onChange={(e) => patch({ urls: e.target.value })} />
+          <div className="flex gap-2">
+            <input className="field min-w-0 flex-1" placeholder="Usuário" value={v.username} onChange={(e) => patch({ username: e.target.value })} autoComplete="off" />
+            <input className="field min-w-0 flex-1" placeholder="Senha" type="password" value={v.credential} onChange={(e) => patch({ credential: e.target.value })} autoComplete="off" />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Lobby() {
   const s = useStore((x) => x.settings)
   const set = useStore((x) => x.setSettings)
@@ -62,6 +92,7 @@ function Lobby() {
 
       {st.status === "connecting" && <div className="text-sm text-fg-muted">Conectando…</div>}
       {st.status === "error" && <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm">{st.error}</div>}
+      <TurnSettings />
 
       <div>
         <div className="mb-2 text-sm font-semibold">Suas salas</div>
@@ -152,6 +183,8 @@ function InRoom() {
     <div className="flex h-full min-h-0">
       {/* membros */}
       <aside className="flex w-52 shrink-0 flex-col border-r border-line p-3">
+        {st.reconnecting && <div className="mb-2 rounded-lg bg-amber-500/15 px-2 py-1.5 text-[11px] leading-snug text-amber-200">Reconectando ao servidor da sala… quem já está aqui continua vendo e ouvindo.</div>}
+        {st.netHint && <div className="mb-2 rounded-lg bg-red-500/15 px-2 py-1.5 text-[11px] leading-snug">{st.netHint}</div>}
         <div className="truncate font-display text-lg font-semibold" title={name}>{name}</div>
         <button className="mb-3 flex items-center gap-1.5 font-num text-xs tracking-widest text-fg-muted hover:text-fg" title="Copiar o código" onClick={() => { navigator.clipboard.writeText(st.code); toast("Código copiado") }}>
           {st.code} <Copy size={11} />

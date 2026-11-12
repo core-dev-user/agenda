@@ -5,6 +5,7 @@ import { create } from "zustand"
 import type { DataConnection, MediaConnection, Peer as PeerT } from "peerjs"
 import { bridge } from "./bridge"
 import { toast } from "./toast"
+import { useStore } from "./store"
 
 export interface Member { id: string; name: string; sharing: boolean; mic: boolean }
 export interface ChatMsg { id: string; from: string; name: string; text: string; at: number }
@@ -30,6 +31,10 @@ interface RoomState {
   mic: boolean
   chat: ChatMsg[]
   shareInfo: string
+  /** perdeu o servidor de encontro e está tentando voltar (a sala continua) */
+  reconnecting?: boolean
+  /** a rede bloqueou a conexão direta com alguém (sugere configurar um servidor de retransmissão) */
+  netHint?: string
 }
 
 export const useRoom = create<RoomState>(() => ({
@@ -37,7 +42,17 @@ export const useRoom = create<RoomState>(() => ({
 }))
 
 const PREFIX = "agenda-sala-"
-const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }, { urls: "stun:global.stun.twilio.com:3478" }] }
+const STUN = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }, { urls: "stun:global.stun.twilio.com:3478" }]
+/** servidor de retransmissão (TURN) opcional, para redes que bloqueiam conexão direta (ex.: CGNAT de operadora) */
+export interface TurnConfig { urls: string; username?: string; credential?: string }
+const turnConfig = (): TurnConfig | null => {
+  const t = useStore.getState().settings.roomTurn
+  return t && t.urls?.trim() ? t : null
+}
+const iceConfig = (): RTCConfiguration => {
+  const turn = turnConfig()
+  return { iceServers: turn ? [...STUN, { urls: turn.urls.trim().split(/[\s,]+/).filter(Boolean), username: turn.username || undefined, credential: turn.credential || undefined }] : STUN }
+}
 const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 export const newCode = () => Array.from({ length: 6 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join("")
 export const cleanCode = (c: string) => c.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12)
@@ -116,15 +131,91 @@ function pushChat(msg: ChatMsg) {
 }
 
 /* ---------------- tela e voz (direto entre os PCs) ---------------- */
+/** chamadas fechadas de propósito (saiu da sala, parou de transmitir): não tentar de novo */
+const closing = new WeakSet<MediaConnection>()
+const retries = new Map<string, number>()
+const retryTimers = new Map<string, ReturnType<typeof setTimeout>>()
+let failedLinks = 0
+
+/**
+ * Vigia a conexão de uma chamada: "failed" = caiu de vez; "disconnected" por mais de 5 s também conta.
+ * Chama `onFail` uma vez. Antes, uma tela que caía ficava preta até alguém entrar ou sair da sala.
+ */
+export function watchCall(call: MediaConnection, onOk: () => void, onFail: () => void) {
+  let done = false, timer: ReturnType<typeof setTimeout> | undefined
+  const attach = (tries = 0) => {
+    const pc = call.peerConnection
+    if (!pc) { if (tries < 20) setTimeout(() => attach(tries + 1), 150); return }
+    const check = () => {
+      if (done) return
+      const st: string = pc.connectionState || pc.iceConnectionState
+      if (st === "connected" || pc.iceConnectionState === "completed") { clearTimeout(timer); onOk() }
+      else if (st === "failed") { done = true; clearTimeout(timer); onFail() }
+      else if (st === "disconnected") {
+        clearTimeout(timer)
+        timer = setTimeout(() => { if (!done && (pc.connectionState === "disconnected" || pc.iceConnectionState === "disconnected")) { done = true; onFail() } }, 5000)
+      }
+    }
+    pc.addEventListener("connectionstatechange", check)
+    pc.addEventListener("iceconnectionstatechange", check)
+  }
+  attach()
+  return () => { done = true; clearTimeout(timer) }
+}
+
+function stillWanted(id: string, kind: "screen" | "voice") {
+  const s = useRoom.getState()
+  if (leaving || !peer || s.status !== "in" || !s.members.some((m) => m.id === id)) return null
+  return kind === "screen" ? s.myScreen : micStream
+}
+/** tenta de novo com espera crescente (1,5 s, 3 s, 6 s…), até 6 vezes */
+function retryCall(id: string, kind: "screen" | "voice") {
+  const key = `${kind}:${id}`
+  const n = (retries.get(key) ?? 0) + 1
+  if (n > 6 || retryTimers.has(key)) return
+  retries.set(key, n)
+  retryTimers.set(key, setTimeout(() => {
+    retryTimers.delete(key)
+    const stream = stillWanted(id, kind)
+    if (stream && !outCalls.has(key)) callPeer(id, kind, stream)
+  }, Math.min(30000, 1500 * 2 ** (n - 1))))
+}
+function noteFailure() {
+  failedLinks++
+  if (failedLinks >= 2 && !turnConfig() && !useRoom.getState().netHint) {
+    const hint = "A rede de alguém está bloqueando a conexão direta (comum em internet com IP compartilhado). Configure um servidor de retransmissão em Salas › Conexão."
+    set({ netHint: hint })
+    toast("Conexão direta bloqueada pela rede — veja Salas › Conexão")
+  }
+}
+
 function callPeer(id: string, kind: "screen" | "voice", stream: MediaStream) {
   const key = `${kind}:${id}`
   if (outCalls.has(key) || !peer) return
   const call = peer.call(id, stream, { metadata: { kind } })
   if (!call) return
   outCalls.set(key, call)
-  call.on("close", () => outCalls.delete(key))
-  call.on("error", () => outCalls.delete(key))
+  const lost = () => {
+    stopWatch()
+    if (outCalls.get(key) === call) outCalls.delete(key)
+    if (!closing.has(call)) retryCall(id, kind)
+  }
+  const stopWatch = watchCall(call, () => { retries.delete(key) }, () => {
+    noteFailure()
+    closing.add(call)
+    try { call.close() } catch { /* já fechada */ }
+    if (outCalls.get(key) === call) outCalls.delete(key)
+    retryCall(id, kind)
+  })
+  call.on("close", lost)
+  call.on("error", lost)
   if (kind === "screen") tuneSender(call)
+}
+/** fecha uma chamada sem tentar de novo */
+function closeCall(c: MediaConnection | undefined) {
+  if (!c) return
+  closing.add(c)
+  try { c.close() } catch { /* já fechada */ }
 }
 /** mais qualidade para a tela: taxa de bits maior e prioridade para nitidez ou movimento */
 function tuneSender(call: MediaConnection) {
@@ -173,9 +264,13 @@ function onCall(call: MediaConnection) {
   }
   call.on("close", end)
   call.on("error", end)
+  watchCall(call, () => {}, () => { try { call.close() } catch { /* já fechada */ } })
 }
 function dropPeer(id: string) {
-  for (const k of [`screen:${id}`, `voice:${id}`]) { outCalls.get(k)?.close(); outCalls.delete(k) }
+  for (const k of [`screen:${id}`, `voice:${id}`]) {
+    closeCall(outCalls.get(k)); outCalls.delete(k); retries.delete(k)
+    const t = retryTimers.get(k); if (t) { clearTimeout(t); retryTimers.delete(k) }
+  }
   for (const c of [...inCalls]) if (c.peer === id) c.close()
   const el = voiceEls.get(id); if (el) { el.pause(); el.srcObject = null; voiceEls.delete(id) }
   const sc = { ...useRoom.getState().screens }
@@ -186,11 +281,38 @@ function dropPeer(id: string) {
 async function makePeer(id?: string): Promise<PeerT> {
   const { Peer } = await import("peerjs")
   return new Promise((res, rej) => {
-    const p = id ? new Peer(id, { config: ICE, debug: 0 }) : new Peer({ config: ICE, debug: 0 })
+    const p = id ? new Peer(id, { config: iceConfig(), debug: 0 }) : new Peer({ config: iceConfig(), debug: 0 })
     const fail = (e: any) => { p.off("open", ok); rej(e) }
     const ok = () => { p.off("error", fail); res(p) }
     p.once("open", ok)
     p.once("error", fail)
+  })
+}
+
+/**
+ * Servidor de encontro (PeerJS) caiu: as telas e vozes já ligadas continuam (vão direto entre os PCs),
+ * mas é por ele que chegam novos membros. Reconecta com espera crescente e mostra "reconectando".
+ */
+function watchSignaling(p: PeerT) {
+  let tries = 0
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const again = () => {
+    clearTimeout(timer)
+    if (leaving || peer !== p || p.destroyed || !p.disconnected) return
+    set({ reconnecting: true })
+    timer = setTimeout(() => {
+      if (leaving || peer !== p || p.destroyed || !p.disconnected) return
+      tries++
+      try { p.reconnect() } catch { /* tenta de novo abaixo */ }
+      again()
+    }, Math.min(30000, 1000 * 2 ** Math.min(tries, 5)))
+  }
+  p.on("disconnected", again)
+  p.on("open", () => { tries = 0; clearTimeout(timer); set({ reconnecting: false }) })
+  p.on("error", (e: any) => {
+    // membro que saiu sem avisar: não é erro da sala
+    if (e?.type === "peer-unavailable") return
+    if (["network", "server-error", "socket-error", "socket-closed", "disconnected"].includes(e?.type)) again()
   })
 }
 
@@ -214,7 +336,7 @@ export async function joinRoom(code: string, name: string) {
       await connectHost(code)
     }
     peer.on("call", onCall)
-    peer.on("disconnected", () => { if (!leaving && peer && !peer.destroyed) peer.reconnect() })
+    watchSignaling(peer)
     set({ status: "in", members: [me()] })
     if (useRoom.getState().host) hostUpdate()
   } catch (e: any) {
@@ -257,7 +379,7 @@ async function takeOver(code: string) {
     set({ host: true, myId: hostPeer.id })
     hostPeer.on("connection", onHostConn)
     hostPeer.on("call", onCall)
-    for (const c of outCalls.values()) c.close()
+    for (const c of outCalls.values()) closeCall(c)
     outCalls.clear()
     old.destroy()
     hostUpdate()
@@ -271,8 +393,10 @@ export async function leaveRoom(silent = false) {
   leaving = true
   await stopShare()
   setMic(false)
-  for (const c of outCalls.values()) c.close()
+  for (const c of outCalls.values()) closeCall(c)
   outCalls.clear()
+  for (const t of retryTimers.values()) clearTimeout(t)
+  retryTimers.clear(); retries.clear(); failedLinks = 0
   for (const c of inCalls) c.close()
   inCalls.clear()
   for (const el of voiceEls.values()) { el.pause(); el.srcObject = null }
@@ -281,6 +405,7 @@ export async function leaveRoom(silent = false) {
   toHost = null
   peer?.destroy()
   peer = null
+  set({ reconnecting: false, netHint: "" })
   if (!silent) set({ status: "idle", code: "", members: [], screens: {}, chat: [], host: false, error: "" })
 }
 
@@ -301,7 +426,7 @@ export async function setMic(on: boolean) {
     } catch { toast("Não deu para usar o microfone"); return }
   }
   if (!on && micStream) {
-    for (const [k, c] of outCalls) if (k.startsWith("voice:")) { c.close(); outCalls.delete(k) }
+    for (const [k, c] of outCalls) if (k.startsWith("voice:")) { closeCall(c); outCalls.delete(k) }
     micStream.getTracks().forEach((t) => t.stop())
     micStream = null
   }
@@ -394,7 +519,7 @@ export async function startShare(o: ShareOpts) {
 
 export async function stopShare(quiet = false) {
   const s = useRoom.getState().myScreen
-  for (const [k, c] of outCalls) if (k.startsWith("screen:")) { c.close(); outCalls.delete(k) }
+  for (const [k, c] of outCalls) if (k.startsWith("screen:")) { closeCall(c); outCalls.delete(k) }
   if (s) s.getTracks().forEach((t) => t.stop())
   audioOff?.(); audioOff = null
   bridge.share.audioStop()
