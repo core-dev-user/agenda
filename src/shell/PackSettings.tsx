@@ -4,6 +4,7 @@ import { Card, Segmented, Switch } from "@/components/ui/controls"
 import { useEffect, useState, type ReactNode } from "react"
 import { bridge, type BarConfig } from "@/lib/bridge"
 import { cn } from "@/lib/utils"
+import { SettingsSection } from "@/components/ui/SettingsSection"
 import { ACCENTS, SURFACES, applyCarbono, removePack, setShellPrefs, shellPrefs, type CarbonoAccent } from "./pack"
 
 /** Miniatura desenhada do Carbono: moldura, barra fina, painel de cima e busca de baixo. */
@@ -39,13 +40,7 @@ function CarbonoPreview({ accent, bg, rail }: { accent: string; bg: string; rail
 }
 
 function Section({ title, desc, children }: { title: string; desc?: string; children: ReactNode }) {
-  return (
-    <Card>
-      <div className="font-display mb-1 text-lg font-semibold">{title}</div>
-      {desc && <div className="mb-3 text-sm text-fg-muted">{desc}</div>}
-      {children}
-    </Card>
-  )
+  return <SettingsSection title={title} desc={desc}>{children}</SettingsSection>
 }
 
 /** tecla Windows sozinha: Iniciar do Windows ou a busca do Carbono (precisa da barra do Widgy no lugar da do Windows) */

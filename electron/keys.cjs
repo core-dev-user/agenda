@@ -103,16 +103,31 @@ public static class AgKeys {
     if (th != null) return;
     th = new Thread(() => {
       tid = GetCurrentThreadId();
-      hook = SetWindowsHookEx(13, proc, GetModuleHandle(Process.GetCurrentProcess().MainModule.ModuleName), 0);
+      IntPtr mod = GetModuleHandle(Process.GetCurrentProcess().MainModule.ModuleName);
+      hook = SetWindowsHookEx(13, proc, mod, 0);
       Events.Add(hook == IntPtr.Zero ? "error" : "on");
       MSG m;
-      while (GetMessage(out m, IntPtr.Zero, 0, 0) > 0) { }
+      while (GetMessage(out m, IntPtr.Zero, 0, 0) > 0) {
+        // 0x8001 = reinstalar. O Windows remove um gancho de teclado em silencio se ele demorar a responder
+        // uma vez (PC ocupado, volta da suspensao): o processo continua vivo, mas a tecla Windows volta a
+        // abrir o Iniciar original. Instala o novo ANTES de tirar o antigo (sem intervalo sem gancho) e
+        // nunca com a tecla Windows apertada.
+        if (m.msg == 0x8001 && !winHeld) {
+          IntPtr old = hook;
+          IntPtr fresh = SetWindowsHookEx(13, proc, mod, 0);
+          if (fresh != IntPtr.Zero) { hook = fresh; if (old != IntPtr.Zero) UnhookWindowsHookEx(old); }
+        }
+      }
       if (hook != IntPtr.Zero) UnhookWindowsHookEx(hook);
       hook = IntPtr.Zero;
       winHeld = false; eaten = 0; shift = false; ctrl = false; alt = false;
     });
     th.IsBackground = true;
     th.Start();
+  }
+  public static void Rehook() {
+    if (th == null) return;
+    PostThreadMessage(tid, 0x8001, IntPtr.Zero, IntPtr.Zero);
   }
   public static void Off() {
     if (th == null) return;
@@ -142,6 +157,7 @@ while ($true) {
   if ($l -eq $null) { break }
   if ($l -eq 'on') { [AgKeys]::On() }
   elseif ($l -eq 'off') { [AgKeys]::Off() }
+  elseif ($l -eq 'rehook') { [AgKeys]::Rehook() }
   elseif ($l -eq 'win:agenda') { [AgKeys]::WinAlone = $true }
   elseif ($l -eq 'win:windows') { [AgKeys]::WinAlone = $false }
 }
@@ -204,7 +220,21 @@ function enable(on) {
   else { cancelRestart(); send("off") }
 }
 
+/**
+ * Reinstala o gancho (sem intervalo sem gancho). O Windows remove ganchos de teclado em silêncio quando
+ * eles demoram a responder; sem isto, a tecla Windows voltava a abrir o Iniciar original até reiniciar o Widgy.
+ */
+function refresh() { if (want && proc) send("rehook") }
+const refreshTimer = setInterval(refresh, 30000)
+refreshTimer.unref?.()
+if (typeof app.whenReady === "function") app.whenReady().then(() => {
+  const { powerMonitor } = require("electron")
+  if (!powerMonitor) return
+  // voltar da suspensão ou do bloqueio é quando o gancho mais se perde
+  for (const ev of ["resume", "unlock-screen"]) powerMonitor.on(ev, () => setTimeout(refresh, 1500))
+})
+
 /** tecla Windows sozinha: true = Iniciar do Agenda; false = Iniciar do Windows (o padrão) */
 function winKey(agenda) { winAgenda = !!agenda; send(winAgenda ? "win:agenda" : "win:windows") }
 
-module.exports = { enable, winKey, onKey: (cb) => { onEvent = cb } }
+module.exports = { enable, winKey, refresh, onKey: (cb) => { onEvent = cb } }

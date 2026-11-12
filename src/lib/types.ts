@@ -110,6 +110,10 @@ export interface Settings {
   pcPins?: { path: string; name: string }[]
   /** nome mostrado nas salas */
   nick?: string
+  /** Salas: assistir com o menor atraso possível (padrão: sim) */
+  roomLowLatency?: boolean
+  /** Salas: últimas escolhas ao compartilhar (qualidade, som, codificador) */
+  roomShare?: { quality?: string; audio?: string; motion?: boolean; codec?: string }
   /** Salas: servidor de retransmissão (TURN) para redes que bloqueiam conexão direta; nunca vai para templates */
   roomTurn?: { urls: string; username?: string; credential?: string }
   /** salas salvas ("servidores" com os amigos) */

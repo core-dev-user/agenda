@@ -11,15 +11,10 @@ import { cn, uid } from "@/lib/utils"
 import type { NotifySource, SportKind } from "@/lib/types"
 import { SPORTS } from "@/lib/favs"
 import { isWeakDevice, performanceBudget, type PerfPreset, type PreloadMode } from "@/lib/perf-policy"
+import { SettingsSection } from "@/components/ui/SettingsSection"
 
 function Section({ title, children, desc }: { title: string; desc?: ReactNode; children: ReactNode }) {
-  return (
-    <Card>
-      <div className="font-display mb-1 text-lg font-semibold">{title}</div>
-      {desc && <div className="mb-3 text-sm text-fg-muted">{desc}</div>}
-      <div className="space-y-1">{children}</div>
-    </Card>
-  )
+  return <SettingsSection title={title} desc={desc}>{children}</SettingsSection>
 }
 
 /* ============================================================ Rotina e avisos ============================================================ */

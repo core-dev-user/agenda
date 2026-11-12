@@ -20,7 +20,8 @@
     "test:wallpaper": "node --test tests/wallpaper-engine.test.cjs",
     "test:taskbar": "node --test tests/taskbar*.test.cjs",
     "test:taskbar:windows": "electron tests/taskbar-preview-smoke.cjs",
-    "test:templates": "node --experimental-strip-types --test tests/template-share.test.mjs"
+    "test:rooms": "node --experimental-strip-types --test tests/rtc-tuning.test.mjs tests/share-picker.test.cjs",
+    "test:templates": "node --experimental-strip-types --test tests/template-share.test.mjs tests/settings-index.test.mjs"
   },
   "build": {
     "appId": "com.agenda.desktop",

@@ -1,0 +1,52 @@
+<!doctype html><html><body><canvas id="c" width="1920" height="1080"></canvas><script type="module">
+import { preferVideoCodec, summarize, withStartBitrate } from "../src/lib/rtcTuning.ts"
+const q = new URLSearchParams(location.search)
+const codec = q.get("codec") || "", lowLatency = q.get("ll") === "1", secs = Number(q.get("s") || 8)
+window.__caps = RTCRtpSender.getCapabilities("video").codecs.map((c) => c.mimeType.replace("video/", "")).filter((v, i, a) => a.indexOf(v) === i)
+// "tela": texto, janelas e um trecho em movimento (como um vídeo ou jogo numa parte da tela)
+const cv = document.getElementById("c"), x = cv.getContext("2d")
+let f = 0
+const draw = () => { f++
+  x.fillStyle = "#1b2430"; x.fillRect(0, 0, 1920, 1080)
+  x.fillStyle = "#e8eef5"; x.font = "22px monospace"
+  for (let i = 0; i < 30; i++) x.fillText("linha de codigo " + i + "  const valor = calcular(" + ((f + i) % 97) + ")", 40, 60 + i * 32)
+  for (let i = 0; i < 40; i++) { x.fillStyle = `hsl(${(i * 37 + f * 3) % 360} 70% 55%)`; x.fillRect(1000 + ((i * 53 + f * 7) % 800), 100 + ((i * 91 + f * 5) % 800), 90, 60) }
+  x.fillStyle = "#fff"; x.fillRect((f * 12) % 1920, 1040, 60, 30)
+  requestAnimationFrame(draw) }
+draw()
+const stream = cv.captureStream(60)
+const track = stream.getVideoTracks()[0]; track.contentHint = "motion"
+const a = new RTCPeerConnection(), b = new RTCPeerConnection()
+a.onicecandidate = (e) => e.candidate && b.addIceCandidate(e.candidate)
+b.onicecandidate = (e) => e.candidate && a.addIceCandidate(e.candidate)
+const sender = a.addTrack(track, stream)
+let recv = null
+b.ontrack = (e) => { recv = e.receiver; if (lowLatency) { try { recv.jitterBufferTarget = 0 } catch {} try { recv.playoutDelayHint = 0 } catch {} }
+  const v = document.createElement("video"); v.muted = true; v.autoplay = true; v.srcObject = e.streams[0]; v.style.width = "320px"; document.body.appendChild(v) }
+const offer = await a.createOffer()
+const sdp = codec ? preferVideoCodec(offer.sdp, codec) : offer.sdp
+await a.setLocalDescription({ type: "offer", sdp }); await b.setRemoteDescription({ type: "offer", sdp })
+const ans = await b.createAnswer()
+const start = Number(q.get("start") || 0)
+// mesmo caminho do PeerJS: a resposta transformada vira a descrição local de quem assiste E vai para quem transmite
+const ans2 = start ? { type: "answer", sdp: withStartBitrate(ans.sdp, start, Number(q.get("min") || 0)) } : ans
+await b.setLocalDescription(ans2); await a.setRemoteDescription(ans2)
+const p = sender.getParameters(); if (!p.encodings.length) p.encodings = [{}]
+p.encodings[0].maxBitrate = 8_000_000; p.encodings[0].maxFramerate = 60; p.degradationPreference = "maintain-framerate"
+await sender.setParameters(p)
+const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+await wait(3000) // aquece
+const snap = async (pc) => [...(await pc.getStats()).values()]
+const s0 = await snap(a), r0 = await snap(b), t0 = performance.now()
+const o0 = s0.find((r) => r.type === "outbound-rtp" && r.kind === "video")
+let m1 = summarize(s0, null, t0).mark, m2 = summarize(r0, null, t0).mark
+await wait(secs * 1000)
+const s1 = await snap(a), r1 = await snap(b), t1 = performance.now()
+const o1 = s1.find((r) => r.type === "outbound-rtp" && r.kind === "video")
+const send = summarize(s1, m1, t1).stats, rx = summarize(r1, m2, t1).stats
+const frames = o1.framesEncoded - o0.framesEncoded
+window.__result = { codec: send.codec, encoder: send.impl, fpsEnviado: +(frames / ((t1 - t0) / 1000)).toFixed(1), res: send.width + "x" + send.height, kbps: send.kbps,
+  msPorQuadro: +(((o1.totalEncodeTime - o0.totalEncodeTime) / Math.max(1, frames)) * 1000).toFixed(2), limite: send.limit,
+  fpsRecebido: rx.fps, bufferMs: rx.bufferMs, descartados: rx.dropped, congelamentos: rx.freezes, decoder: rx.impl }
+document.title = "DONE"
+</script></body></html>

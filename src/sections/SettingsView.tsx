@@ -1,9 +1,10 @@
 import { useScreenList } from "@/lib/screens"
 import { useUiMode } from "@/lib/uimode"
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { SettingsSection } from "@/components/ui/SettingsSection"
+import { SETTINGS_GROUPS, SETTINGS_TABS, searchSettings, type SettingsTabId } from "./settingsIndex"
 import { motion } from "framer-motion"
-import { Download, Upload, RotateCcw, Ban, Bell, Boxes, Circle, CircleDashed, CircleDot, Crosshair, Droplets, Flame, Flashlight, Flower2, Gem, Grid3x3, HardDrive, Heart, Image, LayoutGrid, LayoutTemplate, Leaf, MonitorSmartphone, MousePointer, MousePointer2, Navigation, Orbit, Palette, PanelBottom, PartyPopper, PawPrint, Plug, Rainbow, Scissors, Snowflake, Sparkles, Spline, Star, Type, Wand2, WandSparkles, Waves, type LucideIcon } from "lucide-react"
-import { GlyphTile } from "@/components/Glyph"
+import { Download, Upload, RotateCcw, Ban, Bell, Boxes, Circle, CircleDashed, CircleDot, Crosshair, Droplets, Flame, Flashlight, Flower2, Gem, Grid3x3, HardDrive, Heart, Image, LayoutGrid, LayoutTemplate, Leaf, MonitorSmartphone, MousePointer, MousePointer2, Navigation, Orbit, Palette, PanelBottom, PartyPopper, PawPrint, Plug, Rainbow, Scissors, Snowflake, Sparkles, Spline, Star, Type, Wand2, WandSparkles, Waves, type LucideIcon, Search } from "lucide-react"
 import { useStore, THEME_PRESETS } from "@/lib/store"
 import { bridge, isDesktop, mediaUrl } from "@/lib/bridge"
 import { FONTS } from "@/lib/fonts"
@@ -52,26 +53,115 @@ const THEMES: { id: ThemeId; label: string; desc: string }[] = [
   { id: "minimal", label: "Minimal", desc: "Limpo e discreto" },
 ]
 
+const TAB_ICON = Object.fromEntries(TABS.map((t) => [t.id, t.e])) as Record<SettingsTabId, LucideIcon>
+
+/**
+ * Navegação das Configurações: categorias agrupadas, ícones de linha (a cor fica só no item ativo)
+ * e busca por aba, seção ou palavra-chave. Setas sobem/descem; Ctrl+F foca a busca; Enter abre o resultado.
+ */
+function SettingsNav({ tab, onPick }: { tab: SettingsTabId; onPick: (id: SettingsTabId, section?: string) => void }) {
+  const [q, setQ] = useState("")
+  const [sel, setSel] = useState(0)
+  const hits = useMemo(() => searchSettings(q), [q])
+  const input = useRef<HTMLInputElement>(null)
+  const list = useRef<HTMLElement>(null)
+  useEffect(() => { setSel(0) }, [q])
+  const open = (i: number) => { const h = hits[i]; if (!h) return; onPick(h.tab, h.section); setQ("") }
+  const searchKey = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setSel((v) => Math.min(hits.length - 1, v + 1)) }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setSel((v) => Math.max(0, v - 1)) }
+    else if (e.key === "Enter") { e.preventDefault(); open(sel) }
+    else if (e.key === "Escape" && q) { e.preventDefault(); e.stopPropagation(); setQ("") }
+  }
+  // setas na lista: anda entre as categorias
+  const navKey = (e: React.KeyboardEvent) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return
+    const i = SETTINGS_TABS.findIndex((t) => t.id === tab)
+    const next = SETTINGS_TABS[Math.max(0, Math.min(SETTINGS_TABS.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))]
+    if (!next || next.id === tab) return
+    e.preventDefault()
+    onPick(next.id)
+    requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(`[data-tab="${next.id}"]`)?.focus())
+  }
+  return (
+    <aside className="flex w-56 shrink-0 flex-col border-r border-line" data-settings>
+      <div className="p-3 pb-1.5">
+        <label className="flex items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 text-[13px] transition-colors focus-within:border-[var(--accent)]">
+          <Search size={14} className="shrink-0 text-fg-muted" />
+          <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={searchKey} placeholder="Buscar ajuste" aria-label="Buscar nas configurações"
+            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-fg-muted" spellCheck={false} />
+          {!q && <kbd className="shrink-0 rounded border border-line px-1 text-[10px] text-fg-muted">Ctrl F</kbd>}
+        </label>
+      </div>
+      <nav ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" aria-label="Categorias das configurações" onKeyDown={navKey}>
+        {q ? (
+          hits.length ? hits.map((h, i) => (
+            <button key={h.tab + (h.section ?? "")} type="button" onMouseEnter={() => setSel(i)} onClick={() => open(i)}
+              className={cn("block w-full rounded-lg px-2.5 py-1.5 text-left", i === sel && "bg-[color-mix(in_srgb,var(--fg)_9%,transparent)]")}>
+              <span className="block truncate text-[13px]">{h.section ?? h.tabLabel}</span>
+              {h.section && <span className="block truncate text-[11px] text-fg-muted">{h.tabLabel}</span>}
+            </button>
+          )) : <div className="px-2.5 py-4 text-[12.5px] text-fg-muted">Nenhum ajuste com esse nome.</div>
+        ) : SETTINGS_GROUPS.map((g) => (
+          <div key={g.label}>
+            <div className="px-2.5 pb-1 pt-3 text-[10.5px] font-semibold uppercase tracking-[.08em] text-fg-muted/75">{g.label}</div>
+            {g.tabs.map((t) => {
+              const Icon = TAB_ICON[t.id]
+              const on = tab === t.id
+              return (
+                <button key={t.id} type="button" data-tab={t.id} aria-current={on ? "page" : undefined} onClick={() => onPick(t.id)}
+                  className={cn("relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-left text-[13px] transition-colors", on ? "text-fg" : "text-fg-muted hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)] hover:text-fg")}>
+                  {on && <motion.span layoutId="settab" className="absolute inset-0 rounded-lg bg-[color-mix(in_srgb,var(--fg)_9%,transparent)]" transition={{ type: "spring", stiffness: 520, damping: 40 }} />}
+                  {on && <motion.span layoutId="settab-bar" className="absolute bottom-[7px] left-0 top-[7px] w-[3px] rounded-full bg-[var(--accent)]" transition={{ type: "spring", stiffness: 520, damping: 40 }} />}
+                  <Icon size={15} strokeWidth={1.75} className="relative shrink-0" />
+                  <span className="relative truncate">{t.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </nav>
+    </aside>
+  )
+}
+
 export default function SettingsView() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>(() => peekShareLink() ? "templates" : "look")
+  const [tab, setTab] = useState<SettingsTabId>(() => peekShareLink() ? "templates" : "look")
   useEffect(() => {
     const selectTemplates = () => setTab("templates")
     window.addEventListener("widgy:template-link", selectTemplates)
     return () => window.removeEventListener("widgy:template-link", selectTemplates)
   }, [])
+  const scroller = useRef<HTMLDivElement>(null)
+  const pick = (id: SettingsTabId, section?: string) => {
+    setTab(id)
+    // depois de a aba desenhar: rola até a seção encontrada na busca e a destaca por um instante
+    setTimeout(() => {
+      const box = scroller.current
+      if (!box) return
+      if (!section) { box.scrollTo({ top: 0 }); return }
+      const el = [...box.querySelectorAll<HTMLElement>("[data-section]")].find((x) => x.dataset.section === section)
+      if (!el) return
+      el.scrollIntoView({ block: "start", behavior: "smooth" })
+      el.classList.add("settings-found")
+      setTimeout(() => el.classList.remove("settings-found"), 1600)
+    }, 60)
+  }
+  // Ctrl+F dentro das Configurações foca a busca
+  const findKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "f") return
+    const box = e.currentTarget.querySelector<HTMLInputElement>('input[aria-label="Buscar nas configurações"]')
+    if (!box) return
+    e.preventDefault()
+    box.focus(); box.select()
+  }
   return (
-    <div className="flex h-full">
-      <aside className="w-52 shrink-0 space-y-0.5 border-r border-line p-3">
-        {TABS.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={cn("relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm", tab === t.id ? "text-fg" : "text-fg-muted hover:text-fg")}>
-            {tab === t.id && <motion.span layoutId="settab" className="absolute inset-0 rounded-xl bg-[color-mix(in_srgb,var(--fg)_12%,transparent)]" transition={{ type: "spring", stiffness: 400, damping: 34 }} />}
-            <GlyphTile icon={t.e} color={t.c} size={22} className="relative" />
-            <span className="relative">{t.label}</span>
-          </button>
-        ))}
-      </aside>
-      <div className="min-w-0 flex-1 overflow-auto p-6">
-        <motion.div key={tab} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="mx-auto max-w-3xl space-y-5">
+    <div className="flex h-full" onKeyDown={findKey}>
+      <SettingsNav tab={tab} onPick={pick} />
+      <div ref={scroller} className="min-w-0 flex-1 overflow-auto">
+        {/* coluna alinhada à esquerda, largura de leitura: sem conteúdo "flutuando" no meio da janela */}
+        <motion.div key={tab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.14, ease: "easeOut" }} className="max-w-[820px] space-y-8 px-8 py-6">
+          <h2 className="text-[19px] font-semibold tracking-[-.01em]">{SETTINGS_TABS.find((t) => t.id === tab)?.label}</h2>
           {tab === "mode" && <ModeTab />}
           {tab === "templates" && <TemplatesTab />}
           {tab === "packs" && <PacksTab />}
@@ -99,13 +189,7 @@ function useS() {
 }
 
 function Section({ title, children, desc }: { title: string; desc?: string; children: ReactNode }) {
-  return (
-    <Card>
-      <div className="font-display mb-1 text-lg font-semibold">{title}</div>
-      {desc && <div className="mb-3 text-sm text-fg-muted">{desc}</div>}
-      <div className="space-y-1">{children}</div>
-    </Card>
-  )
+  return <SettingsSection title={title} desc={desc}>{children}</SettingsSection>
 }
 
 /* ------------------------- Aparência ------------------------- */
@@ -827,7 +911,7 @@ function System() {
         <button className="btn" onClick={() => void bridge.app.diagnostics()}>
           <HardDrive size={14} /> Abrir relatório de diagnóstico
         </button>
-        <div className="mt-2 text-xs text-fg-muted">Arquivo local: %APPDATA%\\Agenda\\widgy-diagnostics.log. O histórico é limitado para não consumir espaço ou RAM.</div>
+        <div className="mt-2 text-xs text-fg-muted">Arquivo local: %APPDATA%\Agenda\widgy-diagnostics.log. O histórico é limitado para não consumir espaço ou RAM.</div>
       </Section>
       <Section title="Backup" desc="Exporta hábitos, estudos, serviços, listas, widgets e configurações (as imagens ficam na pasta do app).">
         <div className="flex gap-2">

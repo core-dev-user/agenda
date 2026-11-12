@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import { Cast, Copy, Crown, Expand, LogOut, MessageSquare, Mic, MicOff, MonitorUp, Plus, Send, Trash2, Users, X } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge, type ShareSource } from "@/lib/bridge"
-import { cleanCode, joinRoom, leaveRoom, newCode, sendChat, setMic, startShare, stopShare, useRoom, type ShareOpts } from "@/lib/rooms"
+import { cleanCode, joinRoom, leaveRoom, newCode, refreshLatency, sendChat, setMic, setShareQuality, startShare, stopShare, useRoom, type ShareOpts, type ShareState } from "@/lib/rooms"
+import { QUALITIES, type LinkStats, type ShareCodec, type ShareQuality } from "@/lib/rtcTuning"
 import { toast } from "@/lib/toast"
 import { createPortal } from "react-dom"
 import { useImmersive } from "@/lib/immersive"
@@ -147,9 +148,13 @@ function Lobby() {
 function SharePicker({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [srcs, setSrcs] = useState<ShareSource[] | null>(null)
   const [pick, setPick] = useState("")
-  const [quality, setQuality] = useState<ShareOpts["quality"]>("1080p30")
-  const [audio, setAudio] = useState<ShareOpts["audio"]>("discord")
-  const [motion, setMotion] = useState(true)
+  // as últimas escolhas ficam guardadas: da próxima vez é só escolher a tela e transmitir
+  const saved = useStore((x) => x.settings.roomShare)
+  const setSettings = useStore((x) => x.setSettings)
+  const [quality, setQuality] = useState<ShareQuality>(saved?.quality && saved.quality in QUALITIES ? (saved.quality as ShareQuality) : "1080p30")
+  const [audio, setAudio] = useState<ShareOpts["audio"]>(saved?.audio === "agenda" || saved?.audio === "none" ? saved.audio : "discord")
+  const [motion, setMotion] = useState(saved?.motion ?? true)
+  const [codec, setCodec] = useState<ShareCodec>(saved?.codec === "vp8" ? "vp8" : "auto")
   useEffect(() => {
     if (!open) return
     setSrcs(null)
@@ -163,7 +168,12 @@ function SharePicker({ open, onClose }: { open: boolean; onClose: () => void }) 
       <div className="mt-1 flex items-center gap-1.5 px-0.5 text-xs">{s.icon && <img src={s.icon} alt="" className="size-4" />}<span className="truncate">{s.name}</span></div>
     </button>
   )
-  const go = (id = pick) => { if (!id) return; startShare({ source: id, quality, audio, motion }); onClose() }
+  const go = (id = pick) => {
+    if (!id) return
+    setSettings({ roomShare: { quality, audio, motion, codec } })
+    startShare({ source: id, quality, audio, motion, codec })
+    onClose()
+  }
   return (
     <Modal open={open} onClose={onClose} title="Compartilhar tela" width={780}>
       <div className="max-h-[52vh] space-y-3 overflow-y-auto pr-1">
@@ -174,8 +184,14 @@ function SharePicker({ open, onClose }: { open: boolean; onClose: () => void }) 
       <div className="mt-4 space-y-3 border-t border-line pt-3">
         <div className="flex flex-wrap items-center gap-3">
           <span className="w-16 text-sm">Qualidade</span>
-          <Segmented value={quality} onChange={setQuality} options={[{ value: "720p30", label: "720p 30" }, { value: "1080p30", label: "1080p 30" }, { value: "1080p60", label: "1080p 60" }]} />
+          <Segmented value={quality} onChange={setQuality} options={(Object.keys(QUALITIES) as ShareQuality[]).map((k) => ({ value: k, label: QUALITIES[k].label.replace(" · ", " ").replace(" fps", "") }))} />
+          <span className="text-xs text-fg-muted">até {(QUALITIES[quality].bitrate / 1e6).toLocaleString("pt-BR")} Mb/s · dá para trocar com a transmissão no ar</span>
         </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="w-16 text-sm">Codificar</span>
+          <Segmented value={codec} onChange={setCodec} options={[{ value: "auto", label: "Automático (placa de vídeo)" }, { value: "vp8", label: "Compatível (VP8, só CPU)" }]} />
+        </div>
+        <div className="text-xs text-fg-muted">Automático usa H.264, que a placa de vídeo codifica quando tem suporte (pesa bem menos durante jogos). O número ao lado da sua tela mostra se está na placa de vídeo ou na CPU.</div>
         <div className="flex flex-wrap items-center gap-3">
           <span className="w-16 text-sm">Som</span>
           <Segmented value={audio} onChange={setAudio} options={[{ value: "discord", label: "PC sem o Discord" }, { value: "agenda", label: "PC sem o Widgy" }, { value: "none", label: "Sem som" }]} />
@@ -192,6 +208,37 @@ function SharePicker({ open, onClose }: { open: boolean; onClose: () => void }) 
 }
 
 /* ---------------- dentro da sala ---------------- */
+const STATE_TEXT: Record<ShareState, string> = { idle: "", preparing: "Preparando", connecting: "Conectando", live: "No ar", reconnecting: "Reconectando" }
+/** estado da sua transmissão e quantas pessoas estão recebendo de verdade */
+function ShareBadge({ state, viewers, others }: { state: ShareState; viewers: number; others: number }) {
+  if (state === "idle") return null
+  const color = state === "live" ? "bg-emerald-400" : state === "reconnecting" ? "bg-amber-400" : "bg-sky-400"
+  return (
+    <div className="flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-0.5 text-[11px] text-white" role="status">
+      <span className={cn("size-1.5 rounded-full", color, state !== "live" && "animate-pulse")} />
+      {STATE_TEXT[state]}
+      <span className="text-white/60">· {others <= 0 ? "ninguém na sala ainda" : `${viewers} de ${others} recebendo`}</span>
+    </div>
+  )
+}
+const LIMIT_TEXT: Record<string, string> = { cpu: "limitado pela CPU", bandwidth: "limitado pela internet" }
+/** números reais lidos do WebRTC a cada 2 s (não são estimativas da interface) */
+function StatLine({ s, mine }: { s?: LinkStats | null; mine: boolean }) {
+  if (!s || !s.height) return null
+  const parts = [`${s.height}p`, `${s.fps} fps`, s.kbps ? `${(s.kbps / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} Mb/s` : ""]
+  if (mine) {
+    if (s.rttMs != null) parts.push(`${s.rttMs} ms ida e volta`)
+    if (s.lossPct) parts.push(`${s.lossPct.toLocaleString("pt-BR")}% perdido`)
+    parts.push(s.hardware ? "placa de vídeo" : "CPU")
+    if (s.limit && LIMIT_TEXT[s.limit]) parts.push(LIMIT_TEXT[s.limit])
+  } else {
+    if (s.bufferMs != null) parts.push(`buffer ${s.bufferMs} ms`)
+    if (s.freezes) parts.push(`${s.freezes} congelamento${s.freezes > 1 ? "s" : ""}`)
+  }
+  const warn = mine ? !!(s.limit && LIMIT_TEXT[s.limit]) : !!s.freezes
+  return <div className={cn("rounded-full bg-black/60 px-2.5 py-0.5 text-[10px] tabular-nums", warn ? "text-amber-200" : "text-white/75")} title={s.codec ? `${s.codec}${s.impl ? " · " + s.impl : ""}` : undefined}>{parts.filter(Boolean).join(" · ")}</div>
+}
+
 /**
  * Transmissão em tela cheia, acima de tudo do Widgy (inclusive a barra lateral do Carbono), no monitor
  * onde você está. Esc ou o botão saem. Fora do modo Área de trabalho, a janela também vai para tela cheia.
@@ -244,6 +291,8 @@ function InRoom() {
   // tela cheia própria: funciona em qualquer modo do Widgy (no modo Área de trabalho a janela não pode
   // entrar em tela cheia do Windows) e fica acima da barra lateral do Carbono e da barra do Widgy
   const [big, setBig] = useState<string | null>(null)
+  const lowLatency = useStore((x) => x.settings.roomLowLatency) !== false
+  const setSettings = useStore((x) => x.setSettings)
 
   const bigItem = big ? stage.find((x) => x.id === big) : null
   useEffect(() => { if (big && !bigItem) setBig(null) }, [big, bigItem])
@@ -286,7 +335,11 @@ function InRoom() {
               {shown.map((x) => (
                 <div key={x.id} className="group relative min-h-0 overflow-hidden rounded-xl bg-black">
                   <Video stream={x.stream} muted={x.mine} className="size-full object-contain" />
-                  <div className="absolute top-2 left-2 rounded-full bg-black/60 px-2.5 py-0.5 text-xs text-white">{x.mine ? "Sua tela" : nameOf(x.id)}{x.mine && st.shareInfo ? ` · ${st.shareInfo}` : ""}</div>
+                  <div className="absolute top-2 left-2 flex max-w-[calc(100%-5rem)] flex-col items-start gap-1">
+                    <div className="rounded-full bg-black/60 px-2.5 py-0.5 text-xs text-white">{x.mine ? "Sua tela" : nameOf(x.id)}{x.mine && st.shareInfo ? ` · ${st.shareInfo}` : ""}</div>
+                    {x.mine && <ShareBadge state={st.shareState ?? "live"} viewers={st.viewers ?? 0} others={st.members.length - 1} />}
+                    <StatLine s={x.mine ? st.myStats : st.stats?.[x.id]} mine={x.mine} />
+                  </div>
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     {stage.length > 1 && <button className="btn btn-icon !bg-black/60 text-white" title={focus ? "Ver todas" : "Só esta"} onClick={() => setFocus(focus ? null : x.id)}><Users size={14} /></button>}
                     <button className="btn btn-icon !bg-black/60 text-white" title="Tela cheia" onClick={() => setBig(x.id)}><Expand size={14} /></button>
@@ -299,8 +352,22 @@ function InRoom() {
         <div className="flex shrink-0 items-center justify-center gap-2 border-t border-line p-3">
           <button className={cn("btn", st.mic && "!bg-emerald-500/25")} onClick={() => setMic(!st.mic)}>{st.mic ? <><Mic size={15} /> Microfone ligado</> : <><MicOff size={15} /> Microfone</>}</button>
           {st.myScreen
-            ? <button className="btn !bg-red-500/30" onClick={() => stopShare()}><X size={15} /> Parar transmissão</button>
-            : <button className="btn btn-primary" onClick={() => setPicker(true)}><MonitorUp size={15} /> Compartilhar tela</button>}
+            ? <>
+                <button className="btn !bg-red-500/30" onClick={() => stopShare()}><X size={15} /> Parar transmissão</button>
+                <select className="field !w-auto !py-1.5 text-xs" aria-label="Qualidade da transmissão" title="Trocar a qualidade sem parar a transmissão"
+                  value={(Object.keys(QUALITIES) as ShareQuality[]).find((k) => st.shareInfo.startsWith(QUALITIES[k].label)) ?? "1080p30"}
+                  onChange={(e) => { void setShareQuality(e.target.value as ShareQuality) }}>
+                  {(Object.keys(QUALITIES) as ShareQuality[]).map((k) => <option key={k} value={k}>{QUALITIES[k].label}</option>)}
+                </select>
+              </>
+            : <button className="btn btn-primary" disabled={st.shareState === "preparing"} onClick={() => setPicker(true)}><MonitorUp size={15} /> {st.shareState === "preparing" ? "Preparando…" : "Compartilhar tela"}</button>}
+          {Object.keys(st.screens).length > 0 && (
+            <button className={cn("btn btn-ghost text-xs", lowLatency && "bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]")} aria-pressed={lowLatency}
+              title="Assistir com o menor atraso possível. Desligue se a imagem engasgar numa internet instável."
+              onClick={() => { setSettings({ roomLowLatency: !lowLatency }); setTimeout(refreshLatency, 0) }}>
+              Baixa latência: {lowLatency ? "ligada" : "desligada"}
+            </button>
+          )}
           <button className={cn("btn btn-ghost", chatOpen && "bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]")} onClick={() => setChatOpen(!chatOpen)}><MessageSquare size={15} /></button>
           <button className="btn btn-ghost hover:!text-red-400" onClick={() => leaveRoom()}><LogOut size={15} /> Sair</button>
         </div>

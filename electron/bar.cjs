@@ -297,6 +297,7 @@ async function tickWindows() {
   const generation = winh.generation?.() ?? 0
   if (generation !== helperGeneration) {
     helperGeneration = generation
+    keys.refresh() // Explorer/ajudante reiniciou: garante o gancho de teclado também
     await winh.call("hidetb")
     for (const b of bars.values()) b.__appbar = ""
     layout()

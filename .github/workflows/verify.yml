@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run test:media
       - run: npm run test:templates
+      - run: npm run test:rooms
       - run: npm run test:taskbar
       - run: npm run test:wallpaper
       - run: npm run test:security

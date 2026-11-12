@@ -16,7 +16,7 @@ import type {
 } from "./types"
 
 /** Preferências que não são "visual" e por isso não entram nos templates. */
-const NOT_LOOK: (keyof Settings)[] = ["musicAutostart", "layoutRef", "weatherCity", "newsFeed", "notify", "calendars", "favTeams", "favBySport", "pet", "focus", "todayOnStart", "hibernateMin", "perfLite", "perfPauseInGame", "perfPreset", "perfFps", "perfEmbedHz", "perfMonitorMs", "perfPreload", "pcPins", "nick", "savedRooms", "roomTurn", "ai"]
+const NOT_LOOK: (keyof Settings)[] = ["musicAutostart", "layoutRef", "weatherCity", "newsFeed", "notify", "calendars", "favTeams", "favBySport", "pet", "focus", "todayOnStart", "hibernateMin", "perfLite", "perfPauseInGame", "perfPreset", "perfFps", "perfEmbedHz", "perfMonitorMs", "perfPreload", "pcPins", "nick", "savedRooms", "roomTurn", "roomLowLatency", "roomShare", "ai"]
 
 export const DEFAULT_NOTIFY: NotifyPrefs = {
   on: { tasks: true, whatsapp: true, ifood: true, sports: true, budgets: true, services: true, calendar: true, focus: true, system: true },

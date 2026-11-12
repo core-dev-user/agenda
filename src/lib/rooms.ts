@@ -6,11 +6,14 @@ import type { DataConnection, MediaConnection, Peer as PeerT } from "peerjs"
 import { bridge } from "./bridge"
 import { toast } from "./toast"
 import { useStore } from "./store"
+import { QUALITIES, preferVideoCodec, summarize, withStartBitrate, type LinkStats, type ShareCodec, type ShareQuality } from "./rtcTuning"
 
 export interface Member { id: string; name: string; sharing: boolean; mic: boolean }
 export interface ChatMsg { id: string; from: string; name: string; text: string; at: number }
 export type ShareAudio = "discord" | "agenda" | "none"
-export interface ShareOpts { source: string; quality: "720p30" | "1080p30" | "1080p60"; audio: ShareAudio; motion: boolean }
+export interface ShareOpts { source: string; quality: ShareQuality; audio: ShareAudio; motion: boolean; codec?: ShareCodec }
+/** estado da sua transmissão, para a interface mostrar o que está acontecendo */
+export type ShareState = "idle" | "preparing" | "connecting" | "live" | "reconnecting"
 
 type Msg =
   | { t: "hello"; name: string; sharing: boolean; mic: boolean }
@@ -31,6 +34,13 @@ interface RoomState {
   mic: boolean
   chat: ChatMsg[]
   shareInfo: string
+  /** sua transmissão: preparando a captura, conectando a quem assiste, no ar ou reconectando */
+  shareState?: ShareState
+  /** medições reais da sua transmissão (até o primeiro PC que está assistindo) e quantos estão recebendo */
+  myStats?: LinkStats | null
+  viewers?: number
+  /** medições reais de cada tela que você está assistindo (id do membro → números) */
+  stats?: Record<string, LinkStats>
   /** perdeu o servidor de encontro e está tentando voltar (a sala continua) */
   reconnecting?: boolean
   /** a rede bloqueou a conexão direta com alguém (sugere configurar um servidor de retransmissão) */
@@ -198,21 +208,32 @@ function noteFailure() {
 function callPeer(id: string, kind: "screen" | "voice", stream: MediaStream) {
   const key = `${kind}:${id}`
   if (outCalls.has(key) || !peer) return
-  const call = peer.call(id, stream, { metadata: { kind } })
+  const screen = kind === "screen"
+  const call = peer.call(id, stream, {
+    // quem recebe usa a taxa inicial para a tela já chegar nítida (sem os segundos de imagem borrada)
+    metadata: screen ? { kind, startKbps: Math.round(shareBitrate * 0.5 / 1000) } : { kind },
+    // H.264 primeiro: deixa a placa de vídeo codificar quando houver (VP8 é sempre por CPU)
+    sdpTransform: screen && shareCodec === "auto" ? (sdp: string) => preferVideoCodec(sdp, "H264") : undefined,
+  })
   if (!call) return
   outCalls.set(key, call)
   const lost = () => {
     stopWatch()
+    liveLinks.delete(key)
     if (outCalls.get(key) === call) outCalls.delete(key)
     if (!closing.has(call)) retryCall(id, kind)
+    if (screen) refreshShareState()
   }
-  const stopWatch = watchCall(call, () => { retries.delete(key) }, () => {
+  const stopWatch = watchCall(call, () => { retries.delete(key); if (screen) { liveLinks.add(key); refreshShareState() } }, () => {
     noteFailure()
     closing.add(call)
+    liveLinks.delete(key)
     try { call.close() } catch { /* já fechada */ }
     if (outCalls.get(key) === call) outCalls.delete(key)
     retryCall(id, kind)
+    if (screen) refreshShareState()
   })
+  if (screen) refreshShareState()
   call.on("close", lost)
   call.on("error", lost)
   if (kind === "screen") tuneSender(call)
@@ -225,19 +246,44 @@ function closeCall(c: MediaConnection | undefined) {
 }
 /** mais qualidade para a tela: taxa de bits maior e prioridade para nitidez ou movimento */
 function tuneSender(call: MediaConnection) {
+  // Só dá para ajustar depois que a negociação termina. Antes era uma tentativa única aos 0,5 s: se a
+  // conexão ainda não estava pronta (comum pela retransmissão), falhava em silêncio e a taxa escolhida
+  // nunca valia. Agora tenta até conseguir (no máximo ~20 s) e é reaplicado ao mudar a qualidade.
+  let tries = 0
   const go = () => {
+    if (closing.has(call) || ++tries > 40) return
     const pc = call.peerConnection
-    if (!pc) return setTimeout(go, 300)
-    for (const s of pc.getSenders()) {
-      if (s.track?.kind !== "video") continue
-      const p = s.getParameters()
-      if (!p.encodings?.length) p.encodings = [{}]
-      p.encodings[0].maxBitrate = shareBitrate
-      ;(p as any).degradationPreference = shareMotion ? "maintain-framerate" : "maintain-resolution"
-      s.setParameters(p).catch(() => {})
-    }
+    const senders = pc ? pc.getSenders().filter((s) => s.track?.kind === "video") : []
+    if (!pc || !senders.length || !senders[0].getParameters().encodings?.length) { setTimeout(go, 500); return }
+    void applySenderParams(pc).then((ok) => { if (!ok) setTimeout(go, 500) })
   }
-  setTimeout(go, 500)
+  setTimeout(go, 300)
+}
+/** aplica taxa de bits, limite de quadros e prioridade (nitidez ou movimento) aos envios de vídeo */
+async function applySenderParams(pc: RTCPeerConnection): Promise<boolean> {
+  let ok = true
+  for (const s of pc.getSenders()) {
+    if (s.track?.kind !== "video") continue
+    const p = s.getParameters()
+    if (!p.encodings?.length) { ok = false; continue }
+    p.encodings[0].maxBitrate = shareBitrate
+    p.encodings[0].maxFramerate = shareFps
+    ;(p.encodings[0] as any).networkPriority = "high"
+    ;(p as any).degradationPreference = shareMotion ? "maintain-framerate" : "maintain-resolution"
+    try { await s.setParameters(p) } catch { ok = false }
+  }
+  return ok
+}
+/** quantos PCs estão recebendo a sua tela agora e o estado geral da transmissão */
+const liveLinks = new Set<string>()
+function refreshShareState() {
+  const s = useRoom.getState()
+  if (!s.myScreen) { if (s.shareState !== "idle" || s.viewers) set({ shareState: "idle", viewers: 0 }); return }
+  const wanted = s.members.filter((m) => m.id !== s.myId).length
+  const live = [...liveLinks].filter((k) => k.startsWith("screen:")).length
+  const retrying = [...retryTimers.keys()].some((k) => k.startsWith("screen:"))
+  const state: ShareState = !wanted || live >= wanted ? "live" : retrying ? "reconnecting" : live ? "live" : "connecting"
+  if (s.shareState !== state || s.viewers !== live) set({ shareState: state, viewers: live })
 }
 function linkMedia(list: Member[]) {
   const s = useRoom.getState()
@@ -247,12 +293,35 @@ function linkMedia(list: Member[]) {
     if (micStream) callPeer(m.id, "voice", micStream)
   }
 }
+/** espera (um pouco) o membro aparecer na lista da sala: a lista pode chegar instantes depois da chamada */
+function whenMember(id: string, timeoutMs = 4000): Promise<boolean> {
+  const has = () => useRoom.getState().members.some((m) => m.id === id)
+  if (has()) return Promise.resolve(true)
+  return new Promise((res) => {
+    const off = useRoom.subscribe(() => { if (has()) { clearTimeout(t); off(); res(true) } })
+    const t = setTimeout(() => { off(); res(has()) }, timeoutMs)
+  })
+}
 function onCall(call: MediaConnection) {
   const kind = call.metadata?.kind === "voice" ? "voice" : "screen"
+  // Só aceita tela/voz de quem está na sala. Antes qualquer um que soubesse o identificador de um
+  // participante podia empurrar vídeo ou áudio para ele sem ter entrado na sala.
+  void whenMember(call.peer).then((ok) => {
+    if (!ok || leaving) { try { call.close() } catch { /* já fechada */ } return }
+    acceptCall(call, kind)
+  })
+}
+function acceptCall(call: MediaConnection, kind: "screen" | "voice") {
   inCalls.add(call)
-  call.answer()
+  // taxa inicial pedida por quem transmite (limitada): a tela já começa nítida, sem os segundos borrados
+  const startKbps = Math.max(0, Math.min(12000, Number(call.metadata?.startKbps) || 0))
+  call.answer(undefined, kind === "screen" && startKbps ? { sdpTransform: (sdp: string) => withStartBitrate(sdp, startKbps) } : undefined)
   call.on("stream", (st) => {
-    if (kind === "screen") set({ screens: { ...useRoom.getState().screens, [call.peer]: st } })
+    if (kind === "screen") {
+      set({ screens: { ...useRoom.getState().screens, [call.peer]: st } })
+      applyLatency(call)
+      startStats()
+    }
     else {
       let el = voiceEls.get(call.peer)
       if (!el) { el = new Audio(); el.autoplay = true; voiceEls.set(call.peer, el) }
@@ -265,13 +334,66 @@ function onCall(call: MediaConnection) {
     if (kind === "screen") {
       const sc = { ...useRoom.getState().screens }
       delete sc[call.peer]
-      set({ screens: sc })
+      const stats = { ...(useRoom.getState().stats ?? {}) }
+      delete stats[call.peer]
+      set({ screens: sc, stats })
     } else voiceEls.get(call.peer)?.pause()
   }
   call.on("close", end)
   call.on("error", end)
   watchCall(call, () => {}, () => { try { call.close() } catch { /* já fechada */ } })
 }
+
+/**
+ * Baixa latência (quem assiste): pede ao navegador o menor buffer de reprodução possível. Numa rede boa
+ * a tela chega dezenas de ms mais cedo; numa rede instável pode engasgar mais (por isso é uma opção).
+ */
+function applyLatency(call: MediaConnection) {
+  const low = useStore.getState().settings.roomLowLatency !== false
+  const pc = call.peerConnection
+  if (!pc) return
+  for (const r of pc.getReceivers()) {
+    const rr = r as RTCRtpReceiver & { jitterBufferTarget?: number | null; playoutDelayHint?: number | null }
+    try { rr.jitterBufferTarget = low ? 0 : null } catch { /* navegador sem suporte */ }
+    try { rr.playoutDelayHint = low ? 0 : null } catch { /* idem */ }
+  }
+}
+/** reaplica a escolha de latência em todas as telas que você está assistindo */
+export function refreshLatency() { for (const c of inCalls) if (c.metadata?.kind !== "voice") applyLatency(c) }
+
+/* ---------------- medições reais (getStats) ---------------- */
+// A cada 2 s lê os números do próprio WebRTC: quadros por segundo, resolução, taxa, ida e volta, perdas,
+// o que está limitando a qualidade e se o codificador é o da placa de vídeo. Só roda com tela no ar.
+let statsTimer: ReturnType<typeof setInterval> | null = null
+const statMarks = new Map<string, { bytes: number; at: number; jbDelay?: number; jbCount?: number }>()
+async function readStats(key: string, pc: RTCPeerConnection | undefined): Promise<LinkStats | null> {
+  if (!pc) return null
+  try {
+    const now = performance.now()
+    const { stats, mark } = summarize([...(await pc.getStats()).values()] as Record<string, unknown>[], statMarks.get(key) ?? null, now)
+    if (mark) statMarks.set(key, mark)
+    return stats
+  } catch { return null }
+}
+function startStats() {
+  if (statsTimer) return
+  statsTimer = setInterval(async () => {
+    const st = useRoom.getState()
+    const out = [...outCalls].filter(([k]) => k.startsWith("screen:") && liveLinks.has(k))
+    const incoming = [...inCalls].filter((c) => c.metadata?.kind !== "voice")
+    if (!st.myScreen && !incoming.length) {
+      clearInterval(statsTimer!); statsTimer = null; statMarks.clear()
+      if (st.myStats || Object.keys(st.stats ?? {}).length) set({ myStats: null, stats: {} })
+      return
+    }
+    if (document.hidden) return
+    const mine = out.length ? await readStats("out:" + out[0][0], out[0][1].peerConnection) : null
+    const stats: Record<string, LinkStats> = {}
+    for (const c of incoming) { const r = await readStats("in:" + c.peer, c.peerConnection); if (r) stats[c.peer] = r }
+    set({ myStats: mine, stats })
+  }, 2000)
+}
+
 function dropPeer(id: string) {
   for (const k of [`screen:${id}`, `voice:${id}`]) {
     closeCall(outCalls.get(k)); outCalls.delete(k); retries.delete(k)
@@ -462,6 +584,8 @@ export async function setMic(on: boolean) {
 /* ---------------- compartilhar tela ---------------- */
 let shareBitrate = 4_000_000
 let shareMotion = true
+let shareFps = 30
+let shareCodec: ShareCodec = "auto"
 let audioCtx: AudioContext | null = null
 let audioOff: (() => void) | null = null
 
@@ -518,19 +642,24 @@ async function pcAudioTrack(without: "discord" | "agenda"): Promise<{ track: Med
 
 export async function startShare(o: ShareOpts) {
   await stopShare(true)
-  const [w, h, fps] = o.quality === "720p30" ? [1280, 720, 30] : o.quality === "1080p30" ? [1920, 1080, 30] : [1920, 1080, 60]
-  shareBitrate = o.quality === "720p30" ? 2_500_000 : o.quality === "1080p30" ? 5_000_000 : 8_000_000
+  const q = QUALITIES[o.quality] ?? QUALITIES["1080p30"]
+  const { w, h, fps } = q
+  shareBitrate = q.bitrate
+  shareFps = fps
   shareMotion = o.motion
+  shareCodec = o.codec ?? "auto"
+  set({ shareState: "preparing" })
+  // a captura só é liberada para a fonte escolhida agora, uma vez (ver electron/share.cjs)
   await bridge.share.pick(o.source)
   let video: MediaStream
   try {
     video = await navigator.mediaDevices.getDisplayMedia({ video: { width: { ideal: w }, height: { ideal: h }, frameRate: { ideal: fps, max: fps } }, audio: false })
-  } catch { toast("Não deu para capturar a tela"); return }
+  } catch { set({ shareState: "idle" }); toast("Não deu para capturar a tela"); return }
   const vt = video.getVideoTracks()[0]
   vt.contentHint = o.motion ? "motion" : "detail"
   vt.addEventListener("ended", () => stopShare())
   const stream = new MediaStream([vt])
-  let info = o.quality.replace("p", "p · ") + " fps"
+  let info: string = q.label
   if (o.audio !== "none") {
     try {
       const a = await pcAudioTrack(o.audio)
@@ -540,6 +669,28 @@ export async function startShare(o: ShareOpts) {
   set({ myScreen: stream, shareInfo: info })
   sendState()
   linkMedia(useRoom.getState().members)
+  refreshShareState()
+  startStats()
+}
+
+/**
+ * Troca a qualidade com a transmissão no ar, sem derrubar nem reconectar ninguém:
+ * a captura muda de resolução/quadros e os envios recebem a nova taxa de bits.
+ */
+export async function setShareQuality(quality: ShareQuality, motion = shareMotion) {
+  const s = useRoom.getState().myScreen
+  const q = QUALITIES[quality]
+  if (!s || !q) return false
+  shareBitrate = q.bitrate; shareFps = q.fps; shareMotion = motion
+  const vt = s.getVideoTracks()[0]
+  try {
+    await vt?.applyConstraints({ width: { ideal: q.w }, height: { ideal: q.h }, frameRate: { ideal: q.fps, max: q.fps } })
+    if (vt) vt.contentHint = motion ? "motion" : "detail"
+  } catch { /* a fonte não aceita essa resolução: mantém a captura e muda só a taxa */ }
+  for (const [k, c] of outCalls) if (k.startsWith("screen:") && c.peerConnection) void applySenderParams(c.peerConnection)
+  const audio = useRoom.getState().shareInfo.split(" · ").slice(2).join(" · ")
+  set({ shareInfo: q.label + (audio ? " · " + audio : "") })
+  return true
 }
 
 export async function stopShare(quiet = false) {
@@ -549,5 +700,7 @@ export async function stopShare(quiet = false) {
   audioOff?.(); audioOff = null
   bridge.share.audioStop()
   if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null }
+  for (const k of [...liveLinks]) if (k.startsWith("screen:")) liveLinks.delete(k)
   if (s) { set({ myScreen: null, shareInfo: "" }); if (!quiet) sendState() }
+  set({ shareState: "idle", viewers: 0, myStats: null })
 }

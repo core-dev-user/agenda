@@ -18,6 +18,13 @@ Iniciar, pesquisa e painéis usam o monitor onde está o mouse. As combinações
 
 A barra original é ocultada em todos os monitores. Ela some de novo no instante em que o Windows a reexibe (gancho de eventos `EVENT_OBJECT_SHOW` no ajudante) e, por garantia, na atualização periódica das janelas. O acesso temporário à bandeja original dura no máximo dez segundos. Se o renderizador da barra travar, a barra original aparece só durante a pausa de recuperação: três tentativas rápidas (1,5 s, 3 s, 6 s) e depois novas tentativas a cada 1 a 5 minutos, sem nunca desligar a opção escolhida. Um ajudante Win32 lento (por exemplo, com um jogo pesado) não derruba a barra. O atalho de recuperação depende do processo principal do Agenda estar responsivo e de a combinação estar disponível.
 
+## Quando a tecla Windows abre o Iniciar original
+
+- **Por escolha**: em Configurações › Barra e ícones a tecla Windows sozinha pode abrir o Iniciar do Windows (padrão) ou o do Widgy. Win+S sempre abre a pesquisa do Widgy enquanto os atalhos estiverem ligados.
+- **Jogo protegido na frente** (lista em `electron/taskbar-key-policy.cjs`) ou tela cheia que o Widgy não consegue identificar: o gancho é desligado de propósito, por compatibilidade com anti-cheat. Alternativa que funciona sempre: Ctrl+Alt+D (área de trabalho) e o atalho global do Widgy.
+- **Gancho removido pelo Windows**: o Windows tira um gancho de teclado em silêncio se ele demorar a responder (PC ocupado, volta da suspensão). O Widgy reinstala o gancho a cada 30 s, ao voltar da suspensão/bloqueio e quando o Explorer reinicia, sempre instalando o novo antes de remover o antigo.
+- Ctrl+Alt+Del, Win+L e a tela de bloqueio pertencem ao Windows e não podem ser interceptados.
+
 ## Validação
 
 Execute `npm run test:taskbar` e `npm run build`. O workflow também compila os dois auxiliares C# no Windows PowerShell.
