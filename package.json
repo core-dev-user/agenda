@@ -1,7 +1,7 @@
 {
   "name": "widgy",
   "productName": "Widgy",
-  "version": "0.3.29",
+  "version": "0.3.30",
   "description": "Widgy — sua área de trabalho personalizada",
   "main": "electron/main.cjs",
   "type": "module",
@@ -21,7 +21,8 @@
     "test:taskbar": "node --test tests/taskbar*.test.cjs",
     "test:taskbar:windows": "electron tests/taskbar-preview-smoke.cjs",
     "test:rooms": "node --experimental-strip-types --test tests/rtc-tuning.test.mjs tests/share-picker.test.cjs",
-    "test:templates": "node --experimental-strip-types --test tests/template-share.test.mjs tests/settings-index.test.mjs tests/icon-support.test.mjs"
+    "test:templates": "node --experimental-strip-types --test tests/template-share.test.mjs tests/settings-index.test.mjs tests/icon-support.test.mjs",
+    "test:a11y": "node --test tests/a11y-static.test.mjs"
   },
   "build": {
     "appId": "com.agenda.desktop",

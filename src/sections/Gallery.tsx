@@ -261,7 +261,7 @@ function Viewer({ m, onClose }: { m: MediaItem | null; onClose: () => void }) {
               <button key={z} className={cn("rounded-md px-2 py-0.5", zoom === z ? "bg-white text-black" : "bg-white/15")} onClick={() => { setZoom(z); setPan({ x: 0, y: 0 }) }}>{z}×</button>
             ))}
             <span className="font-num w-12 text-white/60">{Math.round(zoom * 100)}%</span>
-            <button className="rounded-full bg-white/15 p-1.5 hover:bg-white/30" onClick={onClose}><X size={16} /></button>
+            <button aria-label="Fechar" className="rounded-full bg-white/15 p-1.5 hover:bg-white/30" onClick={onClose}><X size={16} /></button>
           </div>
           <div ref={box} className={cn("relative mx-5 mb-5 flex-1 overflow-hidden rounded-xl", zoom > 1 && "cursor-grab active:cursor-grabbing")} onWheel={onWheel} onPointerDown={dragPan}>
             {src ? (

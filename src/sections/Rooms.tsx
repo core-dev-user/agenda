@@ -381,7 +381,7 @@ function InRoom() {
               Baixa latência: {lowLatency ? "ligada" : "desligada"}
             </button>
           )}
-          <button className={cn("btn btn-ghost", chatOpen && "bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]")} onClick={() => setChatOpen(!chatOpen)}><MessageSquare size={15} /></button>
+          <button aria-label="Conversa da sala" className={cn("btn btn-ghost", chatOpen && "bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]")} onClick={() => setChatOpen(!chatOpen)}><MessageSquare size={15} /></button>
           <button className="btn btn-ghost hover:!text-red-400" onClick={() => leaveRoom()}><LogOut size={15} /> Sair</button>
         </div>
       </div>
@@ -400,7 +400,7 @@ function InRoom() {
           </div>
           <div className="flex gap-1.5 border-t border-line p-2">
             <input className="field min-w-0 flex-1" value={text} onChange={(e) => setText(e.target.value)} placeholder="Mensagem" onKeyDown={(e) => { if (e.key === "Enter") { sendChat(text); setText("") } }} />
-            <button className="btn btn-icon" onClick={() => { sendChat(text); setText("") }}><Send size={14} /></button>
+            <button aria-label="Enviar" className="btn btn-icon" onClick={() => { sendChat(text); setText("") }}><Send size={14} /></button>
           </div>
         </aside>
       )}

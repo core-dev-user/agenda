@@ -336,11 +336,12 @@ function Btn({
       onPointerEnter={() => { setHover(true); if (ref.current) onHover?.(ref.current, true) }}
       onPointerLeave={() => { setHover(false); if (ref.current) onHover?.(ref.current, false) }}
       title={isDock || onHover ? undefined : label}
+      aria-label={first}
       className={cn("relative flex shrink-0 items-center justify-center gap-2 rounded-[calc(var(--r)*0.6)] transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_8%,transparent)]", (active || (showLabel && focused)) && "bg-[color-mix(in_srgb,var(--fg)_12%,transparent)]", showLabel && "px-2")}
       style={{ height: size, minWidth: size, ...(vertical ? { width: size } : {}) }}
     >
       <div style={{ transform: `${liftT} scale(${scale})`, transformOrigin: origin, transition: "transform .14s ease-out", willChange: "transform" }}>
-        <motion.div whileTap={{ scale: 0.85, rotateX: 25 }} style={{ transformStyle: "preserve-3d" }}>{children}</motion.div>
+        <motion.div tabIndex={-1} whileTap={{ scale: 0.85, rotateX: 25 }} style={{ transformStyle: "preserve-3d" }}>{children}</motion.div>
       </div>
       {showLabel && <span className="max-w-[140px] truncate pr-1 text-sm">{first}</span>}
       {!!count && count > 1 && <span className="absolute top-0.5 right-1 font-num text-[9px] text-fg-muted">{count}</span>}

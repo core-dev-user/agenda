@@ -30,7 +30,7 @@ export function RoutineTab() {
         <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 gap-y-1 text-sm">
           <span className="text-xs text-fg-muted uppercase">Origem</span><span className="text-xs text-fg-muted uppercase">Ligado</span><span className="text-xs text-fg-muted uppercase">Aviso do Windows</span>
           {(Object.keys(SOURCE_META) as NotifySource[]).map((k) => (
-            <Row key={k} label={<span className="flex items-center gap-2"><Glyph v={SOURCE_META[k].emoji} size={15} className="text-fg-muted" /> {SOURCE_META[k].label}</span>} on={np.on[k] !== false} toast={!!np.toast[k]} setOn={(v) => setN("on", k, v)} setToast={(v) => setN("toast", k, v)} />
+            <Row key={k} name={SOURCE_META[k].label} label={<span className="flex items-center gap-2"><Glyph v={SOURCE_META[k].emoji} size={15} className="text-fg-muted" /> {SOURCE_META[k].label}</span>} on={np.on[k] !== false} toast={!!np.toast[k]} setOn={(v) => setN("on", k, v)} setToast={(v) => setN("toast", k, v)} />
           ))}
         </div>
         <Switch label="Som nos avisos" checked={np.sound} onChange={(v) => set({ notify: { ...np, sound: v } })} />
@@ -122,12 +122,12 @@ function FavSport({ sport }: { sport: SportKind }) {
   )
 }
 
-function Row({ label, on, toast, setOn, setToast }: { label: React.ReactNode; on: boolean; toast: boolean; setOn: (v: boolean) => void; setToast: (v: boolean) => void }) {
+function Row({ label, name, on, toast, setOn, setToast }: { label: React.ReactNode; name: string; on: boolean; toast: boolean; setOn: (v: boolean) => void; setToast: (v: boolean) => void }) {
   return (
     <>
       <span>{label}</span>
-      <input type="checkbox" className="justify-self-center" checked={on} onChange={(e) => setOn(e.target.checked)} />
-      <input type="checkbox" className="justify-self-center" disabled={!on} checked={on && toast} onChange={(e) => setToast(e.target.checked)} />
+      <input type="checkbox" aria-label={name + ": ligado"} className="justify-self-center" checked={on} onChange={(e) => setOn(e.target.checked)} />
+      <input type="checkbox" aria-label={name + ": aviso do Windows"} className="justify-self-center" disabled={!on} checked={on && toast} onChange={(e) => setToast(e.target.checked)} />
     </>
   )
 }
@@ -163,7 +163,7 @@ function CalendarsSection() {
           <input className="field !py-1" value={f.name} onChange={(e) => set({ calendars: feeds.map((x) => (x.id === f.id ? { ...x, name: e.target.value } : x)) })} />
           <span className="w-24 text-right text-xs text-fg-muted">{events.filter((e) => e.feedId === f.id).length} eventos</span>
           <input type="checkbox" checked={f.on} title="Ligada" onChange={(e) => set({ calendars: feeds.map((x) => (x.id === f.id ? { ...x, on: e.target.checked } : x)) })} />
-          <button className="btn btn-ghost btn-icon !p-1" onClick={() => set({ calendars: feeds.filter((x) => x.id !== f.id) })}><Trash2 size={13} /></button>
+          <button aria-label="Remover calendário" className="btn btn-ghost btn-icon !p-1" onClick={() => set({ calendars: feeds.filter((x) => x.id !== f.id) })}><Trash2 size={13} /></button>
         </div>
       ))}
       <div className="flex flex-wrap gap-2 pt-1">
@@ -441,7 +441,7 @@ export function SystemExtra() {
         <Switch label="Fazer backup na nuvem" checked={cfg.cloudOn} onChange={(v) => upd({ cloudOn: v, cloudDir: cfg.cloudDir || cfg.guesses[0]?.path || "" })} />
         <div className="flex items-center gap-2">
           <Cloud size={15} className="shrink-0" />
-          <input className="field min-w-0 flex-1 !py-1 text-sm" readOnly value={cfg.cloudDir || "Nenhuma pasta escolhida"} />
+          <input aria-label="Pasta do backup na nuvem" className="field min-w-0 flex-1 !py-1 text-sm" readOnly value={cfg.cloudDir || "Nenhuma pasta escolhida"} />
           <button className="btn !py-1 text-xs" onClick={async () => { const d = await bridge.sys.pickCloud(); if (d) upd({ cloudDir: d }) }}><FolderOpen size={13} /> Escolher</button>
         </div>
         {cfg.guesses.length > 0 && (

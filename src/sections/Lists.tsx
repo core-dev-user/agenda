@@ -128,7 +128,7 @@ function ListView({ l, upd, remove }: { l: ShopList; upd: (p: Partial<ShopList>)
       <div className="flex items-center gap-3">
         <IconButton value={l.emoji} onPick={(e) => upd({ emoji: e })} />
         <input className="font-display min-w-0 flex-1 rounded-lg bg-transparent px-1 text-3xl font-semibold outline-none hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)] focus:bg-[color-mix(in_srgb,var(--fg)_7%,transparent)]" title="Clique para renomear" value={l.name} onChange={(e) => upd({ name: e.target.value })} />
-        <button className="btn hover:!text-red-400" onClick={() => confirm(`Excluir a lista "${l.name}"?`) && remove()}><Trash2 size={14} /></button>
+        <button aria-label="Excluir lista" className="btn hover:!text-red-400" onClick={() => confirm(`Excluir a lista "${l.name}"?`) && remove()}><Trash2 size={14} /></button>
       </div>
       <div className="flex gap-3">
         <Stat label="Total da lista" value={brl(total)} sub={`${l.items.length} itens`} />
@@ -151,7 +151,7 @@ function ListView({ l, upd, remove }: { l: ShopList; upd: (p: Partial<ShopList>)
           <input className="field min-w-0 flex-1" placeholder="Adicionar item…" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           <input type="number" min={1} className="field w-16" title="Quantidade" value={draft.qty} onChange={(e) => setDraft({ ...draft, qty: Number(e.target.value) })} />
           <input type="number" step="0.01" className="field font-num w-28" placeholder="Preço un." value={draft.price || ""} onChange={(e) => setDraft({ ...draft, price: Number(e.target.value) })} />
-          <ThemedButton size="sm" onClick={addItem}><Plus size={14} /></ThemedButton>
+          <ThemedButton size="sm" title="Adicionar item" onClick={addItem}><Plus size={14} /></ThemedButton>
         </form>
         <div className="flex items-center gap-2 px-3 py-2 text-xs text-fg-muted">
           <span>Ordenar:</span>
@@ -183,12 +183,12 @@ function ListView({ l, upd, remove }: { l: ShopList; upd: (p: Partial<ShopList>)
                     value={i.link}
                     onChange={(e) => setItem(i.id, { link: e.target.value })}
                   />
-                  {i.link && <button onClick={() => bridge.app.openExternal(i.link.startsWith("http") ? i.link : "https://" + i.link)} className="text-fg-muted hover:text-brand"><ExternalLink size={14} /></button>}
+                  {i.link && <button aria-label="Abrir o link" onClick={() => bridge.app.openExternal(i.link.startsWith("http") ? i.link : "https://" + i.link)} className="text-fg-muted hover:text-brand"><ExternalLink size={14} /></button>}
                   <input type="number" min={1} className="font-num w-12 bg-transparent text-right outline-none" value={i.qty} onChange={(e) => setItem(i.id, { qty: Number(e.target.value) })} />
                   <span className="text-xs text-fg-muted">×</span>
                   <input type="number" step="0.01" className="font-num w-24 bg-transparent text-right outline-none" value={i.price || ""} placeholder="0,00" onChange={(e) => setItem(i.id, { price: Number(e.target.value) })} />
                   <span className="font-num w-28 text-right font-medium">{brl(i.qty * i.price)}</span>
-                  <button className="opacity-0 group-hover:opacity-70 hover:!text-red-400" onClick={() => upd({ items: l.items.filter((x) => x.id !== i.id) })}><Trash2 size={14} /></button>
+                  <button aria-label="Remover item" className="opacity-0 group-hover:opacity-70 hover:!text-red-400" onClick={() => upd({ items: l.items.filter((x) => x.id !== i.id) })}><Trash2 size={14} /></button>
                 </motion.div>
               ))}
             </AnimatePresence>

@@ -60,6 +60,7 @@ jobs:
         run: |
           npm run test:media
           npm run test:templates
+          npm run test:a11y
           npm run test:rooms
           npm run test:wallpaper
           npm run test:security

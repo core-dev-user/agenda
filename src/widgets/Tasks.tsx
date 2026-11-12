@@ -76,9 +76,9 @@ function MonthPicker({ value, onPick, marks }: { value?: string; onPick: (iso: s
   return (
     <div className="w-[230px] p-2.5">
       <div className="mb-1.5 flex items-center justify-between">
-        <button className="btn btn-ghost btn-icon !p-1" onClick={() => setRef(new Date(y, mo - 1, 1))}><ChevronLeft size={13} /></button>
+        <button aria-label="Mês anterior" className="btn btn-ghost btn-icon !p-1" onClick={() => setRef(new Date(y, mo - 1, 1))}><ChevronLeft size={13} /></button>
         <div className="text-sm font-semibold">{MONTHS[mo]} {y}</div>
-        <button className="btn btn-ghost btn-icon !p-1" onClick={() => setRef(new Date(y, mo + 1, 1))}><ChevronRight size={13} /></button>
+        <button aria-label="Próximo mês" className="btn btn-ghost btn-icon !p-1" onClick={() => setRef(new Date(y, mo + 1, 1))}><ChevronRight size={13} /></button>
       </div>
       <div className="grid grid-cols-7 text-center text-[9px] text-fg-muted uppercase">{["D", "S", "T", "Q", "Q", "S", "S"].map((d, i) => <div key={i}>{d}</div>)}</div>
       <div className="grid grid-cols-7 gap-0.5">
@@ -248,7 +248,7 @@ export function TasksWidget({ w }: { w: Widget }) {
       {/* semana */}
       {w.h >= 260 && (
         <div className="mb-2 flex items-center gap-1">
-          <button className="btn btn-ghost btn-icon !p-0.5" onClick={() => setWeekStart(addDays(weekStart, -7))}><ChevronLeft size={13} /></button>
+          <button aria-label="Semana anterior" className="btn btn-ghost btn-icon !p-0.5" onClick={() => setWeekStart(addDays(weekStart, -7))}><ChevronLeft size={13} /></button>
           <div className="grid flex-1 grid-cols-7 gap-1">
             {week.map((d) => {
               const dt = new Date(d + "T12:00")
@@ -267,7 +267,7 @@ export function TasksWidget({ w }: { w: Widget }) {
               )
             })}
           </div>
-          <button className="btn btn-ghost btn-icon !p-0.5" onClick={() => setWeekStart(addDays(weekStart, 7))}><ChevronRight size={13} /></button>
+          <button aria-label="Próxima semana" className="btn btn-ghost btn-icon !p-0.5" onClick={() => setWeekStart(addDays(weekStart, 7))}><ChevronRight size={13} /></button>
         </div>
       )}
 

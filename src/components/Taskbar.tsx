@@ -206,6 +206,8 @@ function DockBtn({
   return (
     <button
       ref={ref}
+      type="button"
+      aria-label={label}
       onClick={onClick}
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}
@@ -213,7 +215,7 @@ function DockBtn({
       style={{ height: size, minWidth: size }}
     >
       <div style={{ transform: `${liftT} scale(${scale})`, transformOrigin: origin, transition: "transform .14s ease-out", willChange: "transform" }}>
-        <motion.div whileTap={{ scale: 0.85, rotateX: 25 }} style={{ transformStyle: "preserve-3d" }}>{children}</motion.div>
+        <motion.div tabIndex={-1} whileTap={{ scale: 0.85, rotateX: 25 }} style={{ transformStyle: "preserve-3d" }}>{children}</motion.div>
       </div>
       {showLabel && <span className="pr-1 text-sm">{label}</span>}
       {running && (

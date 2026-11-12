@@ -126,7 +126,7 @@ export function VolumeControl() {
   const Icon = v === 0 ? VolumeX : v < 50 ? Volume1 : Volume2
   return (
     <div className="flex items-center gap-2">
-      <button className="btn btn-ghost btn-icon" onClick={() => cmd("volume", v === 0 ? 60 : 0)}><Icon size={16} /></button>
+      <button aria-label={v === 0 ? "Ativar o som" : "Silenciar"} className="btn btn-ghost btn-icon" onClick={() => cmd("volume", v === 0 ? 60 : 0)}><Icon size={16} /></button>
       <input type="range" min={0} max={100} value={v} className="agenda-range w-28" style={{ ["--pct" as any]: v + "%" }} onChange={(e) => { setV(Number(e.target.value)); cmd("volume", Number(e.target.value)) }} />
     </div>
   )
@@ -154,7 +154,7 @@ export function MiniVolume({ className, alwaysOpen }: { className?: string; alwa
       onWheel={(e) => { e.stopPropagation(); set(v - Math.sign(e.deltaY) * 5) }}
       title={`Volume ${v}% (role o mouse para ajustar)`}
     >
-      <button className="btn btn-ghost btn-icon !p-1.5" onClick={() => set(v === 0 ? before.current : 0)}><Icon size={15} /></button>
+      <button aria-label={v === 0 ? "Ativar o som" : "Silenciar"} className="btn btn-ghost btn-icon !p-1.5" onClick={() => set(v === 0 ? before.current : 0)}><Icon size={15} /></button>
       <div className={cn("overflow-hidden transition-all duration-300", alwaysOpen ? "w-20 opacity-100" : "w-0 opacity-0 group-hover/vol:w-20 group-hover/vol:opacity-100")}>
         <input
           type="range" min={0} max={100} value={v}

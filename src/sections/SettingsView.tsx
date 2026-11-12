@@ -105,7 +105,7 @@ function SettingsNav({ tab, onPick }: { tab: SettingsTabId; onPick: (id: Setting
           )) : <div className="px-2.5 py-4 text-[12.5px] text-fg-muted">Nenhum ajuste com esse nome.</div>
         ) : SETTINGS_GROUPS.map((g) => (
           <div key={g.label}>
-            <div className="px-2.5 pb-1 pt-3 text-[10.5px] font-semibold uppercase tracking-[.08em] text-fg-muted/75">{g.label}</div>
+            <div className="px-2.5 pb-1 pt-3 text-[10.5px] font-semibold uppercase tracking-[.08em] text-fg-muted">{g.label}</div>
             {g.tabs.map((t) => {
               const Icon = TAB_ICON[t.id]
               const on = tab === t.id
@@ -211,7 +211,11 @@ function Look() {
         </div>
       </Section>
       <Section title="Cores">
-        <Switch label="Modo escuro" checked={s.dark} onChange={(v) => set({ dark: v })} />
+        {/* o Terminal é sempre escuro: o ajuste fica desativado em vez de parecer que faz algo */}
+        <div className={cn(s.theme === "terminal" && "pointer-events-none opacity-45")} aria-disabled={s.theme === "terminal"} {...(s.theme === "terminal" ? INERT : {})}>
+          <Switch label="Modo escuro" checked={s.theme === "terminal" ? true : s.dark} onChange={(v) => set({ dark: v })} />
+        </div>
+        {s.theme === "terminal" && <div className="text-xs text-fg-muted">O tema Terminal é sempre escuro.</div>}
         <div className="pt-2 text-sm">Cor de destaque</div>
         <ColorPicker value={s.accent} onChange={(v) => set({ accent: v })} />
       </Section>

@@ -28,7 +28,7 @@
   --font-num: "Space Grotesk Variable", sans-serif;
   --font-display: "Playfair Display Variable", serif;
   --fg: #F3F8FF;
-  --fg-muted: rgb(229 239 255 / 0.62);
+  --fg-muted: rgb(229 239 255 / 0.74); /* era .62: texto secundário medido com contraste ~3,3 no vidro escuro */
   --line: rgb(255 255 255 / 0.14);
   --field: rgb(255 255 255 / 0.07);
   --tb-size: 56px;
@@ -60,7 +60,7 @@
 
 html:not(.dark) {
   --fg: #1A2B43;
-  --fg-muted: rgb(26 43 67 / 0.6);
+  --fg-muted: rgb(26 43 67 / 0.76); /* era .6: contraste ~2,7 no vidro claro */
   --line: rgb(0 0 0 / 0.1);
   --field: rgb(255 255 255 / 0.45);
   --foreground: #1A2B43;
@@ -152,7 +152,11 @@ html:not(.dark)[data-theme="metal"] .surface {
 }
 
 /* ---- Retrô (Windows 95/98) ---- */
-[data-theme="retro"] {
+/* A segunda parte do seletor faz estas cores valerem também no modo claro (o padrão do Retrô): sem ela
+   as cores gerais do modo claro ganhavam, e o texto secundário ficava com contraste 2,7 sobre o cinza. */
+[data-theme="retro"], html:not(.dark)[data-theme="retro"] {
+  --foreground: var(--fg);
+  --border: var(--line);
   --fg: #111;
   --fg-muted: #4a4a4a;
   --line: #808080;
@@ -174,9 +178,13 @@ html.dark[data-theme="retro"] .surface {
 }
 
 /* ---- Terminal CRT ---- */
-[data-theme="terminal"] {
+/* O Terminal é sempre escuro (fundo preto de monitor antigo). A segunda parte do seletor impede que as
+   cores do modo claro escureçam o texto por cima desse fundo: sem ela o texto ficava ilegível (contraste 1,2). */
+[data-theme="terminal"], html:not(.dark)[data-theme="terminal"] {
+  --foreground: var(--fg);
+  --border: var(--line);
   --fg: color-mix(in srgb, var(--accent) 70%, #b6ffc8);
-  --fg-muted: color-mix(in srgb, var(--fg) 60%, transparent);
+  --fg-muted: color-mix(in srgb, var(--fg) 74%, transparent);
   --line: color-mix(in srgb, var(--accent) 35%, transparent);
   --field: rgb(0 0 0 / 0.5);
 }
@@ -289,6 +297,14 @@ html.dark[data-theme="retro"] .btn, html.dark[data-theme="retro"] .btn-accent { 
 [data-theme="retro"] .glare, [data-theme="terminal"] .glare { display: none; }
 
 .no-anim *, .no-anim *::before, .no-anim *::after { transition: none !important; animation: none !important; }
+
+/* Foco pelo teclado: anel na cor de destaque em tudo que é clicável. Só aparece ao navegar com Tab
+   (ao clicar com o mouse nada muda). Campos de texto ficam de fora: eles já têm o próprio anel. */
+:where(button, a[href], summary, select, [role="button"], [role="switch"], [tabindex]:not([tabindex="-1"]), input[type="range"], input[type="checkbox"], input[type="radio"], input[type="color"]):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 78%, var(--fg));
+  outline-offset: 2px;
+}
+.agenda-range:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 78%, var(--fg)); outline-offset: 5px; }
 
 /* =================== RANGE =================== */
 .agenda-range { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 99px; outline: none;

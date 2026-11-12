@@ -68,7 +68,7 @@ function Panel() {
         <Bot size={17} className="text-[var(--accent)]" />
         <div className="flex-1 font-semibold">Assistente</div>
         <span className="text-[11px] text-fg-muted">Ctrl+J</span>
-        <button className="btn btn-ghost btn-icon" onClick={close}><X size={15} /></button>
+        <button aria-label="Fechar" className="btn btn-ghost btn-icon" onClick={close}><X size={15} /></button>
       </div>
 
       <div ref={box} className="min-h-[160px] flex-1 space-y-3 overflow-y-auto p-4">
@@ -131,7 +131,7 @@ function Panel() {
           placeholder="O que você quer que eu faça?"
           onKeyDown={(e) => { if (e.key === "Enter") send() }}
         />
-        <button className="btn btn-primary btn-icon" disabled={!!busy || !text.trim()} onClick={() => send()}><Send size={15} /></button>
+        <button aria-label="Enviar" className="btn btn-primary btn-icon" disabled={!!busy || !text.trim()} onClick={() => send()}><Send size={15} /></button>
       </div>
       {ai.on && (
         <div className="flex items-center gap-2 px-3 pb-2 text-[10px] text-fg-muted">

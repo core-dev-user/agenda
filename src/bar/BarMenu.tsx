@@ -134,8 +134,8 @@ function ClockMenu() {
       <div className="mb-4 text-sm text-fg-muted cap-first">{now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
       <div className="mb-2 flex items-center">
         <div className="flex-1 text-sm font-semibold cap-first">{month.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div>
-        <button className="bar-btn size-7" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft size={15} /></button>
-        <button className="bar-btn size-7" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={15} /></button>
+        <button aria-label="Mês anterior" className="bar-btn size-7" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft size={15} /></button>
+        <button aria-label="Próximo mês" className="bar-btn size-7" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={15} /></button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-xs">
         {["D", "S", "T", "Q", "Q", "S", "S"].map((d, i) => <div key={i} className="py-1 text-fg-muted">{d}</div>)}

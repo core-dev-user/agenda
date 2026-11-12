@@ -123,9 +123,9 @@ export function CalendarWidget({ w }: { w: Widget }) {
   return (
     <div className="flex h-full flex-col p-4">
       <div className="mb-2 flex items-center justify-between">
-        <button className="btn btn-ghost btn-icon" onClick={() => setRef(new Date(y, m - 1, 1))}><ChevronLeft size={14} /></button>
+        <button aria-label="Mês anterior" className="btn btn-ghost btn-icon" onClick={() => setRef(new Date(y, m - 1, 1))}><ChevronLeft size={14} /></button>
         <button className="font-display font-semibold" onClick={() => open("habits")}>{MONTHS[m]} {y}</button>
-        <button className="btn btn-ghost btn-icon" onClick={() => setRef(new Date(y, m + 1, 1))}><ChevronRight size={14} /></button>
+        <button aria-label="Próximo mês" className="btn btn-ghost btn-icon" onClick={() => setRef(new Date(y, m + 1, 1))}><ChevronRight size={14} /></button>
       </div>
       <div className="grid grid-cols-7 text-center text-[10px] tracking-wider text-fg-muted uppercase">
         {["D", "S", "T", "Q", "Q", "S", "S"].map((d, i) => <div key={i}>{d}</div>)}

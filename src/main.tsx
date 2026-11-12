@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from "react"
 import ReactDOM from "react-dom/client"
+import { MotionConfig } from "framer-motion"
 import "@/lib/fonts"
 import "./index.css"
 import App from "./App"
@@ -20,9 +21,11 @@ const AppShell = lazy(() => import("@/components/AppShell"))
 
 function Root() {
   const mode = useUiMode((s) => s.mode)
-  if (mode === "") return <Suspense fallback={null}><Onboarding /></Suspense>
-  if (mode === "app") return <Suspense fallback={null}><AppShell /></Suspense>
-  return <App />
+  const animations = useStore((s) => s.settings.animations)
+  const body = mode === "" ? <Suspense fallback={null}><Onboarding /></Suspense> : mode === "app" ? <Suspense fallback={null}><AppShell /></Suspense> : <App />
+  // "Animações" desligado para também os movimentos do framer-motion (antes só os de CSS paravam).
+  // Ligado, segue a preferência "reduzir movimento" do sistema: deslocamentos viram troca direta, o esmaecer continua.
+  return <MotionConfig reducedMotion={animations ? "user" : "always"}>{body}</MotionConfig>
 }
 
 Promise.all([

@@ -97,9 +97,9 @@ function FinanceMain() {
         />
         {(tab === "overview" || tab === "txns" || tab === "budgets") && (
           <div className="flex items-center gap-1">
-            <button className="btn btn-icon" onClick={() => setMonth(addMonths(month, -1))}><ChevronLeft size={16} /></button>
+            <button aria-label="Mês anterior" className="btn btn-icon" onClick={() => setMonth(addMonths(month, -1))}><ChevronLeft size={16} /></button>
             <div className="font-display min-w-40 text-center text-lg font-semibold">{monthLabel(month)}</div>
-            <button className="btn btn-icon" onClick={() => setMonth(addMonths(month, 1))}><ChevronRight size={16} /></button>
+            <button aria-label="Próximo mês" className="btn btn-icon" onClick={() => setMonth(addMonths(month, 1))}><ChevronRight size={16} /></button>
           </div>
         )}
         <div className="flex-1" />
@@ -729,7 +729,7 @@ function FinSettings() {
               <div key={r.id} className="flex items-center gap-2 text-sm">
                 <span className="min-w-0 flex-1 truncate font-mono text-xs">&quot;{r.match}&quot;</span>
                 <span>→ {catName.get(r.categoryId) ?? "?"}</span>
-                <button className="btn btn-ghost btn-icon !p-1" onClick={() => update((d) => reapply({ ...d, rules: d.rules.filter((x) => x.id !== r.id) }))}><Trash2 size={12} /></button>
+                <button aria-label="Excluir regra" className="btn btn-ghost btn-icon !p-1" onClick={() => update((d) => reapply({ ...d, rules: d.rules.filter((x) => x.id !== r.id) }))}><Trash2 size={12} /></button>
               </div>
             ))}
           </div>

@@ -205,7 +205,7 @@ function SubjectPage({ s, onBack }: { s: Subject; onBack: () => void }) {
           <button className="btn btn-ghost !px-2 text-sm" onClick={onBack}><ArrowLeft size={15} /> Todas as matérias</button>
           <div className="flex-1" />
           <button className="btn !py-1.5 text-sm" onClick={() => setEditing(true)}><Pencil size={13} /> Editar matéria</button>
-          <button className="btn !py-1.5 text-sm hover:!text-red-400" onClick={() => { if (confirm(`Excluir "${s.name}"? Isso remove sessões, conteúdos e músicas desta matéria.`)) { setKey("subjects", (ss) => ss.filter((x) => x.id !== s.id)); onBack() } }}><Trash2 size={13} /></button>
+          <button aria-label="Excluir matéria" className="btn !py-1.5 text-sm hover:!text-red-400" onClick={() => { if (confirm(`Excluir "${s.name}"? Isso remove sessões, conteúdos e músicas desta matéria.`)) { setKey("subjects", (ss) => ss.filter((x) => x.id !== s.id)); onBack() } }}><Trash2 size={13} /></button>
         </div>
 
         <div className="flex items-center gap-4">
@@ -366,7 +366,7 @@ function TopicsBoard({ s, upd }: { s: Subject; upd: (p: Partial<Subject>) => voi
         <div className="mb-1 flex items-center gap-2 font-medium"><BookOpen size={16} /> Quero aprender <span className="ml-auto text-xs font-normal text-fg-muted">Próximos passos</span></div>
         <form className="mb-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (text.trim()) { upd({ topics: [...s.topics, { id: uid(), title: text.trim(), done: false }] }); setText("") } }}>
           <input className="field flex-1" placeholder="Um conteúdo, habilidade ou conceito…" value={text} onChange={(e) => setText(e.target.value)} />
-          <button className="btn btn-icon"><Plus size={14} /></button>
+          <button aria-label="Adicionar" className="btn btn-icon"><Plus size={14} /></button>
         </form>
         {want.length === 0 && <div className="py-4 text-center text-xs text-fg-muted">Adicione o primeiro conteúdo que deseja aprender.</div>}
         <div className="max-h-72 space-y-0.5 overflow-auto">
@@ -566,7 +566,7 @@ function SongDetail({ s, song, onClose, onChange, onDelete }: { s: Subject; song
                   <button onClick={() => bridge.media.open(f)} className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-line bg-black/20" title="Abrir">
                     {/\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(f) ? <img src={mediaUrl(f)} className="h-full w-full object-cover" /> : <FileText size={22} className="text-fg-muted" />}
                   </button>
-                  <button className="absolute -top-1.5 -right-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex" onClick={() => { bridge.media.remove(f); onChange({ files: files.filter((x) => x !== f) }) }}><X size={11} /></button>
+                  <button aria-label="Remover arquivo" className="absolute -top-1.5 -right-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex" onClick={() => { bridge.media.remove(f); onChange({ files: files.filter((x) => x !== f) }) }}><X size={11} /></button>
                 </div>
               ))}
             </div>
@@ -612,7 +612,7 @@ function SubjectForm({ s, onClose, onSave }: { s?: Subject; onClose: () => void;
           <div>
             <div className="mb-1 text-sm">Cor</div>
             <div className="flex flex-wrap items-center gap-2">
-              {COLORS.map((c) => <button key={c} className={cn("h-7 w-7 rounded-full transition-transform hover:scale-110", v.color === c && "ring-2 ring-white ring-offset-2 ring-offset-transparent")} style={{ background: c }} onClick={() => set({ color: c })} />)}
+              {COLORS.map((c) => <button key={c} type="button" aria-label={"Cor " + c} aria-pressed={v.color === c} className={cn("h-7 w-7 rounded-full transition-transform hover:scale-110", v.color === c && "ring-2 ring-white ring-offset-2 ring-offset-transparent")} style={{ background: c }} onClick={() => set({ color: c })} />)}
               <label className="clickable relative h-7 w-7 cursor-pointer overflow-hidden rounded-full border border-line" style={{ background: "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)" }}><input type="color" value={v.color} onChange={(e) => set({ color: e.target.value })} className="absolute inset-0 opacity-0" /></label>
             </div>
           </div>

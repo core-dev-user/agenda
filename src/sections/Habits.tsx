@@ -51,9 +51,9 @@ export default function Habits() {
   return (
     <div className="space-y-5 p-6">
       <div className="flex flex-wrap items-center gap-3">
-        <button className="btn btn-icon" onClick={() => setRef(new Date(y, m - 1, 1))}><ChevronLeft size={16} /></button>
+        <button aria-label="Mês anterior" className="btn btn-icon" onClick={() => setRef(new Date(y, m - 1, 1))}><ChevronLeft size={16} /></button>
         <div className="font-display min-w-48 text-center text-2xl font-semibold">{MONTHS[m]} <span className="text-fg-muted">{y}</span></div>
-        <button className="btn btn-icon" onClick={() => setRef(new Date(y, m + 1, 1))}><ChevronRight size={16} /></button>
+        <button aria-label="Próximo mês" className="btn btn-icon" onClick={() => setRef(new Date(y, m + 1, 1))}><ChevronRight size={16} /></button>
         <button className="btn btn-ghost text-sm" onClick={() => setRef(new Date())}>Hoje</button>
         <div className="flex-1" />
         <Segmented value={view} onChange={setView} options={[{ value: "grid", label: "Grade" }, { value: "calendar", label: "Calendário" }]} />
@@ -234,14 +234,14 @@ function HabitEditor({ habit, onClose }: { habit: Habit | null; onClose: () => v
         <div className="space-y-4">
           <input autoFocus className="field w-full text-lg" placeholder="Nome do hábito" value={cur.name} onChange={(e) => setH({ ...cur, name: e.target.value })} onKeyDown={(e) => e.key === "Enter" && save()} />
           <div className="flex flex-wrap gap-1">
-            {HABIT_ICONS.map((e) => <button key={e} onClick={() => setH({ ...cur, emoji: "i:" + e })} className={cn("rounded-lg p-2 transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]", iconKey(cur.emoji) === e && "bg-brand/30 ring-1 ring-brand")} style={iconKey(cur.emoji) === e ? { color: cur.color } : undefined}><Glyph v={"i:" + e} size={18} /></button>)}
+            {HABIT_ICONS.map((e) => <button aria-label={"Ícone " + e} key={e} onClick={() => setH({ ...cur, emoji: "i:" + e })} className={cn("rounded-lg p-2 transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]", iconKey(cur.emoji) === e && "bg-brand/30 ring-1 ring-brand")} style={iconKey(cur.emoji) === e ? { color: cur.color } : undefined}><Glyph v={"i:" + e} size={18} /></button>)}
           </div>
           <ColorPicker value={cur.color} onChange={(c) => setH({ ...cur, color: c })} />
           <div className="flex justify-between">
             {cur.id ? (
               <div className="flex gap-2">
                 <button className="btn" onClick={() => { setKey("habits", (hs) => hs.map((x) => (x.id === cur.id ? { ...x, archived: true } : x))); onClose() }}><Archive size={14} /> Arquivar</button>
-                <button className="btn hover:!text-red-400" onClick={() => { if (confirm("Excluir hábito e seu histórico?")) { setKey("habits", (hs) => hs.filter((x) => x.id !== cur.id)); onClose() } }}><Trash2 size={14} /></button>
+                <button aria-label="Excluir hábito" className="btn hover:!text-red-400" onClick={() => { if (confirm("Excluir hábito e seu histórico?")) { setKey("habits", (hs) => hs.filter((x) => x.id !== cur.id)); onClose() } }}><Trash2 size={14} /></button>
               </div>
             ) : <span />}
             <ThemedButton onClick={save}>Salvar</ThemedButton>

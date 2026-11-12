@@ -125,9 +125,9 @@ export default function Services() {
         <Segmented value={scope} onChange={setScope} options={[{ value: "month", label: "Mês" }, { value: "year", label: "Ano" }, { value: "range", label: "Período" }, { value: "all", label: "Tudo" }]} />
         {(scope === "month" || scope === "year") && (
           <>
-            <button className="btn btn-icon" onClick={() => setRef(scope === "month" ? new Date(y, m - 1, 1) : new Date(y - 1, m, 1))}><ChevronLeft size={16} /></button>
+            <button aria-label="Período anterior" className="btn btn-icon" onClick={() => setRef(scope === "month" ? new Date(y, m - 1, 1) : new Date(y - 1, m, 1))}><ChevronLeft size={16} /></button>
             <div className="font-display min-w-44 text-center text-xl font-semibold">{scope === "month" ? `${MONTHS[m]} ${y}` : y}</div>
-            <button className="btn btn-icon" onClick={() => setRef(scope === "month" ? new Date(y, m + 1, 1) : new Date(y + 1, m, 1))}><ChevronRight size={16} /></button>
+            <button aria-label="Próximo período" className="btn btn-icon" onClick={() => setRef(scope === "month" ? new Date(y, m + 1, 1) : new Date(y + 1, m, 1))}><ChevronRight size={16} /></button>
           </>
         )}
         {scope === "range" && (
@@ -269,7 +269,7 @@ function ServiceDetail({ s, onClose, onSave, onEdit, onDelete }: { s: Service; o
           <div className="flex-1" />
           {open > 0 && <button className="btn !py-1 text-xs" onClick={() => onSave({ ...s, paid: s.value, payDate: s.payDate || todayISO() })}><CheckCircle2 size={13} /> Marcar como pago</button>}
           <button className="btn !py-1 text-xs" onClick={onEdit}><Pencil size={13} /> Editar</button>
-          <button className="btn !py-1 text-xs hover:!text-red-400" onClick={onDelete}><Trash2 size={13} /></button>
+          <button aria-label="Excluir" className="btn !py-1 text-xs hover:!text-red-400" onClick={onDelete}><Trash2 size={13} /></button>
         </div>
         <div className="grid grid-cols-4 gap-2">
           <Info label="Data do serviço" value={fmtDate(s.date)} />
@@ -321,7 +321,7 @@ function Attachments({ title, desc, icon, files, onChange, images }: { title: st
             <button onClick={() => bridge.media.open(f)} className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-line bg-black/20" title="Abrir">
               {/\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(f) ? <img src={mediaUrl(f)} className="h-full w-full object-cover" /> : <FileText size={20} className="text-fg-muted" />}
             </button>
-            <button className="absolute -top-1.5 -right-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex" onClick={() => { bridge.media.remove(f); onChange(files.filter((x) => x !== f)) }}><X size={11} /></button>
+            <button aria-label="Remover arquivo" className="absolute -top-1.5 -right-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex" onClick={() => { bridge.media.remove(f); onChange(files.filter((x) => x !== f)) }}><X size={11} /></button>
           </div>
         ))}
         <button onClick={add} className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-line text-fg-muted hover:text-fg" title="Anexar"><Plus size={16} /></button>

@@ -125,7 +125,7 @@ function TasksToday({ today }: { today: string }) {
       ))}
       <div className="mt-2 flex gap-1.5">
         <input className="field !py-1 text-sm" placeholder="Nova tarefa para hoje" value={txt} onChange={(e) => setTxt(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
-        <button className="btn btn-icon" onClick={add}><Plus size={14} /></button>
+        <button aria-label="Adicionar" className="btn btn-icon" onClick={add}><Plus size={14} /></button>
       </div>
     </Card>
   )
