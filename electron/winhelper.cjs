@@ -126,7 +126,9 @@ public static class AgWin {
     }
     return l;
   }
-  static void Ghost(IntPtr t, bool on) {
+  static readonly object tbLock = new object();
+  static void Ghost(IntPtr t, bool on) { lock (tbLock) { GhostLocked(t, on); } }
+  static void GhostLocked(IntPtr t, bool on) {
     long k = t.ToInt64();
     long ex = GetWindowLongPtr(t, -20).ToInt64();
     if (on) {
@@ -157,7 +159,36 @@ public static class AgWin {
     IntPtr r; SendMessageTimeout(new IntPtr(0xffff), 0x1A, new IntPtr(0x2F), IntPtr.Zero, 0x0002, 200, out r);
   }
   /** devolve o estado original da barra do Windows (o Agenda guarda, caso feche à força) */
-  public static string HideTaskbar() { tbHidden = true; Tray(false); return abOrig.ToString(); }
+  public static string HideTaskbar() { tbHidden = true; Tray(false); StartTrayWatch(); return abOrig.ToString(); }
+
+  // ---- esconder na hora ----
+  // O Windows reexibe a barra dele ao abrir o Iniciar, a central de notificações, ao voltar do bloqueio
+  // ou quando o Explorer reinicia. A checagem de 1 s deixava a barra aparecer por um instante (ou mais,
+  // com o PC ocupado). Um gancho de eventos avisa no momento em que uma janela aparece; se for a barra
+  // do Windows e ela deveria estar escondida, some na hora. Roda numa linha própria com fila de mensagens.
+  delegate void WinEventProc(IntPtr hook, uint ev, IntPtr hwnd, int idObject, int idChild, uint thread, uint time);
+  [DllImport("user32.dll")] static extern IntPtr SetWinEventHook(uint min, uint max, IntPtr mod, WinEventProc f, uint pid, uint tid, uint flags);
+  [DllImport("user32.dll")] static extern int GetMessage(out WATCHMSG m, IntPtr h, uint a, uint b);
+  [StructLayout(LayoutKind.Sequential)] struct WATCHMSG { public IntPtr h; public uint msg; public IntPtr w; public IntPtr l; public uint time; public int x; public int y; }
+  static WinEventProc showProc;
+  static System.Threading.Thread watchThread;
+  static void StartTrayWatch() {
+    if (watchThread != null) return;
+    showProc = OnWindowShown; // guardado num campo estático: o coletor de lixo não pode apagar o delegate
+    watchThread = new System.Threading.Thread(() => {
+      // EVENT_OBJECT_SHOW (0x8002), fora do processo, ignorando as janelas do próprio ajudante
+      SetWinEventHook(0x8002, 0x8002, IntPtr.Zero, showProc, 0, 0, 0x0002);
+      WATCHMSG m;
+      while (GetMessage(out m, IntPtr.Zero, 0, 0) > 0) { }
+    });
+    watchThread.IsBackground = true;
+    watchThread.Start();
+  }
+  static void OnWindowShown(IntPtr hook, uint ev, IntPtr hwnd, int idObject, int idChild, uint thread, uint time) {
+    if (!tbHidden || idObject != 0 || idChild != 0 || hwnd == IntPtr.Zero) return;
+    string c = Cls(hwnd);
+    if (c == "Shell_TrayWnd" || c == "Shell_SecondaryTrayWnd") Ghost(hwnd, true);
+  }
   public static void SetWork(int l, int t, int r, int b) {
     var w = new RECT(); w.L = l; w.T = t; w.R = r; w.B = b;
     IntPtr mon = MonitorFromRect(ref w, 2);
@@ -203,7 +234,8 @@ public static class AgWin {
       if (cur.L != w.L || cur.T != w.T || cur.R != w.R || cur.B != w.B) Work(ref w);
     }
   }
-  public static void PeekTray(bool show) { if (show == !tbHidden) return; Tray(show); tbHidden = !show; }
+  // ao mostrar, a flag muda ANTES: senão o gancho acima esconderia a barra que estamos mostrando de propósito
+  public static void PeekTray(bool show) { if (show == !tbHidden) return; if (show) { tbHidden = false; Tray(true); } else { Tray(false); tbHidden = true; } }
 
   // ---- janelas abertas ----
   public static string List() {

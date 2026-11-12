@@ -287,7 +287,9 @@ async function tickWindows() {
   if (!raw) {
     // A helper may be restarting after Explorer changes, a suspended game or a timeout.
     // Temporarily restore native taskbar then retry without clearing the preference.
-    if (++helperFailures >= 5) recoverTaskbar("auxiliar Win32 sem resposta")
+    // Ajudante lento (comum com um jogo pesado aberto) não é a barra quebrada: a barra do Widgy continua
+    // funcionando e a do Windows continua escondida. Só registra; antes isso derrubava a barra do Widgy.
+    if (++helperFailures === 5) console.warn("Widgy bar: ajudante Win32 lento; mantendo a barra do Widgy")
     return
   }
   helperFailures = 0
@@ -467,11 +469,6 @@ function recoverTaskbar(reason) {
   if (!active()) return
   const plan = recoveryBudget.failure()
   console.warn("Widgy taskbar recovery:", reason, "attempt", plan.attempt)
-  if (!plan.retry) {
-    cfg.on = false; save()
-    teardown() // Multiple consecutive crashes: native Windows stays available.
-    return
-  }
   teardown(true, false)
   recoveryTimer = setTimeout(() => {
     recoveryTimer = null

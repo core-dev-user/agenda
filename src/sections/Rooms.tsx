@@ -4,6 +4,10 @@ import { useStore } from "@/lib/store"
 import { bridge, type ShareSource } from "@/lib/bridge"
 import { cleanCode, joinRoom, leaveRoom, newCode, sendChat, setMic, startShare, stopShare, useRoom, type ShareOpts } from "@/lib/rooms"
 import { toast } from "@/lib/toast"
+import { createPortal } from "react-dom"
+import { useImmersive } from "@/lib/immersive"
+import { useUiMode } from "@/lib/uimode"
+import { activeScreen } from "@/lib/screens"
 import { cn } from "@/lib/utils"
 import { Modal, Segmented, Switch } from "@/components/ui/controls"
 
@@ -188,9 +192,45 @@ function SharePicker({ open, onClose }: { open: boolean; onClose: () => void }) 
 }
 
 /* ---------------- dentro da sala ---------------- */
+/**
+ * Transmissão em tela cheia, acima de tudo do Widgy (inclusive a barra lateral do Carbono), no monitor
+ * onde você está. Esc ou o botão saem. Fora do modo Área de trabalho, a janela também vai para tela cheia.
+ */
+function BigStage({ stream, mine, label, close }: { stream: MediaStream; mine: boolean; label: string; close: () => void }) {
+  const mode = useUiMode((m) => m.mode)
+  const closeRef = useRef(close)
+  closeRef.current = close
+  useEffect(() => {
+    useImmersive.setState({ on: true })
+    if (mode !== "desktop") bridge.win.fullscreen(true)
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); closeRef.current() } }
+    window.addEventListener("keydown", key)
+    return () => {
+      useImmersive.setState({ on: false })
+      if (mode !== "desktop") bridge.win.fullscreen(false)
+      window.removeEventListener("keydown", key)
+    }
+  }, [mode])
+  const sc = activeScreen()
+  const r = sc.full ?? sc
+  const box: React.CSSProperties = mode === "desktop" ? { left: r.x, top: r.y, width: r.w, height: r.h } : { inset: 0 }
+  return createPortal(
+    <div className="group fixed z-[9500] bg-black" style={box} role="dialog" aria-label={"Tela cheia: " + label}>
+      <Video stream={stream} muted={mine} className="size-full object-contain" />
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-4 py-3 opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="text-sm font-medium text-white">{label}</span>
+        <button className="btn !bg-black/60 text-white" onClick={close}>Sair da tela cheia <kbd className="ml-1 rounded border border-white/20 px-1 text-[10px]">Esc</kbd></button>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
 function InRoom() {
   const st = useRoom()
-  const saved = useStore((x) => x.settings.savedRooms ?? [])
+  // o "?? []" fica FORA da leitura: dentro dela, cada leitura criava uma lista nova e a tela da sala
+  // entrava em laço infinito (quebrava ao entrar numa sala sem nenhuma sala salva)
+  const saved = useStore((x) => x.settings.savedRooms) ?? []
   const name = saved.find((r) => r.code === st.code)?.name ?? "Sala " + st.code
   const [picker, setPicker] = useState(false)
   const [focus, setFocus] = useState<string | null>(null)
@@ -201,10 +241,15 @@ function InRoom() {
   const stage = [...(st.myScreen ? [{ id: st.myId, stream: st.myScreen, mine: true }] : []), ...Object.entries(st.screens).map(([id, stream]) => ({ id, stream, mine: false }))]
   const nameOf = (id: string) => st.members.find((m) => m.id === id)?.name ?? "Amigo"
   const shown = focus ? stage.filter((x) => x.id === focus) : stage
-  const full = (el: HTMLElement | null) => el?.requestFullscreen?.()
+  // tela cheia própria: funciona em qualquer modo do Widgy (no modo Área de trabalho a janela não pode
+  // entrar em tela cheia do Windows) e fica acima da barra lateral do Carbono e da barra do Widgy
+  const [big, setBig] = useState<string | null>(null)
 
+  const bigItem = big ? stage.find((x) => x.id === big) : null
+  useEffect(() => { if (big && !bigItem) setBig(null) }, [big, bigItem])
   return (
     <div className="flex h-full min-h-0">
+      {bigItem && <BigStage stream={bigItem.stream} mine={bigItem.mine} label={bigItem.mine ? "Sua tela" : nameOf(bigItem.id)} close={() => setBig(null)} />}
       {/* membros */}
       <aside className="flex w-52 shrink-0 flex-col border-r border-line p-3">
         {st.reconnecting && <div className="mb-2 rounded-lg bg-amber-500/15 px-2 py-1.5 text-[11px] leading-snug text-amber-200">Reconectando ao servidor da sala… quem já está aqui continua vendo e ouvindo.</div>}
@@ -244,7 +289,7 @@ function InRoom() {
                   <div className="absolute top-2 left-2 rounded-full bg-black/60 px-2.5 py-0.5 text-xs text-white">{x.mine ? "Sua tela" : nameOf(x.id)}{x.mine && st.shareInfo ? ` · ${st.shareInfo}` : ""}</div>
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     {stage.length > 1 && <button className="btn btn-icon !bg-black/60 text-white" title={focus ? "Ver todas" : "Só esta"} onClick={() => setFocus(focus ? null : x.id)}><Users size={14} /></button>}
-                    <button className="btn btn-icon !bg-black/60 text-white" title="Tela cheia" onClick={(e) => full(e.currentTarget.closest(".group") as HTMLElement)}><Expand size={14} /></button>
+                    <button className="btn btn-icon !bg-black/60 text-white" title="Tela cheia" onClick={() => setBig(x.id)}><Expand size={14} /></button>
                   </div>
                 </div>
               ))}

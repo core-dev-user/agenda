@@ -75,6 +75,36 @@ async function status() {
   return { supported: true, installed: !!executable || running, running, wallpaper }
 }
 
+/**
+ * Mantém o Wallpaper Engine animado. Ele pausa sozinho pelas regras dele ("outro app em foco /
+ * maximizado / tela cheia") e o Widgy, por cobrir o monitor inteiro quando você abre uma aba ou o
+ * painel, conta como esse "outro app". Às vezes ele não volta sozinho. Então, no modo área de trabalho
+ * com o Wallpaper Engine, o Widgy pede "continuar" logo depois de cada mudança de foco/visibilidade
+ * e, por garantia, a cada 10 s. Com um jogo aberto não insiste (não pesar no jogo).
+ */
+function createKeeper({ userDir, playing = () => false, every = 10000, run: exec = execFile, isEnabled, findExe = findExecutable } = {}) {
+  let exe = null, timer = null, nudgeT = null, busy = false, on = false
+  const enabled = isEnabled || (() => process.platform === "win32" && !process.env.AGENDA_SHOT && !!userDir &&
+    require("./mode.cjs").mode() === "desktop" && requiresTransparency(userDir))
+  const play = () => {
+    if (!on || busy || playing() || !enabled()) return
+    exe = exe || findExe()
+    if (!exe) return
+    busy = true
+    exec(exe, ["-control", "play"], { windowsHide: true, timeout: 3500, maxBuffer: 64 * 1024 }, () => { busy = false })
+  }
+  const nudge = (ms = 900) => { clearTimeout(nudgeT); nudgeT = setTimeout(play, ms) }
+  return {
+    start() { if (on) return; on = true; timer = setInterval(play, every); nudge(3000) },
+    stop() { on = false; clearInterval(timer); clearTimeout(nudgeT) },
+    nudge,
+    /** liga os eventos da janela principal que costumam disparar a pausa do Wallpaper Engine */
+    watch(win) {
+      for (const ev of ["focus", "blur", "show", "hide", "restore", "minimize", "leave-full-screen"]) win.on(ev, () => nudge())
+    },
+  }
+}
+
 function register(ipcMain, onQuit, userDir) {
   ipcMain.handle("wallpaperEngine:status", status)
   ipcMain.handle("wallpaperEngine:open", async () => {
@@ -105,4 +135,4 @@ function register(ipcMain, onQuit, userDir) {
   })
 }
 
-module.exports = { isEngine, requiresTransparency, steamRoots, findExecutable, status, register }
+module.exports = { isEngine, requiresTransparency, steamRoots, findExecutable, status, register, createKeeper }
