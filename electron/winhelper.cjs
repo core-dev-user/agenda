@@ -450,6 +450,9 @@ async function call(cmd) {
   const child = proc
   if (!child) return ""
   if (!(await ready) || proc !== child) return ""
+  // Uma enxurrada de prévias/ícones não pode enfileirar comandos o suficiente
+  // para expirar o poll principal da barra e restaurar o Explorer desnecessariamente.
+  if (child.pending.length >= 18 && /^(pshow|icon)\s/.test(cmd)) return ""
   return new Promise((res) => {
     const waiting = child.pending
     const timer = setTimeout(() => child.stop(), 5000)

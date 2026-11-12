@@ -823,6 +823,12 @@ function System() {
       </Section>
       <UpdatesSection />
       <SystemExtra />
+      <Section title="Diagnóstico de travamentos" desc="Registra quedas do renderizador, da GPU e longas pausas da interface. Não coleta nomes de arquivos, senhas ou conteúdo de widgets.">
+        <button className="btn" onClick={() => void bridge.app.diagnostics()}>
+          <HardDrive size={14} /> Abrir relatório de diagnóstico
+        </button>
+        <div className="mt-2 text-xs text-fg-muted">Arquivo local: %APPDATA%\\Agenda\\widgy-diagnostics.log. O histórico é limitado para não consumir espaço ou RAM.</div>
+      </Section>
       <Section title="Backup" desc="Exporta hábitos, estudos, serviços, listas, widgets e configurações (as imagens ficam na pasta do app).">
         <div className="flex gap-2">
           <button className="btn" onClick={exportData}><Download size={14} /> Exportar backup</button>
