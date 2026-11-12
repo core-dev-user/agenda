@@ -45,3 +45,15 @@ test("launcher, barra e menu Carbono usam pictogramas, sem ícones Windows quebr
   assert.match(sync, /r\.dataset\.pack = "carbono"/)
   assert.match(sync, /surfaceVars\(s\.shell\?\.railBg/)
 })
+
+test("a barra nativa importa só a paleta pura e não inicia o store da janela principal", async () => {
+  const { readFileSync } = await import("node:fs")
+  const { fileURLToPath } = await import("node:url")
+  const path = await import("node:path")
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..")
+  const sync = readFileSync(path.join(root, "src/bar/sync.ts"), "utf8")
+  const palette = readFileSync(path.join(root, "src/shell/colorTokens.ts"), "utf8")
+  assert.match(sync, /from ["']@\/shell\/colorTokens["']/)
+  assert.doesNotMatch(sync, /from ["']@\/shell\/pack["']/)
+  assert.doesNotMatch(palette, /@\/lib\/store|zustand|Electron|require\(/)
+})

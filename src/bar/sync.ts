@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { bridge, type BarSync } from "@/lib/bridge"
 import { ensureFontFamily } from "@/lib/fonts"
-import { ACCENTS, surfaceVars, type CarbonoAccent } from "@/shell/pack"
+import { ACCENTS, surfaceVars, type CarbonoAccent } from "@/shell/colorTokens"
 
 /** aparência, fixados e avisos que a janela principal manda (a barra não lê os dados do app direto) */
 export function useBarSync() {
