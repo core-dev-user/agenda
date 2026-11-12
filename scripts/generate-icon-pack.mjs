@@ -10,7 +10,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const source = join(root, "node_modules", "@fortawesome", "fontawesome-free")
 const target = join(root, "public", "icon-packs")
 const catalog = JSON.parse(readFileSync(join(root, "src", "lib", "iconPackCatalog.json"), "utf8"))
-const styles = ["glass", "neon", "metal", "minimal", "retro"]
+const styles = ["glass", "neon", "metal", "minimal", "retro", "carbono"]
 const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
 const esc = (s) => String(s).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;")
 
@@ -20,12 +20,23 @@ function makeSvg(entry, mode) {
   const vb = sourceSvg.match(/viewBox="([^"]+)"/)?.[1]?.split(/\s+/).map(Number)
   if (!vb || vb.length !== 4) throw Error("Invalid Font Awesome SVG: " + path)
   const [vx, vy, w, h] = vb
-  const scale = Math.min(235 / w, 235 / h)
+  // Carbono is the original brand silhouette only: no tile, gradient or shadow.
+  // The vector is larger than in the padded icon-pack styles so it remains
+  // recognizable in the 36-pixel taskbar.
+  const bound = mode === "carbono" ? 432 : 235
+  const scale = Math.min(bound / w, bound / h)
   const tx = 256 - (w * scale) / 2 - vx * scale
-  const ty = 253 - (h * scale) / 2 - vy * scale
+  const ty = (mode === "carbono" ? 256 : 253) - (h * scale) / 2 - vy * scale
   const inner = [...sourceSvg.matchAll(/<(path|rect|circle|polygon|ellipse)\b[^>]*\/>/g)]
     .map((m) => m[0].replace(/\sfill="[^"]*"/g, "").replace(/\sclass="[^"]*"/g, "")).join("")
   if (!inner) throw Error("No shapes in: " + path)
+  if (mode === "carbono") {
+    // Black silhouette used through CSS mask-image: the UI paints it with the
+    // current contrast color. Always transparent; no logo borders/colored tiles.
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">' +
+      '<g transform="translate(' + tx.toFixed(4) + ' ' + ty.toFixed(4) + ') scale(' + scale.toFixed(6) + ')" fill="#000">' +
+      inner + '</g></svg>'
+  }
   const c = entry.color
   const defs = '<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="' + c + '"/><stop offset=".55" stop-color="' + c + '" stop-opacity=".88"/><stop offset="1" stop-color="#090e22"/></linearGradient>' +
     '<linearGradient id="metal" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#f5f7fa"/><stop offset=".36" stop-color="#b6bcc6"/><stop offset=".66" stop-color="#6c7280"/><stop offset="1" stop-color="#232735"/></linearGradient>' +

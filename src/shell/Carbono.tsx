@@ -390,10 +390,10 @@ const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 
 let appsCache: Promise<{ name: string; path: string }[]> | null = null
 const loadApps = () => (appsCache ??= bridge.bar.apps().catch(() => { appsCache = null; return [] }))
-/** Todos os apps são pictogramas vetoriais locais; zero base64 ou logos com falha. */
+/** Ícone de marca sem plaquinha: forma original monocromática ou ícone Windows sem cor. */
 function PcIcon({ path, name }: { path: string; name: string }) {
-  return <span className="flex size-7 items-center justify-center rounded-lg" style={{ background: "var(--sh-2)", color: "var(--sh-fg)" }}>
-    <MonoAppIcon name={name} path={path} size={17} />
+  return <span className="flex size-7 items-center justify-center" style={{ color: "var(--sh-fg)" }}>
+    <MonoAppIcon name={name} path={path} size={22} />
   </span>
 }
 

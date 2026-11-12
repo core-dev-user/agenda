@@ -34,7 +34,7 @@ function useIcon(file: string, given: string, enabled: boolean) {
 }
 function ExeIcon({ g, size, style, mono }: { g: Group; size: number; style: IconPackStyle; mono: boolean }) {
   const icon = useIcon(g.exe, g.icon, !mono)
-  if (mono) return <MonoAppIcon name={g.name} path={g.exe} size={size} />
+  if (mono) return <MonoAppIcon name={g.name} path={g.exe} size={size} originalSrc={g.icon} />
   const packed = iconPackAppSrc(g.name, g.exe, style)
   return packed ? <img src={packed} alt="" draggable={false} style={{ width: size, height: size, objectFit: "contain" }} /> :
     icon ? <img src={icon} alt="" draggable={false} style={{ width: size, height: size }} /> :
@@ -120,7 +120,7 @@ export function SystemBar() {
   const count = 1 + sections.length + groups.length + 3 + (isDock ? 2 : 5)
   const length = vertical ? vw.h : vw.w
   const fixed = isDock ? 60 : vertical ? 120 : 260
-  const size = Math.max(26, Math.min(t.size, Math.floor((length - fixed) / Math.max(1, count)) - 6))
+  const size = Math.max(carbono ? 20 : 26, Math.min(t.size, Math.floor((length - fixed) / Math.max(1, count)) - 6))
   const icon = Math.round(size * 0.46)
 
   const magnify = (el: HTMLElement | null) => {

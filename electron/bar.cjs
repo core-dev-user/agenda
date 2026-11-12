@@ -107,7 +107,8 @@ const kindOf = (t) => (clear(t) ? "clear" : "glass") + ":" + (t.position === "le
 function rects(d) {
   const b = d.bounds
   const t = tb()
-  const size = Math.max(28, Math.min(96, Math.round(t.size)))
+  // Sem o piso antigo de 28px no Carbono: 20px + 16px = 36px reais.
+  const size = Math.max(lastSync?.pack === "carbono" ? 20 : 28, Math.min(96, Math.round(t.size)))
   const isDock = t.style !== "bar"
   // espessura que a barra ocupa de verdade (reservada para as janelas não ficarem embaixo)
   const band = size + 16 + (isDock ? 12 : 0)
