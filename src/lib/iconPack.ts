@@ -47,6 +47,15 @@ export const iconPackAppSrc = (name: string, exe: string, style: IconPackStyle):
   const entry = findPackIcon(name, exe)
   return entry && style !== "original" ? iconPackSrc(entry.name, style) : null
 }
+
+/** Only the recognizable original glyph, rendered as a monochrome CSS mask.
+ * Uses the offline, generated Font Awesome vectors with no background tile.
+ * Unrecognized installed programs retain their actual Windows icon instead.
+ */
+export const carbonoBrandSrc = (name: string, exe = ""): string | null => {
+  const entry = findPackIcon(name, exe)
+  return entry ? "icon-packs/carbono/" + iconSlug(entry.name) + ".svg" : null
+}
 const SECTIONS: Record<SectionId, string> = {
   today: "Agenda", habits: "Tarefas", studies: "Estudos", services: "Projetos",
   finance: "Financeiro", lists: "Tarefas", music: "Musica", games: "Jogos",

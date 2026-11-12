@@ -17,7 +17,7 @@ import { CursorLayer } from "@/components/CursorLayer"
 import { Taskbar, WidgetMenu } from "@/components/Taskbar"
 import { CarbonoChrome, CarbonoBorder, CarbonoPanels, useCarbonoVars } from "@/shell/Carbono"
 import { useIsImmersive } from "@/lib/immersive"
-import { shellPrefs, useShell } from "@/shell/pack"
+import { RAIL, shellPrefs, useShell } from "@/shell/pack"
 import { NotificationPanel } from "@/components/NotificationCenter"
 import { useScreenList, useActiveScreen, setActiveScreen } from "@/lib/screens"
 import type { ScreenRect } from "@/lib/bridge"
@@ -132,7 +132,13 @@ function useMainBar() {
         pins: s.settings.pcPins ?? [], unread: s.notifications.filter((n) => !n.read).length,
         sections: SECTIONS.map((x) => ({ id: x.id, label: x.label, color: x.color })),
         wall: wallCss(s.settings.wallpaper),
-        tb: s.settings.taskbar,
+        // Mesmo para quem já usava o Carbono na versão anterior, sincroniza
+        // a largura real do AppBar do Windows com a rail de 36px.
+        tb: s.settings.shell?.pack === "carbono"
+          ? { ...s.settings.taskbar, position: s.settings.shell?.side ?? "left",
+              style: "bar", size: RAIL - 16, autoHide: false,
+              magnify: false, showLabels: false }
+          : s.settings.taskbar,
         locked: s.settings.widgetsLocked,
         icons: { iconStyle: s.settings.iconStyle, theme: s.settings.theme, iconShape: s.settings.iconShape, iconColors: s.settings.iconColors as Record<string, string> | undefined, iconPackStyle: s.settings.iconPackStyle ?? "original" },
         secs: (() => {

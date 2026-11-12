@@ -34,7 +34,7 @@ function useIcon(file: string, given: string, enabled: boolean) {
 }
 function ExeIcon({ g, size, style, mono }: { g: Group; size: number; style: IconPackStyle; mono: boolean }) {
   const icon = useIcon(g.exe, g.icon, !mono)
-  if (mono) return <MonoAppIcon name={g.name} path={g.exe} size={size} />
+  if (mono) return <MonoAppIcon name={g.name} path={g.exe} size={size} originalSrc={g.icon} />
   const packed = iconPackAppSrc(g.name, g.exe, style)
   return packed ? <img src={packed} alt="" draggable={false} style={{ width: size, height: size, objectFit: "contain" }} /> :
     icon ? <img src={icon} alt="" draggable={false} style={{ width: size, height: size }} /> :

@@ -43,8 +43,8 @@ export const shellPrefs = (s: Settings): ShellPrefs => ({ ...SHELL_DEFAULT, ...(
 /** o que o pacote muda (e o que é guardado para desfazer) */
 const LOOK_KEYS = ["theme", "dark", "accent", "uiFont", "numFont", "displayFont", "radius", "blur", "surfaceOpacity", "cursorStyle", "cursorEffect", "taskbar", "overlay", "sakura"] as const
 
-/** rail: 48 px de largura = tamanho 32 + 16 de respiro, o mesmo cálculo da barra normal (os widgets e as janelas desviam dela) */
-export const RAIL = 48
+/** Rail compacto do Carbono: 36 px, incluindo os 16 px de respiro nativo. */
+export const RAIL = 36
 export const FRAME = 8
 export const CORNER = 22
 
