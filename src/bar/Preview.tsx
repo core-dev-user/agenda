@@ -57,7 +57,7 @@ export function Preview() {
             className="absolute flex flex-col items-center justify-center gap-2 rounded-md bg-black/25"
             style={{ left: t.thumb.x - t.x, top: t.thumb.y - t.y, width: t.thumb.w, height: t.thumb.h }}
           >
-            {carbono ? <MonoAppIcon name={t.title} size={28} /> : t.icon && <img src={t.icon} alt="" className="size-8 opacity-40" draggable={false} />
+            {carbono ? <MonoAppIcon name={t.title} size={28} /> : t.icon && <img src={t.icon} alt="" className="size-8 opacity-40" draggable={false} />}
           </div>
         </div>
       ))}
