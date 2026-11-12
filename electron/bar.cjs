@@ -167,7 +167,62 @@ function layout() {
 }
 
 /* ---------------- ícones dos programas ---------------- */
+// Evita reter milhares de ícones PNG/base64 e jobs pendentes durante horas.
 const icons = new Map()
+const iconQueued = new Set()
+const iconQueue = []
+let iconWorkers = 0
+let iconBytes = 0
+const ICON_LIMIT = 96
+const ICON_BYTES = 3 * 1024 * 1024
+function iconGet(key) {
+  if (!icons.has(key)) return undefined
+  const value = icons.get(key)
+  icons.delete(key)
+  icons.set(key, value)
+  return value
+}
+function iconPut(key, value) {
+  const previous = icons.get(key)
+  if (previous !== undefined) iconBytes -= previous.length
+  icons.delete(key)
+  if (value.length <= 512 * 1024) {
+    icons.set(key, value)
+    iconBytes += value.length
+  }
+  while (icons.size > ICON_LIMIT || iconBytes > ICON_BYTES) {
+    const oldest = icons.keys().next().value
+    if (oldest === undefined) break
+    iconBytes -= icons.get(oldest).length
+    icons.delete(oldest)
+  }
+}
+function pumpIcons() {
+  while (iconWorkers < 2 && iconQueue.length) {
+    const file = iconQueue.shift()
+    const key = file.toLowerCase()
+    iconWorkers++
+    // Nunca aguardar ícones dentro do poll de janelas; respostas lentas do Shell
+    // estavam bloqueando atualização e prévias de Steam/Discord.
+    void iconOf(file, false).catch(() => "").finally(() => {
+      iconQueued.delete(key)
+      iconWorkers--
+      pumpIcons()
+    })
+  }
+}
+function iconForPoll(file) {
+  if (!file) return ""
+  const key = file.toLowerCase()
+  const cached = iconGet(key)
+  if (cached !== undefined) return cached
+  if (!iconQueued.has(key) && iconQueue.length < 32) {
+    iconQueued.add(key)
+    iconQueue.push(file)
+    pumpIcons()
+  }
+  return ""
+}
 /**
  * De onde tirar o ícone: atalhos (.lnk) apontam para o programa (ou para um ícone próprio);
  * atalhos de internet (.url, ex.: jogos da Steam) dizem o ícone na linha IconFile.
@@ -190,18 +245,20 @@ function iconSource(file) {
   } catch {}
   return { file, index: 0 }
 }
-async function iconOf(file, useNative = true) {
+async function iconOf(file, useNative = false) {
   if (!file) return ""
   const k = file.toLowerCase()
-  if (icons.has(k) && icons.get(k)) return icons.get(k)
+  const cached = iconGet(k)
+  if (cached !== undefined) return cached
   let url = ""
   // Menu Iniciar can render dozens of icons at once. Never fill the single
   // Win32 helper FIFO with thumbnail requests, as this stalls taskbar polling.
   if (useNative) {
     const b64 = await winh.call("icon " + file)
     if (b64 && b64 !== "none" && b64 !== "ok" && /^[A-Za-z0-9+/=]+$/.test(b64)) {
-      icons.set(k, "data:image/png;base64," + b64)
-      return icons.get(k)
+      const data = "data:image/png;base64," + b64
+      iconPut(k, data)
+      return data
     }
   }
   const src = iconSource(file)
@@ -211,7 +268,7 @@ async function iconOf(file, useNative = true) {
     if (!url) url = (await app.getFileIcon(src.file, { size: "large" })).toDataURL()
   } catch {}
   if (!url && src.file !== file) { try { url = (await app.getFileIcon(file, { size: "large" })).toDataURL() } catch {} }
-  icons.set(k, url)
+  iconPut(k, url)
   return url
 }
 const nice = (exe) => path.basename(exe || "", ".exe").replace(/[-_.]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
@@ -263,7 +320,7 @@ async function tickWindows() {
   const wins = []
   for (const w of j.wins) {
     if ((w.exe || "").toLowerCase() === own) continue
-    wins.push({ h: w.h, title: w.t, exe: w.exe, name: nice(w.exe), min: w.min, icon: await iconOf(w.exe) })
+    wins.push({ h: w.h, title: w.t, exe: w.exe, name: nice(w.exe), min: w.min, icon: iconForPoll(w.exe) })
   }
   if (wins.some((w) => w.h === j.fg)) lastFg = j.fg
   else if (j.fg !== "0" && !j.full) lastFg = ""
@@ -272,6 +329,8 @@ async function tickWindows() {
   const m = getMain()
   const ownFg = m && !m.isDestroyed() && winh.hwndOf(m) === j.fg
   const fullId = j.full && !menu && !ownFg ? screen.getDisplayNearestPoint(screen.screenToDipPoint({ x: j.fl + 1, y: j.ft + 1 })).id : null
+  const payload = { wins, fg: lastFg }
+  const signature = JSON.stringify(payload)
   for (const [id, b] of bars) {
     if (b.isDestroyed()) continue
     // o Windows às vezes empurra a barra para dentro da área livre: devolve para a borda
@@ -279,7 +338,13 @@ async function tickWindows() {
     if (d) { const want = rects(d).barRect, cur = b.getBounds(); if (cur.x !== want.x || cur.y !== want.y || cur.width !== want.width || cur.height !== want.height) b.setBounds(want) }
     const hide = id === fullId
     if (hide !== hiddenOn.has(id)) { if (hide) { hiddenOn.add(id); b.hide() } else { hiddenOn.delete(id); b.showInactive() } }
-    b.webContents.send("bar:wins", { wins, fg: lastFg })
+    // Evita serializar/mandar ícones em base64 e renderizar a barra todo segundo.
+    // Pulso a cada 8s recupera assinaturas perdidas durante o primeiro carregamento.
+    if (b.__winsSignature !== signature || Date.now() - (b.__winsSentAt || 0) >= 8000) {
+      b.__winsSignature = signature
+      b.__winsSentAt = Date.now()
+      b.webContents.send("bar:wins", payload)
+    }
   }
 }
 
@@ -306,7 +371,7 @@ function makeBar(d) {
   b.__dock = dock
   page(b, { view: "bar" })
   b.once("ready-to-show", () => { if (!b.isDestroyed() && !hiddenOn.has(d.id)) b.showInactive() })
-  b.webContents.on("did-finish-load", () => { if (!b.isDestroyed()) b.webContents.send("bar:max", maxOn.has(d.id)) })
+  b.webContents.on("did-finish-load", () => { if (!b.isDestroyed()) { b.__winsSignature = null; b.webContents.send("bar:max", maxOn.has(d.id)) } })
   const failed = () => {
     if (bars.get(d.id) !== b || !active()) return
     const now = Date.now()
@@ -478,6 +543,7 @@ let preview = null
 let previewKey = ""
 let previewT = null
 let previewHover = false
+let previewReadyTimer = null
 function previewWin() {
   if (preview && !preview.isDestroyed()) return preview
   preview = new BrowserWindow({
@@ -492,6 +558,7 @@ function previewWin() {
   return preview
 }
 function hidePreview() {
+  clearTimeout(previewReadyTimer); previewReadyTimer = null
   clearTimeout(previewT); previewT = null
   clearInterval(fadeT); fadeT = null
   const hadPreview = !!previewKey
@@ -532,6 +599,7 @@ function showPreview(barWin, items, anchor) {
   previewGo = (got) => {
     if (got !== seq || previewKey !== key || w.isDestroyed()) return
     previewGo = null
+    clearTimeout(previewReadyTimer); previewReadyTimer = null
     winh.call("phide")
     const fade = !wasOpen // trocando de um programa para outro com a prévia aberta: troca na hora
     if (fade) { w.setOpacity(0); fadeIn(w) }
@@ -543,6 +611,11 @@ function showPreview(barWin, items, anchor) {
     }
   }
   previewData = { tiles, seq }
+  // Em GPU/DWM congestionado, a janela de prévia não deve ficar presa aguardando o renderer.
+  clearTimeout(previewReadyTimer)
+  previewReadyTimer = setTimeout(() => {
+    if (previewGo && previewKey === key) hidePreview()
+  }, 2500)
   // did-finish-load não garante que o efeito React já assinou o canal IPC.
   if (previewLoaded) w.webContents.send("preview:data", previewData)
 }
@@ -630,6 +703,10 @@ function teardown(restore = true, notify = true) {
   const oldBars = [...bars.values()]; bars.clear()
   for (const b of oldBars) if (!b.isDestroyed()) { winh.call("unappbar " + winh.hwndOf(b)); b.destroy() }
   for (const k of desks.values()) if (!k.isDestroyed()) k.destroy()
+  iconQueue.length = 0
+  iconQueued.clear()
+  icons.clear()
+  iconBytes = 0
   bars.clear(); desks.clear(); hiddenOn.clear()
   keys.enable(false)
   if (!restore) return

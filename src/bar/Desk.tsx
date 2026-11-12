@@ -6,7 +6,7 @@ import { useBarSync } from "./sync"
 export function Desk() {
   const sync = useBarSync()
   const [now, setNow] = useState(new Date())
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t) }, [])
+  useEffect(() => { const t = setInterval(() => { if (!document.hidden) setNow(new Date()) }, 30000); return () => clearInterval(t) }, [])
   const wall = sync?.wall
   return (
     <div

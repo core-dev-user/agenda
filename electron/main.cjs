@@ -25,8 +25,16 @@ if (process.env.AGENDA_SHOT) {
 const system = require("./system.cjs")
 const modes = require("./mode.cjs")
 const wallpaperEngine = require("./wallpaper-engine.cjs")
+const diagnostics = require("./diagnostics.cjs")
 const { fetchSafeText } = require("./net-guard.cjs")
 const userDir = app.getPath("userData")
+const diag = diagnostics.createLogger(userDir)
+const stopMainLoopMonitor = diagnostics.monitorMainLoop(diag)
+diag.write("startup", { mode: modes.mode() })
+app.on("child-process-gone", (_event, details) => {
+  if (details.type === "GPU") diag.write("gpu-gone", { reason: details.reason, exitCode: details.exitCode, mode: modes.mode() })
+})
+app.on("before-quit", stopMainLoopMonitor)
 const mediaDir = path.join(userDir, "media")
 const toolsDir = path.join(userDir, "tools")
 const dataFile = path.join(userDir, "agenda-data.json")
@@ -81,6 +89,7 @@ function createWindow() {
     },
     ...modes.windowOptions(),
   })
+  diagnostics.attachWindowDiagnostics(win, diag, () => modes.mode())
   // iniciado junto com o Windows: abre direto na bandeja (perto do relógio) — no modo área de trabalho ele já fica no fundo
   const hidden = system.startHidden && !process.env.AGENDA_SHOT && modes.mode() !== "desktop"
   if (!hidden && (modes.mode() === "screen" || !modes.mode())) win.maximize()
@@ -264,6 +273,11 @@ ipcMain.on("win:fullscreen", (_e, on) => win && win.setFullScreen(!!on))
 ipcMain.on("win:close", () => win && win.close())
 ipcMain.handle("app:openExternal", (_e, url) => {
   if (/^https?:/.test(url)) shell.openExternal(url)
+})
+ipcMain.handle("app:diagnostics", () => {
+  if (fs.existsSync(diag.file)) shell.showItemInFolder(diag.file)
+  else void shell.openPath(userDir)
+  return true
 })
 
 /* ---------------- Persistência (salvamento automático) ----------------

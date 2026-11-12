@@ -45,6 +45,17 @@ export function SystemBar() {
   const [now, setNow] = useState(new Date())
   const [vw, setVw] = useState({ w: innerWidth, h: innerHeight })
   const [mouse, setMouse] = useState<number | null>(null)
+  const lastMouse = useRef({ at: 0, coordinate: -999 })
+  const trackMouse = (coordinate: number) => {
+    if (!t.magnify || !isDock || document.hidden) return
+    const now = performance.now()
+    const prev = lastMouse.current
+    // Mouse gamer pode mandar 1000+ eventos/s: no máximo ~30 renders/s.
+    if (now - prev.at < 32 || Math.abs(coordinate - prev.coordinate) < 3) return
+    prev.at = now
+    prev.coordinate = coordinate
+    setMouse(coordinate)
+  }
   const [hidden, setHidden] = useState(false)
   const [max, setMax] = useState(false)
   useEffect(() => bridge.bar.onMax(setMax), [])
@@ -56,7 +67,7 @@ export function SystemBar() {
   const previewShownAt = useRef(0)
   useEffect(() => bridge.bar.onWins((d) => { setWins(d.wins); setFg(d.fg) }), [])
   useEffect(() => bridge.bar.onMenuState(setMenu), [])
-  useEffect(() => { const id = setInterval(() => setNow(new Date()), 5000); return () => clearInterval(id) }, [])
+  useEffect(() => { const id = setInterval(() => { if (!document.hidden) setNow(new Date()) }, 30000); return () => clearInterval(id) }, [])
   useLayoutEffect(() => { const f = () => setVw({ w: innerWidth, h: innerHeight }); addEventListener("resize", f); return () => removeEventListener("resize", f) }, [])
 
   // ocultar sozinha: some longe do mouse e volta quando ele encosta na borda da tela
@@ -139,7 +150,7 @@ export function SystemBar() {
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         onPointerEnter={() => bridge.bar.hit(true)}
         onPointerLeave={() => { bridge.bar.hit(false); setMouse(null) }}
-        onPointerMove={(e) => setMouse(vertical ? e.clientY : e.clientX)}
+        onPointerMove={(e) => trackMouse(vertical ? e.clientY : e.clientX)}
         style={{ perspective: 600 }}
       >
         <div

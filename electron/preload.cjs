@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld("agenda", {
   app: {
     autostart: (v) => ipcRenderer.invoke("app:autostart", v),
     openExternal: (url) => ipcRenderer.invoke("app:openExternal", url),
+    diagnostics: () => ipcRenderer.invoke("app:diagnostics"),
     screenInfo: () => ipcRenderer.invoke("app:screenInfo"),
     show: () => ipcRenderer.invoke("app:show"),
     quit: () => ipcRenderer.invoke("app:quit"),
