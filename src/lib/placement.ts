@@ -36,7 +36,8 @@ export function findSpot(size: { w: number; h: number }, others: Geo[], view: { 
     for (const o of blocks) {
       const ix = Math.min(x + w, o.x + o.w + GAP) - Math.max(x, o.x - GAP)
       const iy = Math.min(y + h, o.y + o.h + GAP) - Math.max(y, o.y - GAP)
-      if (ix > 0 && iy > 0) s += ix * iy
+      // com a tela cheia alguma sobreposição é inevitável: ficar embaixo da barra pesa mais que ficar sobre outro widget
+      if (ix > 0 && iy > 0) s += ix * iy * (avoid.includes(o) ? 6 : 1)
     }
     return s
   }

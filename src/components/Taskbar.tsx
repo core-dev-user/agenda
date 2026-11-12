@@ -24,6 +24,33 @@ export function Taskbar() {
   const readAll = useStore((x) => x.markNotificationsRead)
   // fechar o painel de avisos marca tudo como lido
   const setMenu = (m: null | "start" | "widgets" | "bell") => { if (menu === "bell" && m !== "bell") readAll(); setMenuRaw(m) }
+  // Teclado: Esc fecha o painel aberto pela barra e o foco volta para o botão que abriu
+  const menuRef = useRef(menu)
+  menuRef.current = menu
+  const setMenuRef = useRef(setMenu)
+  setMenuRef.current = setMenu
+  const openerRef = useRef<HTMLElement | null>(null)
+  if (menu && !openerRef.current) openerRef.current = document.activeElement as HTMLElement | null
+  if (!menu) openerRef.current = null
+  useEffect(() => {
+    if (!menu) return
+    const opener = openerRef.current
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return
+      const all = document.querySelectorAll("[data-modal]")
+      if (!all[all.length - 1]?.hasAttribute("data-dock-menu")) return // há um diálogo por cima: ele fecha primeiro
+      e.preventDefault()
+      setMenuRef.current(null)
+      if (opener?.isConnected) opener.focus({ preventScroll: true })
+    }
+    window.addEventListener("keydown", key)
+    return () => {
+      window.removeEventListener("keydown", key)
+      // fechou por outro caminho (escolheu um widget, clicou fora): o foco não fica perdido no painel que some
+      const a = document.activeElement
+      if (opener?.isConnected && (!a || a === document.body || a.closest("[data-dock-menu]"))) opener.focus({ preventScroll: true })
+    }
+  }, [menu])
   const [hidden, setHidden] = useState(false)
   const [mouse, setMouse] = useState<number | null>(null)
   const barRef = useRef<HTMLDivElement>(null)
@@ -165,6 +192,9 @@ export function Taskbar() {
             <div className="fixed inset-0 z-[790]" onPointerDown={() => setMenu(null)} />
             <motion.div
               data-modal
+              data-dock-menu
+              role="dialog"
+              aria-label={menu === "start" ? "Início" : menu === "bell" ? "Avisos" : "Adicionar widget"}
               className={cn("surface fixed z-[810]", menu === "widgets" ? "w-[min(640px,calc(100vw-32px))]" : "w-[360px]", "max-h-[calc(100vh-var(--tb-size)-70px)] overflow-y-auto p-4", {
                 bottom: "bottom-[calc(var(--tb-size)+40px)] left-1/2 -translate-x-1/2",
                 top: "top-[calc(var(--tb-size)+40px)] left-1/2 -translate-x-1/2",
@@ -215,7 +245,7 @@ function DockBtn({
       style={{ height: size, minWidth: size }}
     >
       <div style={{ transform: `${liftT} scale(${scale})`, transformOrigin: origin, transition: "transform .14s ease-out", willChange: "transform" }}>
-        <motion.div tabIndex={-1} whileTap={{ scale: 0.85, rotateX: 25 }} style={{ transformStyle: "preserve-3d" }}>{children}</motion.div>
+        <motion.div tabIndex={-1} onFocus={(e) => e.currentTarget.closest("button")?.focus({ preventScroll: true })} whileTap={{ scale: 0.85, rotateX: 25 }} style={{ transformStyle: "preserve-3d" }}>{children}</motion.div>
       </div>
       {showLabel && <span className="pr-1 text-sm">{label}</span>}
       {running && (
@@ -298,7 +328,8 @@ export function WidgetMenu({ close }: { close: () => void }) {
         <div className="font-display text-lg font-semibold">Adicionar widget</div>
         <label className="ml-auto flex h-8 w-48 items-center gap-1.5 rounded-lg border border-line px-2 text-sm">
           <Search size={13} className="shrink-0 text-fg-muted" />
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Procurar…" className="min-w-0 flex-1 bg-transparent outline-none" />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Procurar…" aria-label="Procurar widget" className="min-w-0 flex-1 bg-transparent outline-none"
+            onKeyDown={(e) => { if (e.key === "Enter" && query && list.length) { e.preventDefault(); add(list[0].type, list[0].config); close() } }} />
         </label>
       </div>
       <div className="flex gap-3">
@@ -317,8 +348,8 @@ export function WidgetMenu({ close }: { close: () => void }) {
         <div className="min-h-[300px] flex-1">
           {cat === "abas" && !query && <div className="mb-1.5 text-xs text-fg-muted">Um atalho para abrir a aba, com prévia do conteúdo.</div>}
           <div className="grid grid-cols-2 gap-1">
-            {list.map((c) => (
-              <button key={c.type + c.label} onClick={() => { add(c.type, c.config); close() }} className={pickBtn}>
+            {list.map((c, i) => (
+              <button key={c.type + c.label} onClick={() => { add(c.type, c.config); close() }} className={cn(pickBtn, query && i === 0 && "bg-[color-mix(in_srgb,var(--fg)_10%,transparent)]")}>
                 <GlyphTile icon={c.icon} color={c.color} size={28} />
                 <span className="leading-tight">{c.label}</span>
               </button>

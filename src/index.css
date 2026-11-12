@@ -382,6 +382,10 @@ html:has([data-dim]) [data-desktop] .surface, html:has([data-dim]) [data-desktop
 /* um monitor dentro da página (área de trabalho em vários monitores): o quadro não pega cliques, só o que está dentro */
 .screen-frame { pointer-events: none; }
 .screen-frame > :not(.pointer-events-none) { pointer-events: auto; }
+/* Painel aberto pela barra (Início, adicionar widget, avisos): enquanto está aberto, a barra e o painel sobem
+   acima das janelas. O quadro tem transform, então a camada do painel só vale dentro dele; sem esta regra o
+   painel abria atrás de qualquer janela aberta. */
+.screen-frame:has([data-dock-menu]) { z-index: 800; }
 
 /* Entrada opcional da marca Widgy (respeita a preferência do usuário). */
 @keyframes widgy-mark-in {

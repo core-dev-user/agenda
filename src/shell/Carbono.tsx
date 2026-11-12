@@ -210,9 +210,18 @@ export function CarbonoChrome() {
   const readAll = useStore((s) => s.markNotificationsRead)
   const toggle = (p: "bell" | "power") => { if (pop === "bell") readAll(); setPop(pop === p ? "" : p) }
   useEffect(() => { useShell.setState({ power: !!pop }) }, [pop])
+  // Enquanto um painel da barra está aberto (e durante a animação de fechar) o quadro inteiro sobe acima das
+  // janelas: ver ".screen-frame:has([data-dock-menu])" no index.css. Sem isso o painel abria atrás delas.
+  const [raised, setRaised] = useState(false)
+  useEffect(() => {
+    if (pop) { setRaised(true); return }
+    const t = window.setTimeout(() => setRaised(false), 320)
+    return () => clearTimeout(t)
+  }, [pop])
 
   return (
     <>
+      {raised && <span data-dock-menu hidden />}
       {/* moldura: a tela na cor da barra com um retângulo arredondado vazado */}
       {prefs.frame && <Frame side={side} f={f} />}
       <Rail side={side} onBell={() => toggle("bell")} onPower={() => toggle("power")} pop={pop} />

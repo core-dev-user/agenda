@@ -310,7 +310,9 @@ export default function App() {
         animate={showSplash ? { opacity: 0, scale: 1.04 } : { opacity: 1, scale: 1 }}
         transition={{ duration: 0.9, ease: [0.2, 0.8, 0.2, 1] }}
       >
-        <div className="absolute inset-0" data-desktop onPointerDown={() => setCtx(null)}>
+        {/* "isolate": as camadas de dentro dos widgets (alças de redimensionar, widget sendo arrastado) valem só entre
+            os widgets. Sem isso, as alças invisíveis ficavam por cima da barra e dos painéis dela e roubavam o clique. */}
+        <div className="absolute inset-0 isolate" data-desktop onPointerDown={() => setCtx(null)}>
           <AnimatePresence>{widgets.map((w) => <WidgetFrame key={w.id} w={w} />)}</AnimatePresence>
           {!showSplash && <Pet />}
         </div>

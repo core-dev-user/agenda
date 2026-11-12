@@ -341,7 +341,7 @@ function Btn({
       style={{ height: size, minWidth: size, ...(vertical ? { width: size } : {}) }}
     >
       <div style={{ transform: `${liftT} scale(${scale})`, transformOrigin: origin, transition: "transform .14s ease-out", willChange: "transform" }}>
-        <motion.div tabIndex={-1} whileTap={{ scale: 0.85, rotateX: 25 }} style={{ transformStyle: "preserve-3d" }}>{children}</motion.div>
+        <motion.div tabIndex={-1} onFocus={(e) => e.currentTarget.closest("button")?.focus({ preventScroll: true })} whileTap={{ scale: 0.85, rotateX: 25 }} style={{ transformStyle: "preserve-3d" }}>{children}</motion.div>
       </div>
       {showLabel && <span className="max-w-[140px] truncate pr-1 text-sm">{first}</span>}
       {!!count && count > 1 && <span className="absolute top-0.5 right-1 font-num text-[9px] text-fg-muted">{count}</span>}
