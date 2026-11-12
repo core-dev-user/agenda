@@ -9,8 +9,32 @@ import { Modal, Segmented, Switch } from "@/components/ui/controls"
 
 function Video({ stream, muted, className }: { stream: MediaStream; muted?: boolean; className?: string }) {
   const ref = useRef<HTMLVideoElement>(null)
-  useEffect(() => { if (ref.current) { ref.current.srcObject = stream; ref.current.play().catch(() => {}) } }, [stream])
-  return <video ref={ref} autoPlay playsInline muted={muted} className={className} />
+  // a chamada "chega" antes da imagem: até o primeiro quadro, mostra que está conectando em vez de uma tela preta
+  const [live, setLive] = useState(false)
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const v = ref.current
+    if (!v) return
+    setLive(false); setSlow(false)
+    v.srcObject = stream
+    v.play().catch(() => {})
+    const ok = () => { if (v.videoWidth > 0) setLive(true) }
+    v.addEventListener("loadeddata", ok)
+    v.addEventListener("resize", ok)
+    const t = setTimeout(() => setSlow(true), 12000)
+    return () => { clearTimeout(t); v.removeEventListener("loadeddata", ok); v.removeEventListener("resize", ok) }
+  }, [stream])
+  return (
+    <>
+      <video ref={ref} autoPlay playsInline muted={muted} className={className} />
+      {!live && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-6 text-center text-sm text-white/70">
+          <span className="size-5 animate-spin rounded-full border-2 border-white/25 border-t-white/80" />
+          {slow ? "A imagem não está chegando. A rede de um de vocês pode estar bloqueando a conexão; tentem sair e entrar na sala de novo." : "Conectando à transmissão…"}
+        </div>
+      )}
+    </>
+  )
 }
 
 /* ---------------- fora de uma sala: salas salvas, criar e entrar ---------------- */

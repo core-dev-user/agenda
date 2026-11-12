@@ -49,9 +49,15 @@ const turnConfig = (): TurnConfig | null => {
   const t = useStore.getState().settings.roomTurn
   return t && t.urls?.trim() ? t : null
 }
+/**
+ * retransmissão pública do PeerJS (a mesma que a biblioteca usa por padrão): sem ela, quando a rede bloqueia a
+ * conexão direta (CGNAT, roteador), o vídeo chega "conectado" mas preto para o amigo
+ */
+const PEERJS_TURN: RTCIceServer = { urls: ["turn:eu-0.turn.peerjs.com:3478", "turn:us-0.turn.peerjs.com:3478"], username: "peerjs", credential: "peerjsp" }
 const iceConfig = (): RTCConfiguration => {
   const turn = turnConfig()
-  return { iceServers: turn ? [...STUN, { urls: turn.urls.trim().split(/[\s,]+/).filter(Boolean), username: turn.username || undefined, credential: turn.credential || undefined }] : STUN }
+  const own: RTCIceServer[] = turn ? [{ urls: turn.urls.trim().split(/[\s,]+/).filter(Boolean), username: turn.username || undefined, credential: turn.credential || undefined }] : []
+  return { iceServers: [...STUN, ...own, PEERJS_TURN] }
 }
 const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 export const newCode = () => Array.from({ length: 6 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join("")
