@@ -93,7 +93,7 @@ function createWindow() {
   // iniciado junto com o Windows: abre direto na bandeja (perto do relógio) — no modo área de trabalho ele já fica no fundo
   const hidden = system.startHidden && !process.env.AGENDA_SHOT && modes.mode() !== "desktop"
   if (!hidden && (modes.mode() === "screen" || !modes.mode())) win.maximize()
-  modes.attach(win)
+  modes.attach(win, externalWallpaper)
   system.attachWindow(win)
   // fechar pelo X manda para a bandeja; "Sair" na bandeja encerra tudo
   win.on("closed", () => { win = null; app.quit() })

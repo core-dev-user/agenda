@@ -94,7 +94,7 @@ const hwndOf = winh.hwndOf
 
 /* ---------------- modo área de trabalho ---------------- */
 let raised = false // uma aba aberta: o Agenda vem para a frente como um app normal
-function attach(win) {
+function attach(win, externalWallpaper = false) {
   if (cfg.mode === "app") return
   if (cfg.mode !== "desktop") return
   const h = hwndOf(win)
@@ -105,7 +105,21 @@ function attach(win) {
     const sc = JSON.stringify(screensInWindow())
     if (sc !== lastScreens) { lastScreens = sc; win.webContents.send("mode:screens", JSON.parse(sc)) }
   }
-  const sink = () => { if (!raised && !win.isDestroyed()) native("bottom " + h) }
+  // WS_EX_NOACTIVATE/TOOLWINDOW somente no desktop transparente: quando o
+  // Wallpaper Engine é minimizado, o Windows não deve considerar o Widgy
+  // como um novo app ativo/fullscreen e acionar pausa automática.
+  // Ao abrir as abas, restaura o estilo para permitir digitar e clicar normalmente.
+  let passive = false
+  const setPassive = (on) => {
+    if (!externalWallpaper || passive === on || win.isDestroyed()) return
+    passive = on
+    native((on ? "passive " : "interactive ") + h)
+  }
+  const sink = () => {
+    if (raised || win.isDestroyed()) return
+    setPassive(true)
+    native("bottom " + h)
+  }
   win.once("ready-to-show", () => { native("own " + h); sink() })
   win.on("focus", () => setTimeout(sink, 0))
   win.on("show", () => setTimeout(sink, 50))
@@ -141,7 +155,12 @@ function attach(win) {
     raised = !!on
     // vir para a frente: o Windows não deixa um programa tomar o foco sozinho (ex.: Chrome maximizado na frente);
     // o ajudante força do jeito que o Windows permite
-    if (raised) { win.show(); win.focus(); native("activate " + h) } else sink()
+    if (raised) {
+      setPassive(false)
+      win.show()
+      win.focus()
+      native("activate " + h)
+    } else sink()
   }
 }
 

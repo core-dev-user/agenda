@@ -69,6 +69,36 @@ public static class AgWin {
 
   // ---- janela pertencendo à área de trabalho / no fundo ----
   public static void Own(string h) { SetWindowLongPtr(H(h), -8, FindWindow("Progman", null)); }
+  // Quando o Widgy exibe o Wallpaper Engine, a janela transparente cobre todo o monitor.
+  // Ela não deve ser candidata a janela ativa nem a aplicativo fullscreen enquanto
+  // estiver no plano de fundo. Preserva os flags originais para restaurar nas abas.
+  const long PASSIVE_FLAGS = 0x08000080L; // WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW
+  static Dictionary<long, long> desktopOriginal = new Dictionary<long, long>();
+  public static void DesktopPassive(string s) {
+    IntPtr h = H(s);
+    if (!IsWindow(h)) return;
+    long key = h.ToInt64();
+    long flags = GetWindowLongPtr(h, -20).ToInt64();
+    if (!desktopOriginal.ContainsKey(key)) desktopOriginal[key] = flags & PASSIVE_FLAGS;
+    long next = flags | PASSIVE_FLAGS;
+    if (next == flags) return;
+    SetWindowLongPtr(h, -20, new IntPtr(next));
+    // Reaplica o frame sem alterar posição, foco ou ordem das janelas.
+    SetWindowPos(h, IntPtr.Zero, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020);
+  }
+  public static void DesktopInteractive(string s) {
+    IntPtr h = H(s);
+    if (!IsWindow(h)) return;
+    long key = h.ToInt64();
+    long saved;
+    if (!desktopOriginal.TryGetValue(key, out saved)) return;
+    desktopOriginal.Remove(key);
+    long flags = GetWindowLongPtr(h, -20).ToInt64();
+    long next = (flags & ~PASSIVE_FLAGS) | saved;
+    if (next == flags) return;
+    SetWindowLongPtr(h, -20, new IntPtr(next));
+    SetWindowPos(h, IntPtr.Zero, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020);
+  }
   public static void Bottom(string h) { SetWindowPos(H(h), new IntPtr(1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); }
 
   // ---- barra do Windows e área livre da tela (em todos os monitores) ----
@@ -376,6 +406,8 @@ while ($true) {
   switch ($a[0]) {
     'own'      { [AgWin]::Own($a[1]) }
     'bottom'   { [AgWin]::Bottom($a[1]) }
+    'passive'  { [AgWin]::DesktopPassive($a[1]) }
+    'interactive' { [AgWin]::DesktopInteractive($a[1]) }
     'hidetb'   { $out = [AgWin]::HideTaskbar() }
     'work'     { [AgWin]::SetWork([int]$a[1], [int]$a[2], [int]$a[3], [int]$a[4]) }
     'restore'  { $st = -1; if ($a.Length -gt 1) { $st = [int]$a[1] }; [AgWin]::Restore($st) }
