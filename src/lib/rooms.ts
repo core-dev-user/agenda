@@ -339,7 +339,25 @@ export async function joinRoom(code: string, name: string) {
       if (e?.type !== "unavailable-id") throw e
       peer = await makePeer()
       set({ host: false, myId: peer.id })
-      await connectHost(code)
+      try {
+        await connectHost(code, 15000)
+      } catch (err) {
+        // o nome da sala está ocupado, mas ninguém respondeu: pode ser um anfitrião "fantasma"
+        // (Widgy fechado à força ainda registrado no servidor). Tenta assumir a sala antes de desistir.
+        const member = peer
+        try {
+          peer = await makePeer(PREFIX + code)
+          member.destroy()
+          set({ host: true, myId: peer.id })
+          peer.on("connection", onHostConn)
+          toast("O anfitrião não respondia: você abriu a sala de novo")
+        } catch {
+          peer = member
+          throw new Error(turnConfig()
+            ? "A sala não respondeu. Peça para quem criou a sala sair e entrar de novo."
+            : "A sala não respondeu. A rede de um de vocês pode estar bloqueando a conexão: configure um servidor em Salas › Conexão, ou peça para quem criou a sala sair e entrar de novo.")
+        }
+      }
     }
     peer.on("call", onCall)
     watchSignaling(peer)
@@ -352,11 +370,12 @@ export async function joinRoom(code: string, name: string) {
   }
 }
 
-function connectHost(code: string): Promise<void> {
+function connectHost(code: string, wait = 12000): Promise<void> {
   return new Promise((res, rej) => {
     if (!peer) return rej(new Error("sem conexão"))
     const c = peer.connect(PREFIX + code, { reliable: true })
-    const timer = setTimeout(() => rej(new Error("A sala não respondeu.")), 12000)
+    // conexão pela retransmissão (TURN) demora um pouco mais que a direta
+    const timer = setTimeout(() => { try { c.close() } catch { /* nunca abriu */ } rej(new Error("A sala não respondeu.")) }, wait)
     c.on("open", () => {
       clearTimeout(timer)
       toHost = c
