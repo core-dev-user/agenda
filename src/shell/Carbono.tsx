@@ -15,7 +15,7 @@ import { WIDGET_CHOICES } from "@/widgets/WidgetFrame"
 import { useNow } from "@/widgets/Clock"
 import { cn } from "@/lib/utils"
 import type { SectionId } from "@/lib/types"
-import { ACCENTS, CORNER, FRAME, RAIL, closeDash, openDash, removePack, shellPrefs, useShell, type ShellPrefs } from "./pack"
+import { ACCENTS, CORNER, FRAME, RAIL, closeDash, openDash, removePack, luminance, shellPrefs, surfaceVars, useShell, type ShellPrefs } from "./pack"
 import { Dashboard } from "./Dashboard"
 
 /* ───────────────────────────── aparência ───────────────────────────── */
@@ -37,8 +37,23 @@ export function useCarbonoVars(on: boolean, prefs: ShellPrefs) {
     const a = ACCENTS[prefs.accent ?? "rose"]
     r.style.setProperty("--sh-accent", a.color)
     r.style.setProperty("--sh-accent-2", a.soft)
-    return () => { delete r.dataset.pack }
-  }, [on, prefs.accent])
+    // cor dos painéis e, se escolhida, uma cor própria para a barra lateral e a moldura
+    const set = (prefix: string, v: ReturnType<typeof surfaceVars>) => {
+      r.style.setProperty(`--${prefix}bg`, v.bg); r.style.setProperty(`--${prefix}1`, v.s1); r.style.setProperty(`--${prefix}2`, v.s2)
+      r.style.setProperty(`--${prefix}3`, v.s3); r.style.setProperty(`--${prefix}fg`, v.fg); r.style.setProperty(`--${prefix}muted`, v.muted)
+      r.style.setProperty(`--${prefix}dim`, v.dim); r.style.setProperty(`--${prefix}line`, v.line)
+    }
+    const panel = surfaceVars(prefs.bg || "#121212")
+    set("sh-", panel)
+    r.style.setProperty("--sh-on-fg", panel.bg)
+    set("sh-rail-", surfaceVars(prefs.railBg || prefs.bg || "#121212"))
+    // logo de pétalas claras: num fundo claro ele é escurecido para continuar visível
+    const dark = "brightness(.55) saturate(1.5)"
+    r.style.setProperty("--sh-logo", luminance(prefs.bg || "#121212") > 0.4 ? dark : "none")
+    r.style.setProperty("--sh-rail-logo", luminance(prefs.railBg || prefs.bg || "#121212") > 0.4 ? dark : "none")
+    const names = ["bg", "1", "2", "3", "fg", "muted", "dim", "line"].flatMap((k) => ["--sh-" + k, "--sh-rail-" + k]).concat("--sh-on-fg", "--sh-accent", "--sh-accent-2", "--sh-logo", "--sh-rail-logo")
+    return () => { delete r.dataset.pack; for (const n of names) r.style.removeProperty(n) }
+  }, [on, prefs.accent, prefs.bg, prefs.railBg])
 }
 
 const CSS = `
@@ -59,33 +74,69 @@ const CSS = `
 .sh-scroll::-webkit-scrollbar { display: none; }
 .sh-vtext { writing-mode: vertical-rl; transform: rotate(180deg); }
 .sh-input::placeholder { color: var(--sh-dim); }
+/* a barra lateral usa a cor dela (igual aos painéis, a menos que você escolha outra) */
+.sh-rail { --sh-bg: var(--sh-rail-bg); --sh-1: var(--sh-rail-1); --sh-2: var(--sh-rail-2); --sh-3: var(--sh-rail-3);
+  --sh-fg: var(--sh-rail-fg); --sh-muted: var(--sh-rail-muted); --sh-dim: var(--sh-rail-dim); --sh-line: var(--sh-rail-line); }
 `
-
-/** Fundo das "orelhas" côncavas que unem um painel à moldura (o detalhe que faz tudo parecer uma peça só). */
-const ear = (at: string): CSSProperties => ({
-  position: "absolute", width: CORNER, height: CORNER, pointerEvents: "none",
-  background: `radial-gradient(circle at ${at}, transparent ${CORNER - 0.5}px, var(--sh-bg) ${CORNER}px)`,
-})
 
 type Edge = "top" | "bottom" | "left" | "right"
 
 /**
+ * Forma do painel numa peça só: a faixa que encosta na moldura, as duas curvas côncavas que o ligam a ela
+ * e os cantos de fora arredondados. Desenhada para um painel no topo (x ao longo da borda, y para dentro);
+ * as outras bordas giram/espelham o mesmo desenho. W = largura ao longo da borda, H = profundidade.
+ */
+function edgePath(W: number, H: number, off: number, R: number, Rb: number) {
+  const r = Math.min(Rb, W / 2, Math.max(0, H - off - R))
+  return `M${-R} 0H${W + R}V${off}A${R} ${R} 0 0 0 ${W} ${off + R}V${H - r}A${r} ${r} 0 0 1 ${W - r} ${H}H${r}A${r} ${r} 0 0 1 0 ${H - r}V${off + R}A${R} ${R} 0 0 0 ${-R} ${off}Z`
+}
+const OUTER = CORNER + 6
+
+function EdgeShape({ edge, w, h, offset }: { edge: Edge; w: number; h: number; offset: number }) {
+  if (!w || !h) return null
+  const along = edge === "top" || edge === "bottom" ? w : h
+  const depth = edge === "top" || edge === "bottom" ? h : w
+  const d = edgePath(along, depth, offset, CORNER, OUTER)
+  // posição e transformação do desenho para cada borda (as curvas passam CORNER px para fora do painel)
+  const box: CSSProperties = edge === "top" || edge === "bottom"
+    ? { left: -CORNER, top: 0, width: along + 2 * CORNER, height: depth }
+    : { top: -CORNER, left: 0, width: depth, height: along + 2 * CORNER }
+  const tf = {
+    top: `translate(${CORNER} 0)`,
+    bottom: `translate(${CORNER} ${depth}) scale(1 -1)`,
+    left: `matrix(0 1 1 0 0 ${CORNER})`,
+    right: `matrix(0 1 -1 0 ${depth} ${CORNER})`,
+  }[edge]
+  return (
+    <svg aria-hidden className="pointer-events-none absolute overflow-visible" style={box} width={box.width as number} height={box.height as number}>
+      <path d={d} transform={tf} fill="var(--sh-bg)" shapeRendering="geometricPrecision" />
+    </svg>
+  )
+}
+
+/**
  * Painel que sai de uma borda da tela, com os cantos de fora arredondados e os de dentro côncavos.
- * `offset`: distância da borda até onde o painel encosta (a espessura da moldura ou da barra).
+ * `offset`: espessura da moldura na borda onde o painel encosta (o painel cobre essa faixa com a própria cor).
  */
 function EdgePanel({ edge, open, offset, inset = 0, style, center, className, children, onLeave, onEnter, label }: {
   edge: Edge; open: boolean; offset: number; inset?: number; style?: CSSProperties; center?: boolean; className?: string; children: ReactNode
   onLeave?: () => void; onEnter?: () => void; label: string
 }) {
   const vertical = edge === "top" || edge === "bottom"
-  const hidden = { top: { y: "-104%" }, bottom: { y: "104%" }, left: { x: "-104%" }, right: { x: "104%" } }[edge]
-  const radius = { top: `0 0 ${CORNER + 6}px ${CORNER + 6}px`, bottom: `${CORNER + 6}px ${CORNER + 6}px 0 0`, left: `0 ${CORNER + 6}px ${CORNER + 6}px 0`, right: `${CORNER + 6}px 0 0 ${CORNER + 6}px` }[edge]
-  const ears: CSSProperties[] = {
-    top: [{ ...ear("0 100%"), left: -CORNER, top: offset }, { ...ear("100% 100%"), right: -CORNER, top: offset }],
-    bottom: [{ ...ear("0 0"), left: -CORNER, bottom: offset }, { ...ear("100% 0"), right: -CORNER, bottom: offset }],
-    left: [{ ...ear("100% 0"), top: -CORNER, left: offset }, { ...ear("100% 100%"), bottom: -CORNER, left: offset }],
-    right: [{ ...ear("0 0"), top: -CORNER, right: offset }, { ...ear("0 100%"), bottom: -CORNER, right: offset }],
-  }[edge]
+  const hidden = { top: { y: "-102%" }, bottom: { y: "102%" }, left: { x: "-102%" }, right: { x: "102%" } }[edge]
+  const pad = { top: "paddingTop", bottom: "paddingBottom", left: "paddingLeft", right: "paddingRight" }[edge]
+  const body = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ w: 0, h: 0 })
+  useEffect(() => {
+    if (!open) return
+    const el = body.current
+    if (!el) return
+    const read = () => setSize((s) => (s.w === el.offsetWidth && s.h === el.offsetHeight ? s : { w: el.offsetWidth, h: el.offsetHeight }))
+    read()
+    const ro = new ResizeObserver(read)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [open])
   return (
     <AnimatePresence>
       {open && (
@@ -94,20 +145,35 @@ function EdgePanel({ edge, open, offset, inset = 0, style, center, className, ch
           className={cn("sh fixed", className ?? "z-[7000]")}
           style={{ ...style, [edge]: inset, ...(center ? { x: "-50%" } : {}) }}
           initial={hidden} animate={vertical ? { y: 0 } : { x: 0 }} exit={hidden}
-          transition={{ type: "spring", stiffness: 420, damping: 40, mass: 0.9 }}
+          // curto e sem mola: o painel chega rápido e para de mexer logo (antes ~450 ms)
+          transition={{ duration: 0.2, ease: [0.2, 0.9, 0.25, 1] }}
           onPointerLeave={onLeave} onPointerEnter={onEnter}
         >
-          {ears.map((e, i) => <div key={i} style={e} />)}
-          <div style={{
-            background: "var(--sh-bg)", borderRadius: radius,
-            [edge === "top" ? "paddingTop" : edge === "bottom" ? "paddingBottom" : edge === "left" ? "paddingLeft" : "paddingRight"]: offset,
-            boxShadow: "0 24px 60px rgba(0,0,0,.35)",
-          }}>
+          <EdgeShape edge={edge} w={size.w} h={size.h} offset={offset} />
+          <div ref={body} className="relative" style={{ [pad]: offset }}>
             {children}
           </div>
         </motion.div>
       )}
     </AnimatePresence>
+  )
+}
+
+/** Moldura: a tela inteira na cor da barra, com um retângulo arredondado vazado no meio (um desenho só, sem sombra gigante). */
+function Frame({ side, f }: { side: "left" | "right"; f: number }) {
+  const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight })
+  useEffect(() => {
+    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight })
+    window.addEventListener("resize", on)
+    return () => window.removeEventListener("resize", on)
+  }, [])
+  const l = side === "left" ? RAIL : f, r = side === "right" ? RAIL : f
+  const x0 = l, x1 = vp.w - r, y0 = f, y1 = vp.h - f, R = CORNER
+  const hole = `M${x0 + R} ${y0}H${x1 - R}A${R} ${R} 0 0 1 ${x1} ${y0 + R}V${y1 - R}A${R} ${R} 0 0 1 ${x1 - R} ${y1}H${x0 + R}A${R} ${R} 0 0 1 ${x0} ${y1 - R}V${y0 + R}A${R} ${R} 0 0 1 ${x0 + R} ${y0}Z`
+  return (
+    <svg aria-hidden className="pointer-events-none fixed inset-0 z-[795]" width={vp.w} height={vp.h} style={{ willChange: "transform" }}>
+      <path fillRule="evenodd" fill="var(--sh-rail-bg, var(--sh-bg))" d={`M0 0H${vp.w}V${vp.h}H0Z${hole}`} />
+    </svg>
   )
 }
 
@@ -131,11 +197,8 @@ export function CarbonoChrome() {
 
   return (
     <>
-      {/* moldura: um retângulo arredondado vazado, o resto da tela fica no carvão */}
-      {prefs.frame && (
-        <div aria-hidden className="pointer-events-none fixed z-[795]"
-          style={{ top: f, bottom: f, left: side === "left" ? RAIL : f, right: side === "right" ? RAIL : f, borderRadius: CORNER, boxShadow: "0 0 0 100vmax var(--sh-bg)" }} />
-      )}
+      {/* moldura: a tela na cor da barra com um retângulo arredondado vazado */}
+      {prefs.frame && <Frame side={side} f={f} />}
       <Rail side={side} onBell={() => toggle("bell")} onPower={() => toggle("power")} pop={pop} />
       {/* os painéis da barra saem de trás dela (ficam abaixo da barra, acima das janelas) */}
       {pop && <div className="fixed inset-0 z-[796]" onPointerDown={() => { if (pop === "bell") readAll(); setPop("") }} />}
@@ -168,12 +231,12 @@ function Rail({ side, onBell, onPower, pop }: { side: "left" | "right"; onBell: 
 
   return (
     <nav aria-label="Barra do Carbono"
-      className={cn("sh fixed inset-y-0 z-[800] flex flex-col items-center py-2.5", side === "left" ? "left-0" : "right-0")}
+      className={cn("sh sh-rail fixed inset-y-0 z-[800] flex flex-col items-center py-2.5", side === "left" ? "left-0" : "right-0")}
       style={{ width: RAIL, background: "var(--sh-bg)" }}
 >
       <button type="button" className="sh-btn size-9" title="Buscar e abrir (Ctrl+K)" aria-label="Buscar e abrir"
         onClick={() => useStore.setState((s) => ({ paletteOpen: !s.paletteOpen }))}>
-        <Logo size={22} glyphOnly />
+        <span style={{ filter: "var(--sh-rail-logo, none)" }}><Logo size={22} glyphOnly /></span>
       </button>
 
       {/* abas abertas: um ponto por aba, a da frente vira uma pílula */}
@@ -279,7 +342,7 @@ export function CarbonoPanels() {
         dwell = undefined
         if (zone === "top" && !useShell.getState().dash) openDash()
         if (zone === "bottom" && !useStore.getState().paletteOpen) { byHover.current = true; useStore.setState({ paletteOpen: true }) }
-      }, 200)
+      }, 90)
     }
     window.addEventListener("pointermove", move)
     return () => { window.removeEventListener("pointermove", move); clearTimeout(dwell) }
@@ -387,13 +450,13 @@ function Launcher({ close }: { close: () => void }) {
   useEffect(() => {
     let alive = true
     void loadApps().then((items) => { if (alive) setApps(items) })
-    const t = setTimeout(() => input.current?.focus(), 60)
+    const t = requestAnimationFrame(() => input.current?.focus())
     return () => {
       alive = false
-      clearTimeout(t)
-      // O buscador sai da árvore ao fechar: devolve ícones base64 e lista de apps à GC.
+      cancelAnimationFrame(t)
+      // Ao fechar devolve os ícones (base64, pesados) à memória. A lista de programas é leve (nomes e caminhos)
+      // e fica guardada: reabrir a busca mostra tudo na hora, sem esperar o Windows montar a lista de novo.
       clearIconCache()
-      appsCache = null
     }
   }, [])
 
@@ -463,7 +526,7 @@ function Launcher({ close }: { close: () => void }) {
   }
 
   return (
-    <motion.div layout className="w-[min(620px,calc(100vw-140px))] px-3 pt-3" transition={{ type: "spring", stiffness: 420, damping: 38 }}>
+    <div className="w-[min(620px,calc(100vw-140px))] px-3 pt-3">
       {wallMode ? (
         <WallCarousel filter={q.replace(WALL_RE, "")} api={wallRef} close={close} />
       ) : (
@@ -490,7 +553,7 @@ function Launcher({ close }: { close: () => void }) {
           className="sh-input flex-1 bg-transparent text-[13.5px] outline-none" style={{ color: "var(--sh-fg)" }} />
         {q && <button type="button" className="sh-btn size-6 !rounded-full" aria-label="Limpar" onClick={() => { setQ(""); input.current?.focus() }}><X size={13} /></button>}
       </div>
-    </motion.div>
+    </div>
   )
 }
 

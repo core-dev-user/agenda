@@ -719,16 +719,28 @@ function teardown(restore = true, notify = true) {
 
 /* ---------------- aplicativos do Menu Iniciar ---------------- */
 let appsCache = null
+let appsAt = 0
 let appsPending = null
-async function startApps() {
-  if (appsCache) return appsCache
+const APPS_FRESH_MS = 5 * 60 * 1000
+function refreshApps() {
   if (appsPending) return appsPending
   appsPending = collectStartApps()
-    .then((items) => { appsCache = items; return items })
-    .catch((error) => { console.warn("Widgy installed apps:", error.message); return [] })
+    .then((items) => { appsCache = items; appsAt = Date.now(); return items })
+    .catch((error) => { console.warn("Widgy installed apps:", error.message); return appsCache || [] })
     .finally(() => { appsPending = null })
-  setTimeout(() => { appsCache = null }, 5 * 60 * 1000).unref?.()
   return appsPending
+}
+/**
+ * Lista de programas do PC. Montá-la pede ao Windows (PowerShell + pastas do Iniciar) e leva 1–2 s,
+ * então a lista guardada volta na hora; se tiver mais de 5 min, ela é atualizada em segundo plano
+ * para a próxima vez (antes a busca esperava a lista ser montada de novo).
+ */
+async function startApps() {
+  if (appsCache) {
+    if (Date.now() - appsAt > APPS_FRESH_MS) void refreshApps()
+    return appsCache
+  }
+  return refreshApps()
 }
 
 const state = () => ({ on: cfg.on, height: cfg.height, position: cfg.position, keys: cfg.keys !== false, winKey: cfg.winKey === "agenda" ? "agenda" : "windows", available: modes.mode() === "desktop", active: bars.size > 0 })
