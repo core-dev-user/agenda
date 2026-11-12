@@ -20,7 +20,7 @@ import { MediaPicker } from "@/components/MediaPicker"
 import { DEFAULT_FRAME, frameImgStyle, ImageFramer, type Frame } from "@/components/ImageFramer"
 import { PhotoEditor } from "@/components/PhotoEditor"
 import { LivingStudio } from "@/components/LivingStudio"
-import { ClockWidget } from "./Clock"
+import { ClockWidget, CLOCK_OPTS } from "./Clock"
 import { StopwatchWidget } from "./Stopwatch"
 import { WeatherWidget } from "./Weather"
 import { NewsWidget, FEEDS } from "./News"
@@ -42,7 +42,7 @@ import { ValAgentWidget, ValAgentSettings } from "./ValAgentWidget"
 import { SysMonWidget, SysMonSettings } from "./SysMonWidget"
 import { PcMusicWidget, PcMusicSettings } from "./PcMusicWidget"
 import { CountdownWidget, CountdownSettings } from "./Countdown"
-import { hoverClass, lookOfWidget, lookStyle, LookSettings } from "./widgetLook"
+import { hoverClass, lookLimits, lookOfWidget, lookStyle, LookSettings } from "./widgetLook"
 import { GlyphTile } from "@/components/Glyph"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { SECTIONS } from "@/components/sections-meta"
@@ -458,19 +458,30 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
                 </button>
               ))}
             </div>
-            <div className="text-sm">Cor dos números</div>
-            <div className="flex items-center gap-3">
-              <ColorPicker value={c.color ?? "#ffffff"} onChange={(v) => set({ color: v })} swatches={["#ffffff", "#ff8fb8", "#ffd36e", "#8cf0b0", "#7cc8ff", "#c49bff", "#ff9a3c"]} />
-              {c.color && <button className="text-xs text-fg-muted hover:text-fg" onClick={() => set({ color: undefined })}>padrão</button>}
-            </div>
-            <Slider label="Tamanho dos números" value={c.size ?? 1} min={0.6} max={1.6} step={0.05} onChange={(v) => set({ size: v })} format={(v) => Math.round(v * 100) + "%"} />
-            <Slider label="Espessura" value={c.weight ?? 600} min={100} max={900} step={100} onChange={(v) => set({ weight: v })} />
-            <Switch label="Brilho (glow)" checked={!!c.glow} onChange={(v) => set({ glow: v })} />
-            <Switch label="Dois-pontos piscando" checked={c.blink ?? true} onChange={(v) => set({ blink: v })} />
-            <Switch label="Mostrar segundos" checked={c.seconds ?? true} onChange={(v) => set({ seconds: v })} />
-            <Switch label="Formato 12h (AM/PM)" checked={!!c.h12} onChange={(v) => set({ h12: v })} />
-            <Switch label="Mostrar data" checked={c.showDate ?? true} onChange={(v) => set({ showDate: v })} />
-            <FontSelect value={c.font ?? ""} onChange={(v) => set({ font: v || undefined })} />
+            {(() => {
+              const has = new Set(CLOCK_OPTS[c.style ?? "digital"] ?? CLOCK_OPTS.digital)
+              return (
+                <>
+                  {has.has("color") && (
+                    <>
+                      <div className="text-sm">{c.style === "analog" ? "Cor dos ponteiros e marcas" : "Cor dos números"}</div>
+                      <div className="flex items-center gap-3">
+                        <ColorPicker value={c.color ?? "#ffffff"} onChange={(v) => set({ color: v })} swatches={["#ffffff", "#ff8fb8", "#ffd36e", "#8cf0b0", "#7cc8ff", "#c49bff", "#ff9a3c"]} />
+                        {c.color && <button className="text-xs text-fg-muted hover:text-fg" onClick={() => set({ color: undefined })}>padrão</button>}
+                      </div>
+                    </>
+                  )}
+                  {has.has("size") && <Slider label="Tamanho dos números" value={c.size ?? 1} min={0.6} max={1.6} step={0.05} onChange={(v) => set({ size: v })} format={(v) => Math.round(v * 100) + "%"} />}
+                  {has.has("weight") && <Slider label="Espessura" value={c.weight ?? 600} min={100} max={900} step={100} onChange={(v) => set({ weight: v })} />}
+                  {has.has("glow") && <Switch label="Brilho (glow)" checked={!!c.glow} onChange={(v) => set({ glow: v })} />}
+                  {has.has("blink") && <Switch label={c.style === "minimal" ? "Ponto piscando" : "Dois-pontos piscando"} checked={c.blink ?? true} onChange={(v) => set({ blink: v })} />}
+                  {has.has("seconds") && <Switch label={c.style === "analog" ? "Ponteiro dos segundos" : "Mostrar segundos"} checked={c.seconds ?? true} onChange={(v) => set({ seconds: v })} />}
+                  {has.has("h12") && <Switch label="Formato 12h (AM/PM)" checked={!!c.h12} onChange={(v) => set({ h12: v })} />}
+                  {has.has("date") && <Switch label="Mostrar data" checked={c.showDate ?? true} onChange={(v) => set({ showDate: v })} />}
+                  {has.has("font") && <FontSelect value={c.font ?? ""} onChange={(v) => set({ font: v || undefined })} />}
+                </>
+              )
+            })()}
           </>
         )}
         {w.type === "weather" && (
@@ -585,7 +596,7 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
         </div>
 
         {/* ---------- imagem de fundo ---------- */}
-        {w.type !== "photo" && (
+        {w.type !== "photo" && !lookLimits(w.type, c).ownBg && (
           <div className="border-t border-line pt-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-medium">Imagem de fundo</span>
@@ -601,7 +612,7 @@ function WidgetSettings({ w, geo, autoFit, open, onClose }: { w: Widget; geo: Ge
           </div>
         )}
 
-        <LookSettings id={w.id} config={c} />
+        <LookSettings id={w.id} type={w.type} config={c} />
         <div className="border-t border-line pt-3">
           <Slider label="Opacidade do widget inteiro" value={c.opacity ?? 1} min={0.2} max={1} step={0.05} onChange={(v) => set({ opacity: v })} format={(v) => Math.round(v * 100) + "%"} />
         </div>

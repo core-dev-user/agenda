@@ -335,11 +335,12 @@ export function PcMusicSettings({ w, set }: { w: Widget; set: (p: Record<string,
       </div>
       <div>
         <div className="mb-1.5 text-xs font-semibold">Estilo do player</div>
-        <Segmented className="flex flex-wrap" value={c.pcLayout ?? "auto"} onChange={(v) => set({ pcLayout: v })}
-          options={options([{ value: "auto", label: "Adaptável" }, { value: "wide", label: "Cartão" },
+        <Segmented className="flex flex-wrap" value={c.pcLayout === "wide" ? "auto" : c.pcLayout ?? "auto"} onChange={(v) => set({ pcLayout: v })}
+          options={options([{ value: "auto", label: "Adaptável" },
             { value: "compact", label: "Mini" }, { value: "poster", label: "Capa grande" }])} />
         <p className="mt-1.5 text-[11px] leading-relaxed text-fg-muted">
-          Adaptável ajusta capa e controles automaticamente quando você redimensiona o widget.
+          {(c.pcLayout ?? "auto") === "poster" ? (w.h >= 310 && w.w >= 215 ? "Capa grande em cima, informações embaixo." : "A capa grande precisa de pelo menos 215 × 310 px. Aumente o widget (por enquanto ele aparece no modo adaptável).")
+            : (c.pcLayout === "compact" ? "Capa pequena e tudo numa linha." : "Ajusta capa e controles automaticamente quando você redimensiona o widget.")}
         </p>
       </div>
       <div>
@@ -366,7 +367,7 @@ export function PcMusicSettings({ w, set }: { w: Widget; set: (p: Record<string,
         <Switch checked={c.pcSource === true} onChange={(v) => set({ pcSource: v })} label="Mostrar aplicativo e estado" />
         <Switch checked={c.pcAlbum === true} onChange={(v) => set({ pcAlbum: v })} label="Mostrar álbum" />
         <Switch checked={c.pcLyrics === true} onChange={(v) => set({ pcLyrics: v })} label="Letras sincronizadas (Spotify / música do PC)" />
-        {c.pcProgress !== false && <Switch checked={c.pcTimes === true} onChange={(v) => set({ pcTimes: v })} label="Mostrar os tempos" />}
+        {c.pcProgress !== false && c.pcLayout !== "compact" && <Switch checked={c.pcTimes === true} onChange={(v) => set({ pcTimes: v })} label="Mostrar os tempos" />}
       </div>
       <p className="text-[11px] leading-relaxed text-fg-muted">
         A capa vem da central de mídia do Windows. No Spotify, quando ela faltar, o Widgy tenta encontrar a mesma faixa e artista no catálogo público do iTunes. As letras são buscadas na LRCLIB e dependem da disponibilidade de cada música.

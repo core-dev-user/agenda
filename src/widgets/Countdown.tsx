@@ -207,6 +207,7 @@ export function CountdownWidget({ w }: { w: Widget }) {
           </div>
         </div>
         <div className="flex max-w-full items-center gap-1.5 truncate text-sm font-medium">{icon}{done ? message : title}</div>
+        {dateLine}
       </div>
     )
   }
@@ -329,8 +330,8 @@ export function CountdownSettings({ w, set }: { w: Widget; set: (p: Record<strin
           <Segmented value={c.align ?? "center"} onChange={(v) => set({ align: v })} options={[{ value: "center", label: "Centro" }, { value: "left", label: "Esquerda" }]} />
         </>
       )}
-      <Switch label="Mostrar a data embaixo" checked={c.showDate !== false} onChange={(v) => set({ showDate: v })} />
-      <Switch label="Barra de progresso (quanto já passou)" checked={!!c.bar} onChange={(v) => set({ bar: v })} />
+      {(c.style ?? "big") !== "calendar" && <Switch label="Mostrar a data embaixo" checked={c.showDate !== false} onChange={(v) => set({ showDate: v })} />}
+      {!["ring", "minimal"].includes(c.style ?? "big") && <Switch label="Barra de progresso (quanto já passou)" checked={!!c.bar} onChange={(v) => set({ bar: v })} />}
       {(c.style ?? "big") === "big" && <Switch label="Brilho no número" checked={!!c.glow} onChange={(v) => set({ glow: v })} />}
       <div className="flex items-center gap-2 text-sm">
         Ícone

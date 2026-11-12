@@ -25,6 +25,23 @@ const ext = (n: number, fem = true) => {
   return DZ[d] + (r ? " e " + u[r] : "")
 }
 
+/** quais opções cada estilo de relógio realmente usa (a janela de configurar só mostra estas) */
+export type ClockOpt = "color" | "size" | "weight" | "glow" | "blink" | "seconds" | "h12" | "date" | "font"
+const ALL: ClockOpt[] = ["color", "size", "weight", "glow", "blink", "seconds", "h12", "date", "font"]
+export const CLOCK_OPTS: Record<string, ClockOpt[]> = {
+  digital: ALL,
+  analog: ["color", "glow", "seconds", "date"],
+  flip: ["color", "size", "weight", "glow", "seconds", "h12", "date", "font"],
+  lcd: ["size", "blink", "seconds", "h12", "date", "font"],
+  minimal: ALL,
+  stacked: ["color", "size", "weight", "glow", "seconds", "h12", "date", "font"],
+  neon: ["color", "size", "weight", "blink", "seconds", "h12", "date", "font"],
+  nixie: ["color", "size", "seconds", "h12", "date"],
+  words: ["color", "size", "weight", "glow", "date", "font"],
+  rings: ["color", "size", "weight", "glow", "seconds", "h12", "date", "font"],
+  gradient: ["color", "size", "weight", "glow", "blink", "seconds", "h12", "date", "font"],
+}
+
 export function ClockWidget({ w }: { w: Widget }) {
   const { style = "digital", seconds = true, h12 = false, showDate = true, font } = w.config
   const color: string | undefined = w.config.color || undefined
@@ -40,8 +57,9 @@ export function ClockWidget({ w }: { w: Widget }) {
   const scale = Math.min(w.w / 320, w.h / 170) * (w.config.size ?? 1)
   const glowCss = glow ? `0 0 ${10 * scale}px ${color ?? "var(--accent)"}, 0 0 ${28 * scale}px ${color ?? "var(--accent)"}` : undefined
   const sep = <span className={blink && now.getSeconds() % 2 ? "opacity-25" : ""}>:</span>
+  const suf = (em: number) => suffix ? <span className="ml-1 opacity-70" style={{ fontSize: `${em}em` }}>{suffix}</span> : null
 
-  if (style === "analog") return <Analog now={now} seconds={seconds} showDate={showDate} />
+  if (style === "analog") return <Analog now={now} seconds={seconds} showDate={showDate} color={color} glow={glow} />
 
   if (style === "stacked")
     return (
@@ -50,11 +68,11 @@ export function ClockWidget({ w }: { w: Widget }) {
           <div>{z(h)}</div>
           <div style={{ color: color ?? "var(--accent)" }}>{z(now.getMinutes())}</div>
         </div>
-        {showDate && (
+        {(showDate || seconds || suffix) && (
           <div className="flex flex-col justify-center" style={{ fontSize: 15 * scale }}>
-            <div className="font-semibold capitalize">{now.toLocaleDateString("pt-BR", { weekday: "long" })}</div>
-            <div className="text-fg-muted">{now.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}</div>
-            {seconds && <div className="font-num mt-1 text-fg-muted">{z(now.getSeconds())}s</div>}
+            {showDate && <div className="font-semibold capitalize">{now.toLocaleDateString("pt-BR", { weekday: "long" })}</div>}
+            {showDate && <div className="text-fg-muted">{now.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}</div>}
+            {(seconds || suffix) && <div className="font-num mt-1 text-fg-muted">{seconds && `${z(now.getSeconds())}s`} {suffix}</div>}
           </div>
         )}
       </div>
@@ -65,7 +83,7 @@ export function ClockWidget({ w }: { w: Widget }) {
     return (
       <div className="flex h-full flex-col items-center justify-center">
         <div className="clock-neon" style={{ fontFamily: font ? ff : "'Orbitron Variable', sans-serif", fontSize: 60 * scale, fontWeight: weight ?? 500, color: "#fff", textShadow: `0 0 4px #fff, 0 0 ${10 * scale}px ${c}, 0 0 ${22 * scale}px ${c}, 0 0 ${42 * scale}px ${c}`, letterSpacing: "0.04em" }}>
-          {z(h)}{sep}{z(now.getMinutes())}{seconds && <span style={{ fontSize: "0.45em" }}> {z(now.getSeconds())}</span>}
+          {z(h)}{sep}{z(now.getMinutes())}{seconds && <span style={{ fontSize: "0.45em" }}> {z(now.getSeconds())}</span>}{suf(0.35)}
         </div>
         {showDate && <div className="mt-2 text-sm tracking-[0.3em] uppercase" style={{ color: c, textShadow: `0 0 8px ${c}` }}>{now.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })}</div>}
       </div>
@@ -134,7 +152,7 @@ export function ClockWidget({ w }: { w: Widget }) {
     return (
       <div className="flex h-full flex-col items-center justify-center">
         <div className="clock-gradient font-num" style={{ fontFamily: ff, fontSize: 74 * scale, fontWeight: weight ?? 800, lineHeight: 1, letterSpacing: "-0.03em", backgroundImage: `linear-gradient(90deg, ${color ?? "var(--accent)"}, #c49bff, #7cc8ff, ${color ?? "var(--accent)"})`, backgroundSize: "300% 100%", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", filter: glow ? `drop-shadow(0 0 ${8 * scale}px ${color ?? "var(--accent)"})` : undefined }}>
-          {z(h)}:{z(now.getMinutes())}
+          {z(h)}{sep}{z(now.getMinutes())}{seconds && <span style={{ fontSize: "0.4em" }}> {z(now.getSeconds())}</span>}{suf(0.3)}
         </div>
         {showDate && <div className="mt-2 text-sm capitalize text-fg-muted">{date}</div>}
       </div>
@@ -143,9 +161,10 @@ export function ClockWidget({ w }: { w: Widget }) {
   if (style === "flip")
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2">
-        <div className="flex items-center gap-2" style={{ fontFamily: ff, fontSize: 54 * scale }}>
-          <Flip v={z(h)} /> <span className="opacity-60">:</span> <Flip v={z(now.getMinutes())} />
-          {seconds && (<><span className="opacity-60">:</span><Flip v={z(now.getSeconds())} small /></>)}
+        <div className="flex items-center gap-2" style={{ fontFamily: ff, fontSize: 54 * scale, fontWeight: weight, textShadow: glowCss }}>
+          <Flip v={z(h)} color={color} /> <span className="opacity-60">:</span> <Flip v={z(now.getMinutes())} color={color} />
+          {seconds && (<><span className="opacity-60">:</span><Flip v={z(now.getSeconds())} small color={color} /></>)}
+          {suf(0.35)}
         </div>
         {showDate && <div className="text-sm capitalize text-fg-muted">{date}</div>}
       </div>
@@ -160,10 +179,11 @@ export function ClockWidget({ w }: { w: Widget }) {
         >
           <div className="absolute inset-x-4 top-2 text-center opacity-[0.08]" style={{ fontSize: 64 * scale, lineHeight: 1 }}>88:88{seconds && ":88"}</div>
           <div style={{ fontSize: 64 * scale, lineHeight: 1 }}>
-            {z(h)}<span className={now.getSeconds() % 2 ? "opacity-30" : ""}>:</span>{z(now.getMinutes())}
+            {z(h)}<span className={blink && now.getSeconds() % 2 ? "opacity-30" : ""}>:</span>{z(now.getMinutes())}
             {seconds && <span style={{ fontSize: 36 * scale }}>:{z(now.getSeconds())}</span>}
+            {suffix && <span style={{ fontSize: 26 * scale }}> {suffix}</span>}
           </div>
-          {showDate && <div className="text-lg uppercase" style={{ lineHeight: 1 }}>{now.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })} {suffix}</div>}
+          {showDate && <div className="text-lg uppercase" style={{ lineHeight: 1 }}>{now.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })}</div>}
         </div>
       </div>
     )
@@ -171,9 +191,10 @@ export function ClockWidget({ w }: { w: Widget }) {
   if (style === "minimal")
     return (
       <div className="flex h-full flex-col justify-end p-5">
-        <div className="text-sm capitalize text-fg-muted">{now.toLocaleDateString("pt-BR", { weekday: "long" })}</div>
+        {showDate && <div className="text-sm capitalize text-fg-muted">{now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>}
         <div style={{ fontFamily: ff, fontSize: 72 * scale, lineHeight: 0.95, fontWeight: weight ?? 200, letterSpacing: "-0.04em", color, textShadow: glowCss }}>
-          {z(h)}<span className="text-brand">.</span>{z(now.getMinutes())}
+          {z(h)}<span className={cn("text-brand", blink && now.getSeconds() % 2 && "opacity-25")}>.</span>{z(now.getMinutes())}
+          {seconds && <span className="text-fg-muted" style={{ fontSize: "0.35em", letterSpacing: 0 }}> {z(now.getSeconds())}</span>}{suf(0.3)}
         </div>
       </div>
     )
@@ -194,9 +215,9 @@ export function ClockWidget({ w }: { w: Widget }) {
   )
 }
 
-function Flip({ v, small }: { v: string; small?: boolean }) {
+function Flip({ v, small, color }: { v: string; small?: boolean; color?: string }) {
   return (
-    <div className="relative overflow-hidden rounded-lg px-2" style={{ perspective: 300, background: "linear-gradient(180deg, rgb(0 0 0 / .45) 50%, rgb(0 0 0 / .55) 50%)", boxShadow: "inset 0 1px 0 rgb(255 255 255 / .15), 0 6px 14px rgb(0 0 0 / .35)", fontSize: small ? "0.55em" : undefined, color: "#fff" }}>
+    <div className="relative overflow-hidden rounded-lg px-2" style={{ perspective: 300, background: "linear-gradient(180deg, rgb(0 0 0 / .45) 50%, rgb(0 0 0 / .55) 50%)", boxShadow: "inset 0 1px 0 rgb(255 255 255 / .15), 0 6px 14px rgb(0 0 0 / .35)", fontSize: small ? "0.55em" : undefined, color: color ?? "#fff" }}>
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div key={v} initial={{ rotateX: 90, opacity: 0 }} animate={{ rotateX: 0, opacity: 1 }} exit={{ rotateX: -90, opacity: 0 }} transition={{ duration: 0.35 }} className="font-num">
           {v}
@@ -207,14 +228,15 @@ function Flip({ v, small }: { v: string; small?: boolean }) {
   )
 }
 
-function Analog({ now, seconds, showDate }: { now: Date; seconds: boolean; showDate: boolean }) {
+function Analog({ now, seconds, showDate, color, glow }: { now: Date; seconds: boolean; showDate: boolean; color?: string; glow?: boolean }) {
   const ms = now.getMilliseconds()
   const s = now.getSeconds() + ms / 1000
   const m = now.getMinutes() + s / 60
   const h = (now.getHours() % 12) + m / 60
+  const acc = color ?? "var(--accent)"
   return (
-    <div className="flex h-full items-center justify-center p-3">
-      <svg viewBox="-100 -100 200 200" className="h-full max-h-full" style={{ filter: "drop-shadow(0 8px 16px rgb(0 0 0 / .35))" }}>
+    <div className="flex h-full items-center justify-center p-3" style={{ color }}>
+      <svg viewBox="-100 -100 200 200" className="h-full max-h-full" style={{ filter: glow ? `drop-shadow(0 0 6px ${acc}) drop-shadow(0 8px 16px rgb(0 0 0 / .35))` : "drop-shadow(0 8px 16px rgb(0 0 0 / .35))" }}>
         <defs>
           <radialGradient id="face" cx=".35" cy=".3" r=".9">
             <stop offset="0" stopColor="#fff" stopOpacity=".18" />

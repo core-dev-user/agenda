@@ -263,6 +263,8 @@ function Header({ d }: { d: SysStats }) {
   )
 }
 
+const COMPACT_METRICS: MetricKey[] = ["cpu", "gpu", "ram", "vram", "temp"]
+
 export function SysMonSettings({ w, set }: { w: Widget; set: (p: Record<string, any>) => void }) {
   const c = w.config
   const on = new Set<MetricKey>(c.metrics ?? DEFAULT_ON)
@@ -279,9 +281,10 @@ export function SysMonSettings({ w, set }: { w: Widget; set: (p: Record<string, 
       <Segmented value={c.colorMode ?? "accent"} onChange={(v) => set({ colorMode: v })} options={[{ value: "accent", label: "Cor de destaque" }, { value: "load", label: "Pela carga (verde → vermelho)" }]} />
       <div className="text-sm text-fg-muted">O que mostrar</div>
       <div className="grid grid-cols-2 gap-x-4">
-        {METRICS.map((m) => <Switch key={m.k} label={m.label} checked={on.has(m.k)} onChange={(v) => toggle(m.k, v)} />)}
+        {METRICS.filter((m) => c.style !== "compact" || COMPACT_METRICS.includes(m.k)).map((m) => <Switch key={m.k} label={m.label} checked={on.has(m.k)} onChange={(v) => toggle(m.k, v)} />)}
       </div>
-      <Switch label="Mostrar o nome do processador no topo" checked={c.showTitle !== false} onChange={(v) => set({ showTitle: v })} />
+      {c.style === "compact" && <div className="text-xs text-fg-muted">O estilo compacto mostra só os números principais. Disco, rede e o resto aparecem nos outros estilos.</div>}
+      {c.style !== "compact" && <Switch label="Mostrar o nome do processador no topo" checked={c.showTitle !== false} onChange={(v) => set({ showTitle: v })} />}
       <div className="text-xs text-fg-muted">Atualiza a cada 1,5 s e só enquanto o widget está na tela. Temperatura, energia e ventoinha vêm da placa NVIDIA. A temperatura do processador o Windows não informa sem programas extras.</div>
     </>
   )

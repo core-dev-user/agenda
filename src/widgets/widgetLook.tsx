@@ -97,9 +97,26 @@ export const LOOK_PRESETS: { id: string; label: string; look: WidgetLook; previe
 
 const SW = ["#ffffff", "#0a0a0f", "#1a1020", "#ff8fb8", "#ff4fa3", "#c49bff", "#7cc8ff", "#8cf0b0", "#ffd36e", "#ff6b6b"]
 
+/**
+ * Widgets que pintam o próprio fundo por cima do cartão (fundo, desfoque e imagem de fundo daqui não aparecem)
+ * ou que usam cores de texto fixas (a "cor do texto" daqui não muda nada).
+ */
+export function lookLimits(type: string, config: Record<string, any>): { ownBg: string | null; fixedText: boolean } {
+  switch (type) {
+    case "weather": return { ownBg: "O clima desenha o próprio céu como fundo.", fixedText: true }
+    case "pcmusic": return { ownBg: (config.pcBg ?? "glass") !== "none" ? "O player usa o fundo dele. Em “Fundo” do player, escolha “Sem fundo” para usar o fundo daqui." : null, fixedText: true }
+    case "valagent": return { ownBg: "O fundo vem do template do agente (acima).", fixedText: true }
+    case "musicclip": return { ownBg: "O clipe ocupa o widget inteiro.", fixedText: true }
+    default: return { ownBg: null, fixedText: false }
+  }
+}
+
 /** Seção "Aparência deste widget" da janela de configurar. */
-export function LookSettings({ id, config }: { id: string; config: Record<string, any> }) {
+export function LookSettings({ id, type, config }: { id: string; type: string; config: Record<string, any> }) {
   const upd = useStore((s) => s.updateWidgetConfig)
+  const lite = useStore((s) => !!s.settings.perfLite)
+  const theme = useStore((s) => s.settings.theme)
+  const lim = lookLimits(type, config)
   const l = lookOfWidget(config)
   const set = (p: Partial<WidgetLook>) => upd(id, { look: { ...l, ...p }, bare: undefined })
   const surf = l.surface ?? "theme"
@@ -128,14 +145,24 @@ export function LookSettings({ id, config }: { id: string; config: Record<string
       </div>
 
       <div className="text-xs font-semibold tracking-wide text-fg-muted uppercase">Fundo</div>
-      <Segmented value={surf} onChange={(v) => set({ surface: v })} options={[{ value: "theme", label: "Do tema" }, { value: "glass", label: "Vidro" }, { value: "solid", label: "Sólido" }, { value: "none", label: "Nenhum" }]} />
-      {(surf === "glass" || surf === "solid") && (
+      {lim.ownBg ? (
+        <div className="text-xs text-fg-muted">{lim.ownBg}</div>
+      ) : (
         <>
-          <ColorPicker value={l.bgColor ?? "#141018"} onChange={(v) => set({ bgColor: v })} swatches={SW} />
-          <Slider label="Opacidade do fundo" value={l.bgAlpha ?? (surf === "solid" ? 0.92 : 0.28)} min={0} max={1} step={0.02} onChange={(v) => set({ bgAlpha: v })} format={(v) => Math.round(v * 100) + "%"} />
+          <Segmented value={surf} onChange={(v) => set({ surface: v })} options={[{ value: "theme", label: "Do tema" }, { value: "glass", label: "Vidro" }, { value: "solid", label: "Sólido" }, { value: "none", label: "Nenhum" }]} />
+          {(surf === "glass" || surf === "solid") && (
+            <>
+              <ColorPicker value={l.bgColor ?? "#141018"} onChange={(v) => set({ bgColor: v })} swatches={SW} />
+              <Slider label="Opacidade do fundo" value={l.bgAlpha ?? (surf === "solid" ? 0.92 : 0.28)} min={0} max={1} step={0.02} onChange={(v) => set({ bgAlpha: v })} format={(v) => Math.round(v * 100) + "%"} />
+            </>
+          )}
+          {(surf === "glass" || (surf === "theme" && theme !== "retro")) && (
+            lite
+              ? <div className="text-xs text-fg-muted">Desfoque desligado pelo modo leve (Configurações › Desempenho).</div>
+              : <Slider label="Desfoque do vidro" value={l.blur ?? 24} min={0} max={60} onChange={(v) => set({ blur: v })} format={(v) => v + "px"} />
+          )}
         </>
       )}
-      {surf !== "none" && surf !== "solid" && <Slider label="Desfoque do vidro" value={l.blur ?? 24} min={0} max={60} onChange={(v) => set({ blur: v })} format={(v) => v + "px"} />}
 
       <div className="text-xs font-semibold tracking-wide text-fg-muted uppercase">Borda e forma</div>
       <Segmented value={l.border ?? "theme"} onChange={(v) => set({ border: v })} options={[{ value: "theme", label: "Do tema" }, { value: "none", label: "Sem borda" }, { value: "custom", label: "Escolher cor" }]} />
@@ -160,13 +187,13 @@ export function LookSettings({ id, config }: { id: string; config: Record<string
           {l.accent && <button className="text-xs text-fg-muted hover:text-fg" onClick={() => set({ accent: undefined })}>do tema</button>}
         </div>
       </div>
-      <div className="flex items-center justify-between gap-3 text-sm">
+      {!lim.fixedText && <div className="flex items-center justify-between gap-3 text-sm">
         Cor do texto
         <div className="flex items-center gap-2">
           <ColorPicker value={l.text ?? "#ffffff"} onChange={(v) => set({ text: v })} swatches={["#ffffff", "#f6e8ee", "#ffd6e8", "#1a1020", "#000000"]} />
           {l.text && <button className="text-xs text-fg-muted hover:text-fg" onClick={() => set({ text: undefined })}>do tema</button>}
         </div>
-      </div>
+      </div>}
       <FontPicker label="Fonte deste widget" value={l.font ?? ""} onChange={(id) => set({ font: id || undefined })} allowDefault defaultLabel="Do tema" sample="Meu widget" />
     </div>
   )
