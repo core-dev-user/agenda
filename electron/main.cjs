@@ -236,7 +236,9 @@ app.whenReady().then(() => {
         const size = (await fsp.stat(full)).size
         const m = /bytes=(\d*)-(\d*)/.exec(range) || []
         const start = m[1] ? Number(m[1]) : 0
-        const end = Math.min(size - 1, m[2] ? Number(m[2]) : start + 16 * 1024 * 1024 - 1)
+        // pedido aberto ("bytes=N-") vai até o fim do arquivo (em stream, sem carregar na memória).
+        // Cortar em pedaços fazia o player achar que o vídeo tinha acabado e repetir os primeiros segundos.
+        const end = Math.min(size - 1, m[2] ? Number(m[2]) : size - 1)
         const type = { ".webm": "video/webm", ".mkv": "video/x-matroska", ".ogv": "video/ogg", ".mov": "video/quicktime" }[path.extname(name).toLowerCase()] || "video/mp4"
         const stream = require("node:stream").Readable.toWeb(fs.createReadStream(full, { start, end }))
         return new Response(stream, { status: 206, headers: { "Content-Type": type, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": String(end - start + 1), "Accept-Ranges": "bytes", "Access-Control-Allow-Origin": "*" } })
