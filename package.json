@@ -1,7 +1,7 @@
 {
   "name": "widgy",
   "productName": "Widgy",
-  "version": "0.3.35",
+  "version": "0.3.36",
   "description": "Widgy — sua área de trabalho personalizada",
   "main": "electron/main.cjs",
   "type": "module",
@@ -24,7 +24,8 @@
     "test:templates": "node --experimental-strip-types --test tests/template-share.test.mjs tests/settings-index.test.mjs tests/icon-support.test.mjs",
     "test:a11y": "node --test tests/a11y-static.test.mjs",
     "test:flows": "node --experimental-strip-types --test tests/layers.test.mjs tests/placement.test.mjs",
-    "test:widgets": "node --test tests/widget-inspector.test.mjs"
+    "test:widgets": "node --test tests/widget-inspector.test.mjs",
+    "test:valorant": "node --experimental-strip-types --test tests/valorant-fx.test.mjs"
   },
   "build": {
     "appId": "com.agenda.desktop",

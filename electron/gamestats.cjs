@@ -56,7 +56,9 @@ async function poll() {
       const mm = await getJSON(`${base}/matches/${pm.MatchID}`, H)
       const players = kind === "pregame" ? ((mm.AllyTeam && mm.AllyTeam.Players) || []) : (mm.Players || [])
       const mine = players.find((p) => p.Subject === s.puuid)
-      if (mine && mine.CharacterID) next = { id: String(mine.CharacterID).toLowerCase(), locked: kind === "core-game" || mine.CharacterSelectionState === "locked", state: loop }
+      // MapID vem na mesma resposta da partida (seleção de agentes e partida em andamento): o widget pode usar o mapa como fundo
+      const map = typeof mm.MapID === "string" ? mm.MapID : undefined
+      if (mine && mine.CharacterID) next = { id: String(mine.CharacterID).toLowerCase(), locked: kind === "core-game" || mine.CharacterSelectionState === "locked", state: loop, map }
     }
     if (JSON.stringify(next) !== JSON.stringify(agent)) { agent = next; send("valorant:agent", agent) }
   } catch {} finally { busy = false }

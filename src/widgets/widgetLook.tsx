@@ -103,7 +103,7 @@ export function lookLimits(type: string, config: Record<string, any>): { ownBg: 
   switch (type) {
     case "weather": return { ownBg: "O clima desenha o próprio céu como fundo.", fixedText: true }
     case "pcmusic": return { ownBg: (config.pcBg ?? "glass") !== "none" ? "O player usa o fundo dele. Em “Fundo” do player, escolha “Sem fundo” para usar o fundo daqui." : null, fixedText: true }
-    case "valagent": return { ownBg: "O fundo vem do template do agente (acima).", fixedText: true }
+    case "valagent": return { ownBg: "O fundo deste widget fica em “Fundo do agente”, acima.", fixedText: true }
     case "musicclip": return { ownBg: "O clipe ocupa o widget inteiro.", fixedText: true }
     default: return { ownBg: null, fixedText: false }
   }

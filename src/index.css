@@ -381,6 +381,12 @@ html:has([data-dim]) [data-desktop] .surface, html:has([data-dim]) [data-desktop
 .wl-h-glow:hover > .wl-inner { box-shadow: 0 0 0 1px color-mix(in srgb, var(--wacc, var(--accent)) 70%, transparent), 0 0 38px -4px color-mix(in srgb, var(--wacc, var(--accent)) 60%, transparent) !important; }
 .wl-h-border:hover > .wl-inner { border-color: var(--wacc, var(--accent)) !important; }
 
+/* Widget do Valorant: panorâmica lenta do mapa de fundo (só transform: o compositor anima, sem refazer o desenho) */
+@keyframes val-pan { from { transform: translate3d(-3.5%, -1%, 0); } to { transform: translate3d(3.5%, 1%, 0); } }
+.val-pan { animation: val-pan 34s ease-in-out infinite alternate; will-change: transform; }
+.perf-paused .val-pan, .no-anim .val-pan { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .val-pan { animation: none; } }
+
 /* =================== INSPETOR DE WIDGET (painel de personalizar) =================== */
 .wi { font-size: 13px; }
 /* no tema de vidro o cartão é quase transparente: o painel ganha uma base mais firme para os controles ficarem legíveis */

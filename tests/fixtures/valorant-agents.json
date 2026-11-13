@@ -1,0 +1,976 @@
+{
+"source": "https://valorant-api.com/v1/agents?isPlayableCharacter=true&language=pt-BR",
+"fetched": "2026-11-13",
+"data": [
+{
+"uuid": "41fb69c1-4189-7b37-f117-bcaf1e96f1bf",
+"displayName": "Astra",
+"role": {
+"displayName": "Controlador"
+},
+"backgroundGradientColors": [
+"26146cff",
+"0f1923ff",
+"5210c6ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/41fb69c1-4189-7b37-f117-bcaf1e96f1bf/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/41fb69c1-4189-7b37-f117-bcaf1e96f1bf/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/41fb69c1-4189-7b37-f117-bcaf1e96f1bf/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/41fb69c1-4189-7b37-f117-bcaf1e96f1bf/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Passive",
+"displayIcon": "https://media.valorant-api.com/agents/41fb69c1-4189-7b37-f117-bcaf1e96f1bf/abilities/passive/displayicon.png"
+}
+]
+},
+{
+"uuid": "5f8d3a7f-467b-97f3-062c-13acf203c006",
+"displayName": "Breach",
+"role": {
+"displayName": "Iniciador"
+},
+"backgroundGradientColors": [
+"81331aff",
+"0f1923ff",
+"523a23ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/5f8d3a7f-467b-97f3-062c-13acf203c006/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/5f8d3a7f-467b-97f3-062c-13acf203c006/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/5f8d3a7f-467b-97f3-062c-13acf203c006/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/5f8d3a7f-467b-97f3-062c-13acf203c006/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "9f0d8ba9-4140-b941-57d3-a7ad57c6b417",
+"displayName": "Brimstone",
+"role": {
+"displayName": "Controlador"
+},
+"backgroundGradientColors": [
+"363c4fff",
+"0f1923ff",
+"211d21ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/9f0d8ba9-4140-b941-57d3-a7ad57c6b417/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/9f0d8ba9-4140-b941-57d3-a7ad57c6b417/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/9f0d8ba9-4140-b941-57d3-a7ad57c6b417/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/9f0d8ba9-4140-b941-57d3-a7ad57c6b417/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "22697a3d-45bf-8dd7-4fec-84a9e28c69d7",
+"displayName": "Chamber",
+"role": {
+"displayName": "Sentinela"
+},
+"backgroundGradientColors": [
+"20435bff",
+"0f1923ff",
+"372d2bff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/22697a3d-45bf-8dd7-4fec-84a9e28c69d7/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/22697a3d-45bf-8dd7-4fec-84a9e28c69d7/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/22697a3d-45bf-8dd7-4fec-84a9e28c69d7/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/22697a3d-45bf-8dd7-4fec-84a9e28c69d7/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "1dbf2edd-4729-0984-3115-daa5eed44993",
+"displayName": "Clove",
+"role": {
+"displayName": "Controlador"
+},
+"backgroundGradientColors": [
+"4b1d80ff",
+"0f1923ff",
+"c347c7ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/1dbf2edd-4729-0984-3115-daa5eed44993/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/1dbf2edd-4729-0984-3115-daa5eed44993/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/1dbf2edd-4729-0984-3115-daa5eed44993/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/1dbf2edd-4729-0984-3115-daa5eed44993/abilities/ability1/displayicon.png"
+}
+]
+},
+{
+"uuid": "117ed9e3-49f3-6512-3ccf-0cada7e3823b",
+"displayName": "Cypher",
+"role": {
+"displayName": "Sentinela"
+},
+"backgroundGradientColors": [
+"2f5078ff",
+"0f1923ff",
+"3f3f6cff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/117ed9e3-49f3-6512-3ccf-0cada7e3823b/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/117ed9e3-49f3-6512-3ccf-0cada7e3823b/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/117ed9e3-49f3-6512-3ccf-0cada7e3823b/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/117ed9e3-49f3-6512-3ccf-0cada7e3823b/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "cc8b64c8-4b25-4ff9-6e7f-37b4da43d235",
+"displayName": "Deadlock",
+"role": {
+"displayName": "Sentinela"
+},
+"backgroundGradientColors": [
+"425495ff",
+"0f1923ff",
+"221c3dff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/cc8b64c8-4b25-4ff9-6e7f-37b4da43d235/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/cc8b64c8-4b25-4ff9-6e7f-37b4da43d235/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/cc8b64c8-4b25-4ff9-6e7f-37b4da43d235/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/cc8b64c8-4b25-4ff9-6e7f-37b4da43d235/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "dade69b4-4f5a-8528-247b-219e5a1facd6",
+"displayName": "Fade",
+"role": {
+"displayName": "Iniciador"
+},
+"backgroundGradientColors": [
+"1d2846ff",
+"0f1923ff",
+"18344cff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/dade69b4-4f5a-8528-247b-219e5a1facd6/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/dade69b4-4f5a-8528-247b-219e5a1facd6/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/dade69b4-4f5a-8528-247b-219e5a1facd6/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/dade69b4-4f5a-8528-247b-219e5a1facd6/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Passive",
+"displayIcon": null
+}
+]
+},
+{
+"uuid": "e370fa57-4757-3604-3648-499e1f642d3f",
+"displayName": "Gekko",
+"role": {
+"displayName": "Iniciador"
+},
+"backgroundGradientColors": [
+"371c5cff",
+"0f1923ff",
+"3a2656ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/e370fa57-4757-3604-3648-499e1f642d3f/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/e370fa57-4757-3604-3648-499e1f642d3f/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/e370fa57-4757-3604-3648-499e1f642d3f/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/e370fa57-4757-3604-3648-499e1f642d3f/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Passive",
+"displayIcon": null
+}
+]
+},
+{
+"uuid": "95b78ed7-4637-86d9-7e41-71ba8c293152",
+"displayName": "Harbor",
+"role": {
+"displayName": "Controlador"
+},
+"backgroundGradientColors": [
+"275146ff",
+"0f1923ff",
+"11434eff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/95b78ed7-4637-86d9-7e41-71ba8c293152/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/95b78ed7-4637-86d9-7e41-71ba8c293152/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/95b78ed7-4637-86d9-7e41-71ba8c293152/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/95b78ed7-4637-86d9-7e41-71ba8c293152/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "ddd5a15c-4fbe-42fa-3789-11a55ca5ee04",
+"displayName": "Hush",
+"role": {
+"displayName": "Duelista"
+},
+"backgroundGradientColors": [
+"3d2c44ff",
+"0f1923ff",
+"f47ac7ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/ddd5a15c-4fbe-42fa-3789-11a55ca5ee04/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/ddd5a15c-4fbe-42fa-3789-11a55ca5ee04/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/ddd5a15c-4fbe-42fa-3789-11a55ca5ee04/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/ddd5a15c-4fbe-42fa-3789-11a55ca5ee04/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Passive",
+"displayIcon": "https://media.valorant-api.com/agents/ddd5a15c-4fbe-42fa-3789-11a55ca5ee04/abilities/passive/displayicon.png"
+}
+]
+},
+{
+"uuid": "0e38b510-41a8-5780-5e8f-568b2a4f2d6c",
+"displayName": "Iso",
+"role": {
+"displayName": "Duelista"
+},
+"backgroundGradientColors": [
+"30336eff",
+"0f1923ff",
+"20155dff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/0e38b510-41a8-5780-5e8f-568b2a4f2d6c/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/0e38b510-41a8-5780-5e8f-568b2a4f2d6c/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/0e38b510-41a8-5780-5e8f-568b2a4f2d6c/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/0e38b510-41a8-5780-5e8f-568b2a4f2d6c/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Passive",
+"displayIcon": null
+}
+]
+},
+{
+"uuid": "add6443a-41bd-e414-f6ad-e58d267f4e95",
+"displayName": "Jett",
+"role": {
+"displayName": "Duelista"
+},
+"backgroundGradientColors": [
+"25607aff",
+"0f1923ff",
+"0f1923ff",
+"25607aff"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Passive",
+"displayIcon": "https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/abilities/passive/displayicon.png"
+}
+]
+},
+{
+"uuid": "601dbbe7-43ce-be57-2a40-4abd24953621",
+"displayName": "KAY/O",
+"role": {
+"displayName": "Iniciador"
+},
+"backgroundGradientColors": [
+"1c2a69ff",
+"0f1923ff",
+"1a1e4bff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/601dbbe7-43ce-be57-2a40-4abd24953621/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/601dbbe7-43ce-be57-2a40-4abd24953621/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/601dbbe7-43ce-be57-2a40-4abd24953621/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/601dbbe7-43ce-be57-2a40-4abd24953621/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "1e58de9c-4950-5125-93e9-a0aee9f98746",
+"displayName": "Killjoy",
+"role": {
+"displayName": "Sentinela"
+},
+"backgroundGradientColors": [
+"522162ff",
+"0f1923ff",
+"413950ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/1e58de9c-4950-5125-93e9-a0aee9f98746/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/1e58de9c-4950-5125-93e9-a0aee9f98746/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/1e58de9c-4950-5125-93e9-a0aee9f98746/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/1e58de9c-4950-5125-93e9-a0aee9f98746/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "7c8a4701-4de6-9355-b254-e09bc2a34b72",
+"displayName": "Miks",
+"role": {
+"displayName": "Controlador"
+},
+"backgroundGradientColors": [
+"462b75ff",
+"0f1923ff",
+"344673ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/7c8a4701-4de6-9355-b254-e09bc2a34b72/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/7c8a4701-4de6-9355-b254-e09bc2a34b72/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/7c8a4701-4de6-9355-b254-e09bc2a34b72/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/7c8a4701-4de6-9355-b254-e09bc2a34b72/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "bb2a4828-46eb-8cd1-e765-15848195d751",
+"displayName": "Neon",
+"role": {
+"displayName": "Duelista"
+},
+"backgroundGradientColors": [
+"413476ff",
+"0f1923ff",
+"38328eff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/bb2a4828-46eb-8cd1-e765-15848195d751/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/bb2a4828-46eb-8cd1-e765-15848195d751/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/bb2a4828-46eb-8cd1-e765-15848195d751/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/bb2a4828-46eb-8cd1-e765-15848195d751/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Passive",
+"displayIcon": null
+}
+]
+},
+{
+"uuid": "8e253930-4c05-31dd-1b6c-968525494517",
+"displayName": "Omen",
+"role": {
+"displayName": "Controlador"
+},
+"backgroundGradientColors": [
+"433178ff",
+"0f1923ff",
+"344673ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/8e253930-4c05-31dd-1b6c-968525494517/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/8e253930-4c05-31dd-1b6c-968525494517/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/8e253930-4c05-31dd-1b6c-968525494517/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/8e253930-4c05-31dd-1b6c-968525494517/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "eb93336a-449b-9c1b-0a54-a891f7921d69",
+"displayName": "Phoenix",
+"role": {
+"displayName": "Duelista"
+},
+"backgroundGradientColors": [
+"74321cff",
+"0f1923ff",
+"262423ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/eb93336a-449b-9c1b-0a54-a891f7921d69/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/eb93336a-449b-9c1b-0a54-a891f7921d69/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/eb93336a-449b-9c1b-0a54-a891f7921d69/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/eb93336a-449b-9c1b-0a54-a891f7921d69/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Passive",
+"displayIcon": null
+}
+]
+},
+{
+"uuid": "f94c3b30-42be-e959-889c-5aa313dba261",
+"displayName": "Raze",
+"role": {
+"displayName": "Duelista"
+},
+"backgroundGradientColors": [
+"742e1eff",
+"0f1923ff",
+"2c5942ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/f94c3b30-42be-e959-889c-5aa313dba261/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/f94c3b30-42be-e959-889c-5aa313dba261/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/f94c3b30-42be-e959-889c-5aa313dba261/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/f94c3b30-42be-e959-889c-5aa313dba261/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "a3bfb853-43b2-7238-a4f1-ad90e9e46bcc",
+"displayName": "Reyna",
+"role": {
+"displayName": "Duelista"
+},
+"backgroundGradientColors": [
+"662d62ff",
+"0f1923ff",
+"2f2664ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/a3bfb853-43b2-7238-a4f1-ad90e9e46bcc/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/a3bfb853-43b2-7238-a4f1-ad90e9e46bcc/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/a3bfb853-43b2-7238-a4f1-ad90e9e46bcc/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/a3bfb853-43b2-7238-a4f1-ad90e9e46bcc/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Passive",
+"displayIcon": null
+}
+]
+},
+{
+"uuid": "569fdd95-4d10-43ab-ca70-79becc718b46",
+"displayName": "Sage",
+"role": {
+"displayName": "Sentinela"
+},
+"backgroundGradientColors": [
+"1f5148ff",
+"0f1923ff",
+"102d23ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/569fdd95-4d10-43ab-ca70-79becc718b46/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/569fdd95-4d10-43ab-ca70-79becc718b46/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/569fdd95-4d10-43ab-ca70-79becc718b46/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/569fdd95-4d10-43ab-ca70-79becc718b46/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "6f2a04ca-43e0-be17-7f36-b3908627744d",
+"displayName": "Skye",
+"role": {
+"displayName": "Iniciador"
+},
+"backgroundGradientColors": [
+"436a51ff",
+"0f1923ff",
+"4f1413ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/6f2a04ca-43e0-be17-7f36-b3908627744d/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/6f2a04ca-43e0-be17-7f36-b3908627744d/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/6f2a04ca-43e0-be17-7f36-b3908627744d/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/6f2a04ca-43e0-be17-7f36-b3908627744d/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "320b2a48-4d9b-a075-30f1-1f93a9b638fa",
+"displayName": "Sova",
+"role": {
+"displayName": "Iniciador"
+},
+"backgroundGradientColors": [
+"355285ff",
+"0f1923ff",
+"101c47ff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/320b2a48-4d9b-a075-30f1-1f93a9b638fa/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/320b2a48-4d9b-a075-30f1-1f93a9b638fa/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/320b2a48-4d9b-a075-30f1-1f93a9b638fa/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/320b2a48-4d9b-a075-30f1-1f93a9b638fa/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "b444168c-4e35-8076-db47-ef9bf368f384",
+"displayName": "Tejo",
+"role": {
+"displayName": "Iniciador"
+},
+"backgroundGradientColors": [
+"80451bff",
+"0f1923ff",
+"ffffffff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/b444168c-4e35-8076-db47-ef9bf368f384/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/b444168c-4e35-8076-db47-ef9bf368f384/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/b444168c-4e35-8076-db47-ef9bf368f384/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/b444168c-4e35-8076-db47-ef9bf368f384/abilities/grenade/displayicon.png"
+}
+]
+},
+{
+"uuid": "92eeef5d-43b5-1d4a-8d03-b3927a09034b",
+"displayName": "Veto",
+"role": {
+"displayName": "Sentinela"
+},
+"backgroundGradientColors": [
+"1a5d65ff",
+"0f1923ff",
+"0f1923ff",
+"1a5d65ff"
+],
+"abilities": [
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/92eeef5d-43b5-1d4a-8d03-b3927a09034b/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/92eeef5d-43b5-1d4a-8d03-b3927a09034b/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/92eeef5d-43b5-1d4a-8d03-b3927a09034b/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/92eeef5d-43b5-1d4a-8d03-b3927a09034b/abilities/ability1/displayicon.png"
+}
+]
+},
+{
+"uuid": "707eab51-4836-f488-046a-cda6bf494859",
+"displayName": "Viper",
+"role": {
+"displayName": "Controlador"
+},
+"backgroundGradientColors": [
+"1a5f46ff",
+"0f1923ff",
+"2c4f5eff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/707eab51-4836-f488-046a-cda6bf494859/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/707eab51-4836-f488-046a-cda6bf494859/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/707eab51-4836-f488-046a-cda6bf494859/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/707eab51-4836-f488-046a-cda6bf494859/abilities/ultimate/displayicon.png"
+},
+{
+"slot": "Passive",
+"displayIcon": null
+}
+]
+},
+{
+"uuid": "efba5359-4016-a1e5-7626-b1ae76895940",
+"displayName": "Vyse",
+"role": {
+"displayName": "Sentinela"
+},
+"backgroundGradientColors": [
+"492280ff",
+"0f1923ff",
+"ffffffff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/efba5359-4016-a1e5-7626-b1ae76895940/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/efba5359-4016-a1e5-7626-b1ae76895940/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/efba5359-4016-a1e5-7626-b1ae76895940/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/efba5359-4016-a1e5-7626-b1ae76895940/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "df1cb487-4902-002e-5c17-d28e83e78588",
+"displayName": "Waylay",
+"role": {
+"displayName": "Duelista"
+},
+"backgroundGradientColors": [
+"482e61ff",
+"0f1923ff",
+"0f1923ff",
+"482e61ff"
+],
+"abilities": [
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/df1cb487-4902-002e-5c17-d28e83e78588/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/df1cb487-4902-002e-5c17-d28e83e78588/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/df1cb487-4902-002e-5c17-d28e83e78588/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/df1cb487-4902-002e-5c17-d28e83e78588/abilities/ultimate/displayicon.png"
+}
+]
+},
+{
+"uuid": "7f94d92c-4234-0a36-9646-3a87eb8b5c89",
+"displayName": "Yoru",
+"role": {
+"displayName": "Duelista"
+},
+"backgroundGradientColors": [
+"222b67ff",
+"0f1923ff",
+"261e4fff",
+"0f192300"
+],
+"abilities": [
+{
+"slot": "Grenade",
+"displayIcon": "https://media.valorant-api.com/agents/7f94d92c-4234-0a36-9646-3a87eb8b5c89/abilities/grenade/displayicon.png"
+},
+{
+"slot": "Ability1",
+"displayIcon": "https://media.valorant-api.com/agents/7f94d92c-4234-0a36-9646-3a87eb8b5c89/abilities/ability1/displayicon.png"
+},
+{
+"slot": "Ability2",
+"displayIcon": "https://media.valorant-api.com/agents/7f94d92c-4234-0a36-9646-3a87eb8b5c89/abilities/ability2/displayicon.png"
+},
+{
+"slot": "Ultimate",
+"displayIcon": "https://media.valorant-api.com/agents/7f94d92c-4234-0a36-9646-3a87eb8b5c89/abilities/ultimate/displayicon.png"
+}
+]
+}
+]
+}

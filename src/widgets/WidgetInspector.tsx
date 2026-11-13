@@ -19,7 +19,7 @@ import { SECTIONS } from "@/components/sections-meta"
 import { CLOCK_OPTS } from "./Clock"
 import { FEEDS } from "./News"
 import { SportsSettings } from "./Sports"
-import { ValAgentSettings } from "./ValAgentWidget"
+import { ValAgentSettings, ValBackgroundSettings } from "./ValAgentWidget"
 import { SysMonSettings } from "./SysMonWidget"
 import { PcMusicSettings } from "./PcMusicWidget"
 import { CountdownSettings } from "./Countdown"
@@ -85,6 +85,7 @@ export function WidgetInspector({ w, geo, autoFit, open, onClose, meta, onRest }
         </div>
       )}
       {tab === "content" && <Content w={w} set={set} geo={geo} autoFit={autoFit} />}
+      {tab === "look" && w.type === "valagent" && <ValBackgroundSettings w={w} set={set} />}
       {tab === "look" && <LookPanel id={w.id} type={w.type} config={c} afterBackground={<BackgroundImage w={w} geo={geo} set={set} />} />}
       {tab === "size" && <SizeTab w={w} geo={geo} autoFit={autoFit} />}
     </InspectorPanel>

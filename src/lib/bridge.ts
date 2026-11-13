@@ -212,7 +212,8 @@ export interface AgendaBridge {
 
 export type WebAppId = "discord" | "ifood" | "whatsapp"
 export interface RunningGame { id: string; name: string; color: string; start: number; path: string; exe: string; art?: { logo?: string; hero?: string; icon?: string } }
-export interface ValAgentNow { id: string; locked: boolean; state: string }
+/** agente da partida; `map` é o caminho interno do mapa (ex.: /Game/Maps/Ascent/Ascent), quando a partida informa */
+export interface ValAgentNow { id: string; locked: boolean; state: string; map?: string }
 export interface GamesState { playing: RunningGame[]; at: number }
 
 /** estado do atalho da tecla Windows (Configurações mostram para a pessoa saber o que está acontecendo) */

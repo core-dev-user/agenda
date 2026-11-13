@@ -69,6 +69,7 @@ jobs:
           npm run test:finance
           npm run test:perf
           npm run test:taskbar
+          npm run test:valorant
 
       - name: Compilar aplicativo
         if: steps.version.outputs.skip != 'true'
