@@ -3,15 +3,15 @@
  * último resultado e próximo jogo. Serve para futebol e qualquer e-sport de TEAM_GAMES.
  */
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Check, RefreshCw, Search, Shield } from "lucide-react"
+import { Check, RefreshCw, RotateCcw, Search, Shield } from "lucide-react"
 import { bridge, friendlyError, type TeamCard, type TeamGame, type TeamHit } from "@/lib/bridge"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { ensureFont, fontFamily } from "@/lib/fonts"
 import { logoPalette, teamTheme } from "@/lib/teamColors"
-import { Switch } from "@/components/ui/controls"
 import { FontPicker } from "@/components/FontPicker"
 import { LEAGUES } from "./Sports"
+import { Group, Row, Toggle } from "./inspector"
 
 /** jogos do widget. Para pôr outro: uma linha aqui + o provedor em electron/teams.cjs */
 export const TEAM_GAMES: { id: string; label: string; short: string; color: string; hint: string }[] = [
@@ -344,63 +344,69 @@ export function TeamSettings({ w, set }: { w: Widget; set: (p: Record<string, an
 
   return (
     <>
-      <div className="text-sm text-fg-muted">Jogo / esporte</div>
-      <div className="flex flex-wrap gap-1.5">
-        {TEAM_GAMES.map((g) => (
-          <button key={g.id} onClick={() => { if (g.id !== game.id) { set({ game: g.id, team: undefined, color1: undefined, color2: undefined }); setQ("") } }}
-            className={cn("rounded-full border px-2.5 py-1 text-xs transition-colors", g.id === game.id ? "border-transparent text-white" : "border-line text-fg-muted hover:text-fg")}
-            style={g.id === game.id ? { background: g.color } : undefined}>
-            {g.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="text-sm">Time {sel && <span className="text-fg-muted">— {sel.name}</span>}</div>
-      <div className="relative">
-        <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-muted" />
-        <input className="field w-full !pl-8" placeholder={`Buscar time (ex.: ${game.hint})`} value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
-      <div className="max-h-60 overflow-auto rounded-xl border border-line p-1">
-        {!list && <div className="p-3 text-center text-xs text-fg-muted">Buscando…</div>}
-        {list && list.length === 0 && (
-          <div className="p-3 text-center text-xs text-fg-muted">{err || (q.trim().length < 2 ? "Digite o nome do time para buscar." : "Nenhum time com esse nome.")}</div>
-        )}
-        <div className="grid grid-cols-2 gap-0.5">
-          {(list ?? []).slice(0, 120).map((t) => {
-            const on = sel?.id === t.id
-            return (
-              <button key={t.id + (t.league ?? "")} onClick={() => pick(t)}
-                className={cn("flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] transition-colors", on ? "text-fg" : "text-fg-muted hover:bg-[color-mix(in_srgb,var(--fg)_7%,transparent)] hover:text-fg", t.inactive && "opacity-50")}
-                style={on ? { background: `color-mix(in srgb, ${game.color} 20%, transparent)` } : undefined}
-                title={t.inactive ? "Time inativo" : t.league ? LEAGUES.find((l) => l.id === t.league)?.label : undefined}>
-                <Logo src={t.logo} alt={t.name} size={20} />
-                <span className="min-w-0 flex-1 truncate">{t.name}</span>
-                {on && <Check size={13} style={{ color: game.color }} />}
-              </button>
-            )
-          })}
+      <Group title="Jogo ou esporte" flush>
+        <div className="flex flex-wrap gap-1.5 p-2.5">
+          {TEAM_GAMES.map((g) => (
+            <button key={g.id} type="button" aria-pressed={g.id === game.id} onClick={() => { if (g.id !== game.id) { set({ game: g.id, team: undefined, color1: undefined, color2: undefined }); setQ("") } }}
+              className={cn("rounded-full border px-2.5 py-[3px] text-[12px] transition-colors", g.id === game.id ? "border-transparent text-white" : "border-line text-fg-muted hover:text-fg")}
+              style={g.id === game.id ? { background: g.color } : undefined}>
+              {g.label}
+            </button>
+          ))}
         </div>
-      </div>
-      {game.id !== "football" && game.id !== "valorant" && (
-        <div className="text-xs text-fg-muted">Dados da Liquipedia. Ela só deixa uma consulta a cada 30 s, então o primeiro carregamento pode demorar um pouco; depois fica guardado.</div>
-      )}
+      </Group>
 
-      <div className="text-sm text-fg-muted">Visual</div>
-      <Switch label="Logo gigante ao fundo" checked={c.watermark !== false} onChange={(v) => set({ watermark: v })} />
-      <Switch label="Listras na cor do time" checked={c.stripes !== false} onChange={(v) => set({ stripes: v })} />
-      <Switch label="Logo acompanha o mouse (3D)" checked={c.tilt !== false} onChange={(v) => set({ tilt: v })} />
-      <Switch label="Últimos 5 resultados (V/E/D)" checked={c.showForm !== false} onChange={(v) => set({ showForm: v })} />
-      <Switch label="Último jogo" checked={c.showLast !== false} onChange={(v) => set({ showLast: v })} />
-      <Switch label="Próximo jogo" checked={c.showNext !== false} onChange={(v) => set({ showNext: v })} />
-      <div className="text-sm text-fg-muted">Cores <span className="text-xs">(automáticas: do clube ou do logo)</span></div>
-      <div className="flex items-center gap-3">
-        <label className="flex items-center gap-2 text-xs">Principal <input type="color" value={c.color1 ?? "#202436"} onChange={(e) => set({ color1: e.target.value })} className="h-7 w-9 cursor-pointer rounded border border-line bg-transparent" /></label>
-        <label className="flex items-center gap-2 text-xs">Destaque <input type="color" value={c.color2 ?? "#ffffff"} onChange={(e) => set({ color2: e.target.value })} className="h-7 w-9 cursor-pointer rounded border border-line bg-transparent" /></label>
-        {(c.color1 || c.color2) && <button className="btn btn-ghost !py-1 text-xs" onClick={() => set({ color1: undefined, color2: undefined })}>Automáticas</button>}
-      </div>
-      <div className="text-sm text-fg-muted">Fonte do nome</div>
-      <FontPicker value={c.nameFont ?? NAME_FONT} onChange={(v: string) => set({ nameFont: v })} />
-      <div className="text-xs text-fg-muted">Clique num jogo para abrir a partida. Deixe o widget mais largo para o logo ficar ao lado dos jogos, ou mais alto para ele ficar em cima.</div>
+      <Group title={sel ? `Time: ${sel.name}` : "Time"} flush note={game.id !== "football" && game.id !== "valorant" ? "Dados da Liquipedia, que só aceita uma consulta a cada 30 s: o primeiro carregamento pode demorar; depois fica guardado." : undefined}>
+        <div className="space-y-2 p-2">
+          <div className="relative">
+            <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-muted" />
+            <input className="wi-input !pl-8" aria-label="Buscar time" placeholder={`Buscar time (ex.: ${game.hint})`} value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <div className="wi-scroll max-h-56 overflow-auto rounded-[9px] p-1" style={{ background: "rgb(0 0 0 / .16)" }}>
+            {!list && <div className="p-3 text-center text-[12px] text-fg-muted">Buscando…</div>}
+            {list && list.length === 0 && (
+              <div className="p-3 text-center text-[12px] text-fg-muted">{err || (q.trim().length < 2 ? "Digite o nome do time para buscar." : "Nenhum time com esse nome.")}</div>
+            )}
+            <div className="grid grid-cols-2 gap-0.5">
+              {(list ?? []).slice(0, 120).map((t) => {
+                const on = sel?.id === t.id
+                return (
+                  <button key={t.id + (t.league ?? "")} type="button" aria-pressed={on} onClick={() => pick(t)}
+                    className={cn("flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] transition-colors", on ? "text-fg" : "text-fg-muted hover:bg-[color-mix(in_srgb,var(--fg)_7%,transparent)] hover:text-fg", t.inactive && "opacity-50")}
+                    style={on ? { background: `color-mix(in srgb, ${game.color} 20%, transparent)` } : undefined}
+                    title={t.inactive ? "Time inativo" : t.league ? LEAGUES.find((l) => l.id === t.league)?.label : undefined}>
+                    <Logo src={t.logo} alt={t.name} size={20} />
+                    <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                    {on && <Check size={13} style={{ color: game.color }} />}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </Group>
+
+      <Group title="O que mostrar" note="Clique num jogo para abrir a partida.">
+        <Toggle label="Próximo jogo" checked={c.showNext !== false} onChange={(v) => set({ showNext: v })} />
+        <Toggle label="Último jogo" checked={c.showLast !== false} onChange={(v) => set({ showLast: v })} />
+        <Toggle label="Últimos 5 resultados" hint="Vitória, empate ou derrota." checked={c.showForm !== false} onChange={(v) => set({ showForm: v })} />
+      </Group>
+
+      <Group title="Visual" note="Mais largo, o logo fica ao lado dos jogos; mais alto, fica em cima.">
+        <Toggle label="Logo gigante ao fundo" checked={c.watermark !== false} onChange={(v) => set({ watermark: v })} />
+        <Toggle label="Listras na cor do time" checked={c.stripes !== false} onChange={(v) => set({ stripes: v })} />
+        <Toggle label="Logo acompanha o mouse" checked={c.tilt !== false} onChange={(v) => set({ tilt: v })} />
+        <Row label="Cores" hint={c.color1 || c.color2 ? "Escolhidas por você." : "Automáticas: do clube ou do logo."}>
+          <label className="relative size-[24px] cursor-pointer overflow-hidden rounded-full border border-[rgb(255_255_255/.2)]" title="Cor principal" style={{ background: c.color1 ?? "#202436" }}>
+            <input type="color" aria-label="Cor principal" value={c.color1 ?? "#202436"} onChange={(e) => set({ color1: e.target.value })} className="absolute inset-0 cursor-pointer opacity-0" />
+          </label>
+          <label className="relative size-[24px] cursor-pointer overflow-hidden rounded-full border border-[rgb(255_255_255/.2)]" title="Cor de destaque" style={{ background: c.color2 ?? "#ffffff" }}>
+            <input type="color" aria-label="Cor de destaque" value={c.color2 ?? "#ffffff"} onChange={(e) => set({ color2: e.target.value })} className="absolute inset-0 cursor-pointer opacity-0" />
+          </label>
+          {(c.color1 || c.color2) && <button type="button" className="wi-icon" title="Voltar às cores automáticas" aria-label="Voltar às cores automáticas" onClick={() => set({ color1: undefined, color2: undefined })}><RotateCcw size={13} /></button>}
+        </Row>
+        <div className="p-2"><FontPicker label="Fonte do nome" value={c.nameFont ?? NAME_FONT} onChange={(v: string) => set({ nameFont: v })} /></div>
+      </Group>
     </>
   )
 }

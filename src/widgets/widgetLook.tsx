@@ -1,10 +1,8 @@
-import type { CSSProperties } from "react"
-import { Copy, RotateCcw } from "lucide-react"
+import type { CSSProperties, ReactNode } from "react"
 import { useStore } from "@/lib/store"
 import { fontFamily } from "@/lib/fonts"
 import { FontPicker } from "@/components/FontPicker"
-import { ColorPicker, Segmented, Slider } from "@/components/ui/controls"
-import { cn } from "@/lib/utils"
+import { Choice, Group, Range, Row, Swatches, Tiles, Toggle } from "./inspector"
 
 /**
  * Aparência própria de um widget (fica em `config.look`). Tudo opcional: o que não for definido segue o tema.
@@ -111,8 +109,14 @@ export function lookLimits(type: string, config: Record<string, any>): { ownBg: 
   }
 }
 
-/** Seção "Aparência deste widget" da janela de configurar. */
-export function LookSettings({ id, type, config }: { id: string; type: string; config: Record<string, any> }) {
+/** widgets cujo conteúdo usa a cor de destaque em algum lugar (nos outros, escolher essa cor não mudaria nada) */
+const USES_ACCENT = new Set(["clock", "stopwatch", "calendar", "tasks", "shortcut", "music", "pcmusic", "cs2", "valorant", "football", "countdown", "sysmon", "valagent"])
+
+/** id do estilo pronto que bate com a aparência atual (ou "" quando foi ajustada à mão) */
+const presetOf = (look: unknown) => LOOK_PRESETS.find((p) => JSON.stringify(p.look) === JSON.stringify(look ?? {}))?.id ?? ""
+
+/** Aba "Aparência" do painel de personalizar. `afterBackground` entra logo depois do grupo Fundo (imagem de fundo). */
+export function LookPanel({ id, type, config, afterBackground }: { id: string; type: string; config: Record<string, any>; afterBackground?: ReactNode }) {
   const upd = useStore((s) => s.updateWidgetConfig)
   const lite = useStore((s) => !!s.settings.perfLite)
   const theme = useStore((s) => s.settings.theme)
@@ -120,81 +124,83 @@ export function LookSettings({ id, type, config }: { id: string; type: string; c
   const l = lookOfWidget(config)
   const set = (p: Partial<WidgetLook>) => upd(id, { look: { ...l, ...p }, bare: undefined })
   const surf = l.surface ?? "theme"
-  const presetOn = (pl: WidgetLook) => JSON.stringify(pl) === JSON.stringify(config.look ?? {})
-  const copyAll = () => {
-    const st = useStore.getState()
-    if (!confirm("Usar esta aparência em todos os widgets?")) return
-    for (const x of st.widgets) if (x.id !== id) st.updateWidgetConfig(x.id, { look: { ...l }, bare: undefined })
-  }
+  // a cor de destaque também pinta a sombra "brilho" e os efeitos de brilhar e acender a borda
+  const accentMatters = USES_ACCENT.has(type) || l.shadow === "glow" || l.hover === "glow" || l.hover === "border"
   return (
-    <div className="space-y-3 border-t border-line pt-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">Aparência deste widget</span>
-        <div className="flex gap-1.5">
-          <button className="btn !px-2 !py-1 text-xs" onClick={copyAll} title="Aplicar em todos os widgets"><Copy size={12} /> Em todos</button>
-          <button className="btn !px-2 !py-1 text-xs" onClick={() => upd(id, { look: undefined, bare: undefined })} title="Voltar ao padrão do tema"><RotateCcw size={12} /> Padrão</button>
+    <>
+      <Group title="Estilo pronto" flush>
+        <div className="p-1.5">
+          <Tiles label="Estilo pronto" cols={4} value={presetOf(config.look)} onChange={(v) => upd(id, { look: { ...LOOK_PRESETS.find((p) => p.id === v)!.look }, bare: undefined })}
+            options={LOOK_PRESETS.map((p) => ({ value: p.id, label: p.label, preview: <span className="block h-6 w-[72%] rounded-[6px]" style={p.preview} /> }))} />
         </div>
-      </div>
-      <div className="grid grid-cols-4 gap-2">
-        {LOOK_PRESETS.map((p) => (
-          <button key={p.id} onClick={() => upd(id, { look: { ...p.look }, bare: undefined })} className={cn("flex flex-col items-center gap-1 rounded-xl p-1.5 text-[11px]", presetOn(p.look) ? "bg-brand/20 ring-1 ring-brand" : "hover:bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]")}>
-            <span className="h-9 w-full rounded-lg" style={p.preview} />
-            {p.label}
-          </button>
-        ))}
-      </div>
+      </Group>
 
-      <div className="text-xs font-semibold tracking-wide text-fg-muted uppercase">Fundo</div>
-      {lim.ownBg ? (
-        <div className="text-xs text-fg-muted">{lim.ownBg}</div>
-      ) : (
-        <>
-          <Segmented value={surf} onChange={(v) => set({ surface: v })} options={[{ value: "theme", label: "Do tema" }, { value: "glass", label: "Vidro" }, { value: "solid", label: "Sólido" }, { value: "none", label: "Nenhum" }]} />
-          {(surf === "glass" || surf === "solid") && (
-            <>
-              <ColorPicker value={l.bgColor ?? "#141018"} onChange={(v) => set({ bgColor: v })} swatches={SW} />
-              <Slider label="Opacidade do fundo" value={l.bgAlpha ?? (surf === "solid" ? 0.92 : 0.28)} min={0} max={1} step={0.02} onChange={(v) => set({ bgAlpha: v })} format={(v) => Math.round(v * 100) + "%"} />
-            </>
-          )}
-          {(surf === "glass" || (surf === "theme" && theme !== "retro")) && (
-            lite
-              ? <div className="text-xs text-fg-muted">Desfoque desligado pelo modo leve (Configurações › Desempenho).</div>
-              : <Slider label="Desfoque do vidro" value={l.blur ?? 24} min={0} max={60} onChange={(v) => set({ blur: v })} format={(v) => v + "px"} />
-          )}
-        </>
-      )}
+      <Group title="Fundo" note={lim.ownBg ?? undefined}>
+        {!lim.ownBg && (
+          <Row stack>
+            <Choice label="Fundo" value={surf} onChange={(v) => set({ surface: v })} options={[{ value: "theme", label: "Do tema" }, { value: "glass", label: "Vidro" }, { value: "solid", label: "Sólido" }, { value: "none", label: "Nenhum" }]} />
+          </Row>
+        )}
+        {!lim.ownBg && (surf === "glass" || surf === "solid") && (
+          <Row stack label="Cor">
+            <Swatches label="Cor do fundo" value={l.bgColor ?? "#141018"} onChange={(v) => set({ bgColor: v })} colors={SW} />
+          </Row>
+        )}
+        {!lim.ownBg && (surf === "glass" || surf === "solid") && (
+          <Range label="Opacidade" value={l.bgAlpha ?? (surf === "solid" ? 0.92 : 0.28)} min={0} max={1} step={0.02} onChange={(v) => set({ bgAlpha: v })} format={(v) => Math.round(v * 100) + "%"} />
+        )}
+        {!lim.ownBg && (surf === "glass" || (surf === "theme" && theme !== "retro")) && (
+          lite
+            ? <Row label="Desfoque" hint="Desligado pelo modo leve (Configurações › Sistema)." />
+            : <Range label="Desfoque" value={l.blur ?? 24} min={0} max={60} onChange={(v) => set({ blur: v })} format={(v) => v + " px"} def={24} onReset={() => set({ blur: undefined })} />
+        )}
+        {lim.ownBg && <Row label="Este widget desenha o próprio fundo" />}
+      </Group>
 
-      <div className="text-xs font-semibold tracking-wide text-fg-muted uppercase">Borda e forma</div>
-      <Segmented value={l.border ?? "theme"} onChange={(v) => set({ border: v })} options={[{ value: "theme", label: "Do tema" }, { value: "none", label: "Sem borda" }, { value: "custom", label: "Escolher cor" }]} />
-      {l.border === "custom" && (
-        <>
-          <ColorPicker value={(l.borderColor ?? "#ffffff").slice(0, 7)} onChange={(v) => set({ borderColor: v })} swatches={SW} />
-          <Slider label="Espessura da borda" value={l.borderWidth ?? 1} min={1} max={6} onChange={(v) => set({ borderWidth: v })} format={(v) => v + "px"} />
-        </>
-      )}
-      <Slider label="Cantos arredondados" value={l.radius ?? -1} min={-1} max={48} onChange={(v) => set({ radius: v < 0 ? undefined : v })} format={(v) => (v < 0 ? "do tema" : v + "px")} />
-      <Segmented value={l.shadow ?? "theme"} onChange={(v) => set({ shadow: v })} options={[{ value: "theme", label: "Sombra do tema" }, { value: "none", label: "Sem sombra" }, { value: "soft", label: "Suave" }, { value: "strong", label: "Forte" }, { value: "glow", label: "Brilho" }]} />
+      {afterBackground}
 
-      <div className="text-xs font-semibold tracking-wide text-fg-muted uppercase">Ao passar o mouse</div>
-      <Segmented value={l.hover ?? "theme"} onChange={(v) => set({ hover: v })} options={[{ value: "theme", label: "Inclinar e reflexo" }, { value: "none", label: "Nada" }, { value: "lift", label: "Levantar" }, { value: "glow", label: "Brilhar" }, { value: "border", label: "Acender a borda" }]} />
-      <Segmented value={l.chrome ?? "full"} onChange={(v) => set({ chrome: v })} options={[{ value: "full", label: "Botões mover / configurar / remover" }, { value: "minimal", label: "Só um botão discreto" }]} />
+      <Group title="Borda e sombra">
+        <Row stack label="Borda">
+          <Choice label="Borda" value={l.border ?? "theme"} onChange={(v) => set({ border: v })} options={[{ value: "theme", label: "Do tema" }, { value: "none", label: "Sem borda" }, { value: "custom", label: "Própria" }]} />
+        </Row>
+        {l.border === "custom" && (
+          <Row stack label="Cor da borda">
+            <Swatches label="Cor da borda" value={(l.borderColor ?? "#ffffff").slice(0, 7)} onChange={(v) => set({ borderColor: v })} colors={SW} />
+          </Row>
+        )}
+        {l.border === "custom" && <Range label="Espessura" value={l.borderWidth ?? 1} min={1} max={6} onChange={(v) => set({ borderWidth: v })} format={(v) => v + " px"} />}
+        <Range label="Cantos" value={l.radius ?? -1} min={-1} max={48} onChange={(v) => set({ radius: v < 0 ? undefined : v })} format={(v) => (v < 0 ? "do tema" : v + " px")} def={-1} />
+        <Row stack label="Sombra">
+          <Choice label="Sombra" value={l.shadow ?? "theme"} onChange={(v) => set({ shadow: v })} options={[{ value: "theme", label: "Do tema" }, { value: "none", label: "Sem" }, { value: "soft", label: "Suave" }, { value: "strong", label: "Forte" }, { value: "glow", label: "Brilho" }]} />
+        </Row>
+      </Group>
 
-      <div className="text-xs font-semibold tracking-wide text-fg-muted uppercase">Cores e fonte</div>
-      <div className="flex items-center justify-between gap-3 text-sm">
-        Cor de destaque
-        <div className="flex items-center gap-2">
-          <ColorPicker value={l.accent ?? "#ff8fb8"} onChange={(v) => set({ accent: v })} swatches={SW.slice(3)} />
-          {l.accent && <button className="text-xs text-fg-muted hover:text-fg" onClick={() => set({ accent: undefined })}>do tema</button>}
+      <Group title="Texto e cores">
+        {accentMatters && (
+          <Row stack label="Cor de destaque">
+            <Swatches label="Cor de destaque" auto="Do tema" value={l.accent} onChange={(v) => set({ accent: v })} colors={SW.slice(3)} />
+          </Row>
+        )}
+        {!lim.fixedText && (
+          <Row stack label="Cor do texto">
+            <Swatches label="Cor do texto" auto="Do tema" value={l.text} onChange={(v) => set({ text: v })} colors={["#ffffff", "#f6e8ee", "#ffd6e8", "#1a1020", "#000000"]} />
+          </Row>
+        )}
+        <div className="p-2">
+          <FontPicker label="Fonte deste widget" value={l.font ?? ""} onChange={(f) => set({ font: f || undefined })} allowDefault defaultLabel="Do tema" sample="Meu widget" />
         </div>
-      </div>
-      {!lim.fixedText && <div className="flex items-center justify-between gap-3 text-sm">
-        Cor do texto
-        <div className="flex items-center gap-2">
-          <ColorPicker value={l.text ?? "#ffffff"} onChange={(v) => set({ text: v })} swatches={["#ffffff", "#f6e8ee", "#ffd6e8", "#1a1020", "#000000"]} />
-          {l.text && <button className="text-xs text-fg-muted hover:text-fg" onClick={() => set({ text: undefined })}>do tema</button>}
-        </div>
-      </div>}
-      <FontPicker label="Fonte deste widget" value={l.font ?? ""} onChange={(id) => set({ font: id || undefined })} allowDefault defaultLabel="Do tema" sample="Meu widget" />
-    </div>
+      </Group>
+
+      <Group title="Ao passar o mouse">
+        <Row stack>
+          <Choice label="Efeito ao passar o mouse" value={l.hover ?? "theme"} onChange={(v) => set({ hover: v })} options={[{ value: "theme", label: "Inclinar" }, { value: "none", label: "Nada" }, { value: "lift", label: "Levantar" }, { value: "glow", label: "Brilhar" }, { value: "border", label: "Borda" }]} />
+        </Row>
+        <Toggle label="Botões discretos" hint="Um botão pequeno de configurar, em vez de mover, configurar e remover." checked={l.chrome === "minimal"} onChange={(v) => set({ chrome: v ? "minimal" : "full" })} />
+      </Group>
+
+      <Group title="Transparência">
+        <Range label="Opacidade do widget" value={config.opacity ?? 1} min={0.2} max={1} step={0.05} onChange={(v) => upd(id, { opacity: v })} format={(v) => Math.round(v * 100) + "%"} def={1} />
+      </Group>
+    </>
   )
 }

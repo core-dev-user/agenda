@@ -3,10 +3,10 @@ import { Disc3, Headphones, MicVocal, Pause, Play, SkipBack, SkipForward } from 
 import { bridge, type PcMedia } from "@/lib/bridge"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { Segmented, Switch } from "@/components/ui/controls"
 import { useStore } from "@/lib/store"
 import { lineAt, useLyrics, type Lyrics } from "@/lib/lyrics"
 import { useCoverArt } from "@/lib/coverArt"
+import { Choice, Group, Row, Select, Toggle } from "./inspector"
 
 /**
  * Widgy Music — minimal, album-first desktop player.
@@ -321,57 +321,40 @@ export function PcMusicWidget({ w }: { w: Widget }) {
   )
 }
 
-const options = <T extends string,>(items: { value: T; label: string }[]) => items
-
 export function PcMusicSettings({ w, set }: { w: Widget; set: (p: Record<string, any>) => void }) {
   const c = w.config
+  const layout = c.pcLayout === "wide" ? "auto" : c.pcLayout ?? "auto"
+  const posterFits = w.h >= 310 && w.w >= 215
   return (
-    <div className="space-y-4">
-      <div>
-        <div className="mb-1.5 text-xs font-semibold">Aplicativo</div>
-        <select className="field w-full" value={c.app ?? ""} onChange={(e) => set({ app: e.target.value })}>
-          {PC_PLAYERS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select>
-      </div>
-      <div>
-        <div className="mb-1.5 text-xs font-semibold">Estilo do player</div>
-        <Segmented className="flex flex-wrap" value={c.pcLayout === "wide" ? "auto" : c.pcLayout ?? "auto"} onChange={(v) => set({ pcLayout: v })}
-          options={options([{ value: "auto", label: "Adaptável" },
-            { value: "compact", label: "Mini" }, { value: "poster", label: "Capa grande" }])} />
-        <p className="mt-1.5 text-[11px] leading-relaxed text-fg-muted">
-          {(c.pcLayout ?? "auto") === "poster" ? (w.h >= 310 && w.w >= 215 ? "Capa grande em cima, informações embaixo." : "A capa grande precisa de pelo menos 215 × 310 px. Aumente o widget (por enquanto ele aparece no modo adaptável).")
-            : (c.pcLayout === "compact" ? "Capa pequena e tudo numa linha." : "Ajusta capa e controles automaticamente quando você redimensiona o widget.")}
-        </p>
-      </div>
-      <div>
-        <div className="mb-1.5 text-xs font-semibold">Fundo</div>
-        <Segmented className="flex flex-wrap" value={c.pcBg ?? "glass"} onChange={(v) => set({ pcBg: v })}
-          options={options([{ value: "glass", label: "Discreto" }, { value: "blur", label: "Capa suave" },
-            { value: "solid", label: "Sólido" }, { value: "none", label: "Sem fundo" }])} />
-      </div>
-      <div>
-        <div className="mb-1.5 text-xs font-semibold">Capa</div>
-        <Segmented className="flex flex-wrap" value={c.pcArtShape ?? "rounded"} onChange={(v) => set({ pcArtShape: v })}
-          options={options([{ value: "rounded", label: "Arredondada" }, { value: "square", label: "Quadrada" },
-            { value: "circle", label: "Circular" }])} />
-      </div>
-      <div>
-        <div className="mb-1.5 text-xs font-semibold">Cor da barra de progresso</div>
-        <Segmented className="flex flex-wrap" value={c.pcAccent ?? "blue"} onChange={(v) => set({ pcAccent: v })}
-          options={options([{ value: "blue", label: "Widgy" }, { value: "spotify", label: "Spotify" },
-            { value: "theme", label: "Meu tema" }])} />
-      </div>
-      <div className="border-t border-line pt-2">
-        <Switch checked={c.pcControls !== false} onChange={(v) => set({ pcControls: v })} label="Controles de reprodução" />
-        <Switch checked={c.pcProgress !== false} onChange={(v) => set({ pcProgress: v })} label="Progresso da música" />
-        <Switch checked={c.pcSource === true} onChange={(v) => set({ pcSource: v })} label="Mostrar aplicativo e estado" />
-        <Switch checked={c.pcAlbum === true} onChange={(v) => set({ pcAlbum: v })} label="Mostrar álbum" />
-        <Switch checked={c.pcLyrics === true} onChange={(v) => set({ pcLyrics: v })} label="Letras sincronizadas (Spotify / música do PC)" />
-        {c.pcProgress !== false && c.pcLayout !== "compact" && <Switch checked={c.pcTimes === true} onChange={(v) => set({ pcTimes: v })} label="Mostrar os tempos" />}
-      </div>
-      <p className="text-[11px] leading-relaxed text-fg-muted">
-        A capa vem da central de mídia do Windows. No Spotify, quando ela faltar, o Widgy tenta encontrar a mesma faixa e artista no catálogo público do iTunes. As letras são buscadas na LRCLIB e dependem da disponibilidade de cada música.
-      </p>
-    </div>
+    <>
+      <Group title="Tocador" note="A capa vem da central de mídia do Windows. No Spotify, quando ela faltar, o Widgy procura a mesma faixa no catálogo público do iTunes.">
+        <Row label="Aplicativo">
+          <Select label="Aplicativo" value={c.app ?? ""} onChange={(v) => set({ app: v })} options={PC_PLAYERS.map((p) => ({ value: p.id, label: p.label }))} />
+        </Row>
+        <Row stack label="Formato" hint={layout === "poster" ? (posterFits ? "Capa grande em cima, informações embaixo." : "A capa grande precisa de pelo menos 215 × 310 px: aumente o widget. Por enquanto ele aparece no formato adaptável.")
+          : layout === "compact" ? "Capa pequena e tudo numa linha." : "Ajusta capa e controles ao tamanho do widget."}>
+          <Choice label="Formato do tocador" value={layout} onChange={(v) => set({ pcLayout: v })} options={[{ value: "auto", label: "Adaptável" }, { value: "compact", label: "Mini" }, { value: "poster", label: "Capa grande" }]} />
+        </Row>
+      </Group>
+      <Group title="Visual">
+        <Row stack label="Fundo">
+          <Choice label="Fundo do tocador" value={c.pcBg ?? "glass"} onChange={(v) => set({ pcBg: v })} options={[{ value: "glass", label: "Discreto" }, { value: "blur", label: "Capa suave" }, { value: "solid", label: "Sólido" }, { value: "none", label: "Sem fundo" }]} />
+        </Row>
+        <Row stack label="Capa">
+          <Choice label="Formato da capa" value={c.pcArtShape ?? "rounded"} onChange={(v) => set({ pcArtShape: v })} options={[{ value: "rounded", label: "Arredondada" }, { value: "square", label: "Quadrada" }, { value: "circle", label: "Circular" }]} />
+        </Row>
+        <Row stack label="Cor da barra de progresso">
+          <Choice label="Cor da barra de progresso" value={c.pcAccent ?? "blue"} onChange={(v) => set({ pcAccent: v })} options={[{ value: "blue", label: "Widgy" }, { value: "spotify", label: "Spotify" }, { value: "theme", label: "Do tema" }]} />
+        </Row>
+      </Group>
+      <Group title="O que mostrar">
+        <Toggle label="Controles de reprodução" checked={c.pcControls !== false} onChange={(v) => set({ pcControls: v })} />
+        <Toggle label="Progresso da música" checked={c.pcProgress !== false} onChange={(v) => set({ pcProgress: v })} />
+        {c.pcProgress !== false && layout !== "compact" && <Toggle label="Tempos (atual e total)" checked={c.pcTimes === true} onChange={(v) => set({ pcTimes: v })} />}
+        <Toggle label="Aplicativo e estado" checked={c.pcSource === true} onChange={(v) => set({ pcSource: v })} />
+        <Toggle label="Álbum" checked={c.pcAlbum === true} onChange={(v) => set({ pcAlbum: v })} />
+        <Toggle label="Letra sincronizada" hint="Buscada na LRCLIB; depende de cada música." checked={c.pcLyrics === true} onChange={(v) => set({ pcLyrics: v })} />
+      </Group>
+    </>
   )
 }

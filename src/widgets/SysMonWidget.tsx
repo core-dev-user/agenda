@@ -3,7 +3,7 @@ import { Cpu, HardDrive, MemoryStick, Monitor, Network, Thermometer, Zap } from 
 import { bridge, type SysStats } from "@/lib/bridge"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { Segmented, Switch } from "@/components/ui/controls"
+import { Choice, Group, Row as PanelRow, Toggle } from "./inspector"
 
 /* ---------- dados compartilhados entre todos os widgets de desempenho ---------- */
 const HIST = 60
@@ -270,6 +270,7 @@ const COMPACT_METRICS: MetricKey[] = ["cpu", "gpu", "ram", "vram", "temp"]
 export function SysMonSettings({ w, set }: { w: Widget; set: (p: Record<string, any>) => void }) {
   const c = w.config
   const on = new Set<MetricKey>(c.metrics ?? DEFAULT_ON)
+  const compact = c.style === "compact"
   const toggle = (k: MetricKey, v: boolean) => {
     const n = new Set(on)
     if (v) n.add(k); else n.delete(k)
@@ -277,17 +278,20 @@ export function SysMonSettings({ w, set }: { w: Widget; set: (p: Record<string, 
   }
   return (
     <>
-      <div className="text-sm text-fg-muted">Estilo</div>
-      <Segmented value={c.style ?? "rings"} onChange={(v) => set({ style: v })} options={[{ value: "rings", label: "Anéis" }, { value: "bars", label: "Barras" }, { value: "graph", label: "Gráficos" }, { value: "compact", label: "Compacto" }]} />
-      <div className="text-sm text-fg-muted">Cor</div>
-      <Segmented value={c.colorMode ?? "accent"} onChange={(v) => set({ colorMode: v })} options={[{ value: "accent", label: "Cor de destaque" }, { value: "load", label: "Pela carga (verde → vermelho)" }]} />
-      <div className="text-sm text-fg-muted">O que mostrar</div>
-      <div className="grid grid-cols-2 gap-x-4">
-        {METRICS.filter((m) => c.style !== "compact" || COMPACT_METRICS.includes(m.k)).map((m) => <Switch key={m.k} label={m.label} checked={on.has(m.k)} onChange={(v) => toggle(m.k, v)} />)}
-      </div>
-      {c.style === "compact" && <div className="text-xs text-fg-muted">O estilo compacto mostra só os números principais. Disco, rede e o resto aparecem nos outros estilos.</div>}
-      {c.style !== "compact" && <Switch label="Mostrar o nome do processador no topo" checked={c.showTitle !== false} onChange={(v) => set({ showTitle: v })} />}
-      <div className="text-xs text-fg-muted">Atualiza a cada 1,5 s e só enquanto o widget está na tela. Temperatura, energia e ventoinha vêm da placa NVIDIA. A temperatura do processador o Windows não informa sem programas extras.</div>
+      <Group title="Estilo">
+        <PanelRow stack>
+          <Choice label="Estilo" value={c.style ?? "rings"} onChange={(v) => set({ style: v })} options={[{ value: "rings", label: "Anéis" }, { value: "bars", label: "Barras" }, { value: "graph", label: "Gráficos" }, { value: "compact", label: "Compacto" }]} />
+        </PanelRow>
+        <PanelRow stack label="Cor">
+          <Choice label="Cor" value={c.colorMode ?? "accent"} onChange={(v) => set({ colorMode: v })} options={[{ value: "accent", label: "De destaque" }, { value: "load", label: "Pela carga", title: "Verde com folga, vermelho no limite" }]} />
+        </PanelRow>
+        {!compact && <Toggle label="Nome do processador no topo" checked={c.showTitle !== false} onChange={(v) => set({ showTitle: v })} />}
+      </Group>
+      <Group title="O que mostrar" note={compact
+        ? "O estilo compacto mostra só os números principais. Disco, rede e o resto aparecem nos outros estilos."
+        : "Temperatura, energia e ventoinha vêm da placa NVIDIA. A temperatura do processador o Windows não informa sem programas extras."}>
+        {METRICS.filter((m) => !compact || COMPACT_METRICS.includes(m.k)).map((m) => <Toggle key={m.k} label={m.label} checked={on.has(m.k)} onChange={(v) => toggle(m.k, v)} />)}
+      </Group>
     </>
   )
 }

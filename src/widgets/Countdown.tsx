@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { CalendarHeart, RotateCcw } from "lucide-react"
 import { useNow } from "./Clock"
 import type { Widget } from "@/lib/types"
@@ -6,7 +6,8 @@ import { FONTS } from "@/lib/fonts"
 import { cn } from "@/lib/utils"
 import { Glyph } from "@/components/Glyph"
 import { IconPicker } from "@/components/IconPicker"
-import { ColorPicker, Segmented, Slider, Switch } from "@/components/ui/controls"
+import { COUNTDOWN_PREVIEWS, Choice, Group, MiniButton, Range, Row, Swatches, TextField, Tiles, Toggle } from "./inspector"
+import { FontPicker } from "@/components/FontPicker"
 
 /* ============================================================ contas ============================================================ */
 
@@ -254,90 +255,85 @@ export function CountdownWidget({ w }: { w: Widget }) {
 
 /* ============================================================ configurar ============================================================ */
 
+const COUNTDOWN_STYLES = [["big", "Número grande"], ["message", "Frase"], ["units", "Dias, horas, min"], ["ring", "Anel"], ["calendar", "Folhinha"], ["minimal", "Uma linha"]] as const
+
 export function CountdownSettings({ w, set }: { w: Widget; set: (p: Record<string, any>) => void }) {
   const c = w.config
   const now = new Date()
   const st = countdown(c, now)
+  const style = (c.style ?? "big") as string
+  const [iconOpen, setIconOpen] = useState(false)
   const preview = st ? fill(c.message?.trim() || DEFAULT_MSG, { ...amount(st, c.unit ?? "auto"), title: c.title?.trim() || "o grande dia", date: fmtDate(st.target, !!c.time) }) : ""
   return (
     <>
-      <label className="block text-sm">Título
-        <input className="field mt-1 w-full" defaultValue={c.title ?? ""} placeholder="Ex.: o meu aniversário" onBlur={(e) => set({ title: e.target.value })} />
-      </label>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block text-sm">Data
-          <input type="date" className="field mt-1 w-full" value={c.date ?? ""} onChange={(e) => set({ date: e.target.value || undefined, from: isoDay(now) })} />
-        </label>
-        <label className="block text-sm">Horário (opcional)
-          <div className="mt-1 flex gap-1">
-            <input type="time" className="field w-full" value={c.time ?? ""} onChange={(e) => set({ time: e.target.value || undefined })} />
-            {c.time && <button className="btn btn-icon !p-1.5" title="Sem horário" onClick={() => set({ time: undefined })}><RotateCcw size={13} /></button>}
-          </div>
-        </label>
-      </div>
-      <div className="text-sm text-fg-muted">Repetir</div>
-      <Segmented value={c.repeat ?? "none"} onChange={(v) => set({ repeat: v })} options={[{ value: "none", label: "Uma vez" }, { value: "yearly", label: "Todo ano" }, { value: "monthly", label: "Todo mês" }]} />
-      <div className="text-xs text-fg-muted">Aniversários e datas comemorativas: “Todo ano” — depois do dia, a contagem recomeça sozinha.</div>
+      <Group title="A data">
+        <Row stack label="Título"><TextField label="Título" value={c.title ?? ""} placeholder="Ex.: o meu aniversário" onCommit={(v) => set({ title: v })} /></Row>
+        <Row label="Data">
+          <input type="date" className="wi-input !w-auto" aria-label="Data" value={c.date ?? ""} onChange={(e) => set({ date: e.target.value || undefined, from: isoDay(now) })} />
+        </Row>
+        <Row label="Horário" hint="Opcional.">
+          <input type="time" className="wi-input !w-auto" aria-label="Horário" value={c.time ?? ""} onChange={(e) => set({ time: e.target.value || undefined })} />
+          {c.time && <button type="button" className="wi-icon" title="Sem horário" aria-label="Sem horário" onClick={() => set({ time: undefined })}><RotateCcw size={13} /></button>}
+        </Row>
+        <Row stack label="Repetir" hint="Para aniversários, “Todo ano”: depois do dia a contagem recomeça sozinha.">
+          <Choice label="Repetir" value={c.repeat ?? "none"} onChange={(v) => set({ repeat: v })} options={[{ value: "none", label: "Uma vez" }, { value: "yearly", label: "Todo ano" }, { value: "monthly", label: "Todo mês" }]} />
+        </Row>
+      </Group>
 
-      <div className="space-y-2 rounded-xl border border-line p-3">
-        <div className="text-sm font-semibold">Mensagem</div>
-        <input className="field w-full" defaultValue={c.message ?? ""} key={"m" + (c.message ?? "")} placeholder={DEFAULT_MSG} onBlur={(e) => set({ message: e.target.value })} />
-        <div className="flex flex-wrap gap-1">
-          {MSG_PRESETS.map((p) => (
-            <button key={p} className={cn("rounded-full border px-2 py-0.5 text-[11px] transition-colors", (c.message || DEFAULT_MSG) === p ? "border-transparent bg-brand text-white" : "border-line text-fg-muted hover:text-fg")} onClick={() => set({ message: p })}>{p}</button>
-          ))}
+      <Group title="Como mostrar" flush>
+        <div className="p-1.5">
+          <Tiles label="Como mostrar" cols={3} value={style} onChange={(v) => set({ style: v })}
+            options={COUNTDOWN_STYLES.map(([value, label]) => ({ value, label, preview: COUNTDOWN_PREVIEWS[value] }))} />
         </div>
-        <div className="text-[11px] text-fg-muted">Use <b>{"{n}"}</b> (o número), <b>{"{unidade}"}</b> (dias, horas…), <b>{"{titulo}"}</b> e <b>{"{data}"}</b>.</div>
-        {preview && <div className="rounded-lg px-2 py-1.5 text-sm" style={{ background: "color-mix(in srgb, var(--fg) 6%, transparent)" }}>{preview}</div>}
-        <div className="pt-1 text-sm">No dia</div>
-        <input className="field w-full" defaultValue={c.doneMessage ?? ""} placeholder={DEFAULT_DONE} onBlur={(e) => set({ doneMessage: e.target.value })} />
-      </div>
+        <div className="divide-y divide-[var(--line)] border-t border-line">
+          {style !== "units" && (
+            <Row stack label="Contar em">
+              <Choice label="Contar em" value={c.unit ?? "auto"} onChange={(v) => set({ unit: v })} options={[{ value: "auto", label: "Automático", title: "Dias, e horas no último dia" }, { value: "days", label: "Dias" }, { value: "weeks", label: "Semanas" }, { value: "hours", label: "Horas" }]} />
+            </Row>
+          )}
+          {style === "units" && <Toggle label="Segundos" checked={c.seconds !== false} onChange={(v) => set({ seconds: v })} />}
+          {["big", "message", "units"].includes(style) && (
+            <Row stack label="Alinhamento">
+              <Choice label="Alinhamento" value={c.align ?? "center"} onChange={(v) => set({ align: v })} options={[{ value: "center", label: "Centro" }, { value: "left", label: "Esquerda" }]} />
+            </Row>
+          )}
+          {style !== "calendar" && <Toggle label="Data embaixo" checked={c.showDate !== false} onChange={(v) => set({ showDate: v })} />}
+          {!["ring", "minimal"].includes(style) && <Toggle label="Barra de progresso" hint="Quanto do tempo já passou." checked={!!c.bar} onChange={(v) => set({ bar: v })} />}
+          {style === "big" && <Toggle label="Brilho no número" checked={!!c.glow} onChange={(v) => set({ glow: v })} />}
+        </div>
+      </Group>
 
-      <div className="text-sm text-fg-muted">Como mostrar</div>
-      <div className="grid grid-cols-3 gap-1.5">
-        {([
-          ["big", "Número grande", "15"], ["message", "Frase", "Aa 15"], ["units", "Dias · horas · min", "15:08:42"],
-          ["ring", "Anel de progresso", "◔"], ["calendar", "Folhinha", "▤ 24"], ["minimal", "Uma linha", "— 15 —"],
-        ] as const).map(([v, label, ico]) => (
-          <button key={v} onClick={() => set({ style: v })} className={cn("flex flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5 text-[11px]", (c.style ?? "big") === v ? "border-brand bg-brand/15" : "border-line hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]")}>
-            <span className="font-num text-sm leading-none">{ico}</span>{label}
-          </button>
-        ))}
-      </div>
-      {(c.style ?? "big") !== "units" && (
-        <>
-          <div className="text-sm text-fg-muted">Contar em</div>
-          <Segmented value={c.unit ?? "auto"} onChange={(v) => set({ unit: v })} options={[{ value: "auto", label: "Dias (horas no último)" }, { value: "days", label: "Dias" }, { value: "weeks", label: "Semanas" }, { value: "hours", label: "Horas" }]} />
-        </>
-      )}
-      {c.style === "units" && <Switch label="Mostrar os segundos" checked={c.seconds !== false} onChange={(v) => set({ seconds: v })} />}
+      <Group title="Mensagem">
+        <Row stack label="Frase" hint={<>Use <b className="font-medium text-fg">{"{n}"}</b> (o número), <b className="font-medium text-fg">{"{unidade}"}</b>, <b className="font-medium text-fg">{"{titulo}"}</b> e <b className="font-medium text-fg">{"{data}"}</b>.</>}>
+          <TextField label="Frase da contagem" value={c.message ?? ""} placeholder={DEFAULT_MSG} onCommit={(v) => set({ message: v })} />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {MSG_PRESETS.map((p) => (
+              <button key={p} type="button" aria-pressed={(c.message || DEFAULT_MSG) === p} className={cn("rounded-full border px-2 py-[3px] text-[11.5px] transition-colors", (c.message || DEFAULT_MSG) === p ? "border-transparent bg-brand text-white" : "border-line text-fg-muted hover:text-fg")} onClick={() => set({ message: p })}>{p}</button>
+            ))}
+          </div>
+          {preview && <div className="mt-2 rounded-[8px] px-2.5 py-1.5 text-[12.5px]" style={{ background: "rgb(0 0 0 / .2)" }}>{preview}</div>}
+        </Row>
+        <Row stack label="No dia"><TextField label="Mensagem no dia" value={c.doneMessage ?? ""} placeholder={DEFAULT_DONE} onCommit={(v) => set({ doneMessage: v })} /></Row>
+      </Group>
 
-      <div className="text-sm">Cor de destaque</div>
-      <div className="flex items-center gap-3">
-        <ColorPicker value={c.color ?? "#ff8fb8"} onChange={(v) => set({ color: v })} swatches={["#ff8fb8", "#ff6b8b", "#ffd36e", "#8cf0b0", "#7cc8ff", "#c49bff", "#ffffff"]} />
-        {c.color && <button className="text-xs text-fg-muted hover:text-fg" onClick={() => set({ color: undefined })}>cor do tema</button>}
-      </div>
-      <Slider label="Tamanho" value={c.size ?? 1} min={0.6} max={1.8} step={0.05} onChange={(v) => set({ size: v })} format={(v) => Math.round(v * 100) + "%"} />
-      <label className="block text-sm">Fonte dos números
-        <select className="field mt-1 w-full" value={c.font ?? ""} onChange={(e) => set({ font: e.target.value || undefined })}>
-          <option value="">Padrão do tema</option>
-          {FONTS.map((f) => <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>{f.label}</option>)}
-        </select>
-      </label>
-      {["big", "message", "units"].includes(c.style ?? "big") && (
-        <>
-          <div className="text-sm text-fg-muted">Alinhamento</div>
-          <Segmented value={c.align ?? "center"} onChange={(v) => set({ align: v })} options={[{ value: "center", label: "Centro" }, { value: "left", label: "Esquerda" }]} />
-        </>
-      )}
-      {(c.style ?? "big") !== "calendar" && <Switch label="Mostrar a data embaixo" checked={c.showDate !== false} onChange={(v) => set({ showDate: v })} />}
-      {!["ring", "minimal"].includes(c.style ?? "big") && <Switch label="Barra de progresso (quanto já passou)" checked={!!c.bar} onChange={(v) => set({ bar: v })} />}
-      {(c.style ?? "big") === "big" && <Switch label="Brilho no número" checked={!!c.glow} onChange={(v) => set({ glow: v })} />}
-      <div className="flex items-center gap-2 text-sm">
-        Ícone
-        <IconPicker value={c.icon} onPick={(v) => set({ icon: v })} color={c.color} />
-        {c.icon && <button className="text-xs text-fg-muted hover:text-fg" onClick={() => set({ icon: undefined })}>sem ícone</button>}
-      </div>
+      <Group title="Números e ícone">
+        {["big", "units", "ring"].includes(style) && (
+          <Row stack label="Cor do número">
+            <Swatches label="Cor do número" auto="Do tema" value={c.numColor} onChange={(v) => set({ numColor: v })} colors={["#ffffff", "#ff8fb8", "#ffd36e", "#8cf0b0", "#7cc8ff", "#c49bff", "#1a1020"]} />
+          </Row>
+        )}
+        <Row stack label="Cor de destaque" hint={style === "ring" ? "Pinta o anel, o ícone e o aviso do dia." : style === "calendar" ? "Pinta o topo da folhinha, o ícone e o aviso do dia." : style === "message" || style === "minimal" ? "Pinta o número, o ícone e o aviso do dia." : "Pinta o ícone, a barra de progresso e o aviso do dia."}>
+          <Swatches label="Cor de destaque" auto="Do tema" value={c.color} onChange={(v) => set({ color: v })} colors={["#ff8fb8", "#ff6b8b", "#ffd36e", "#8cf0b0", "#7cc8ff", "#c49bff", "#ffffff"]} />
+        </Row>
+        <Range label="Tamanho" value={c.size ?? 1} min={0.6} max={1.8} step={0.05} onChange={(v) => set({ size: v })} format={(v) => Math.round(v * 100) + "%"} def={1} />
+        <Row label="Ícone" hint={c.icon ? undefined : "Nenhum."}>
+          {c.icon && <Glyph v={c.icon} size={18} style={{ color: c.color }} />}
+          <MiniButton onClick={() => setIconOpen((v) => !v)}>{iconOpen ? "Fechar" : c.icon ? "Trocar" : "Escolher"}</MiniButton>
+          {c.icon && <button type="button" className="wi-icon" title="Sem ícone" aria-label="Sem ícone" onClick={() => set({ icon: undefined })}><RotateCcw size={13} /></button>}
+        </Row>
+        {iconOpen && <div className="p-2.5"><IconPicker className="!w-full" value={c.icon} onPick={(v) => { set({ icon: v }); setIconOpen(false) }} color={c.color} /></div>}
+        <div className="p-2"><FontPicker label="Fonte dos números" value={c.font ?? ""} onChange={(v) => set({ font: v || undefined })} allowDefault defaultLabel="Do tema" sample="15 dias" /></div>
+      </Group>
     </>
   )
 }

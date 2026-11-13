@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Check, ImagePlus, Pencil, Plus, Trash2, Wand2 } from "lucide-react"
+import { Check, ImagePlus, Pencil, Plus, RotateCcw, Trash2, Wand2 } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge, mediaUrl } from "@/lib/bridge"
 import { FONTS } from "@/lib/fonts"
 import { cn, uid } from "@/lib/utils"
-import { ColorPicker, Segmented, Slider, Switch } from "@/components/ui/controls"
 import { MediaPicker } from "@/components/MediaPicker"
 import { useNow } from "./Clock"
 import type { Widget } from "@/lib/types"
+import { Choice, Group, MiniButton, Range, Row, Swatches, TextField, Toggle } from "./inspector"
+import { FontPicker } from "@/components/FontPicker"
 
 /* ---------------- agentes (valorant-api.com, público) ---------------- */
 export interface Agent {
@@ -170,119 +171,115 @@ export function ValAgentSettings({ w, set }: { w: Widget; set: (p: Record<string
   const [q, setQ] = useState("")
   const setTemplates = (fn: (t: ValTemplate[]) => ValTemplate[]) => useStore.setState((s) => ({ valTemplates: fn(s.valTemplates) }))
   const shown = useMemo(() => agents.filter((a) => !q || a.displayName.toLowerCase().includes(q.toLowerCase())), [agents, q])
-  const label = "text-xs font-semibold tracking-wide text-fg-muted uppercase"
+  const dot = "relative size-[24px] cursor-pointer overflow-hidden rounded-full border border-[rgb(255_255_255/.2)]"
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <div className={label}>Agente</div>
-        <Switch label="Trocar sozinho para o agente que estou jogando" checked={c.auto !== false} onChange={(v) => set({ auto: v })} />
-        <input className="field !py-1 text-sm" placeholder="Buscar agente" value={q} onChange={(e) => setQ(e.target.value)} />
-        <div className="grid max-h-40 grid-cols-8 gap-1.5 overflow-y-auto pr-1">
-          {shown.map((a) => (
-            <button key={a.uuid} title={a.displayName} onClick={() => set({ agent: a.uuid })} className={cn("relative overflow-hidden rounded-lg border-2", c.agent === a.uuid ? "border-brand" : "border-transparent")} style={{ background: hex(a.backgroundGradientColors[0]) }}>
-              <img src={a.displayIcon} className="aspect-square w-full" draggable={false} />
-            </button>
-          ))}
-        </div>
-        <div className="text-[11px] text-fg-muted">Com o modo automático, este agente aparece quando você não está jogando.</div>
-      </div>
-
-      <div className="space-y-2">
-        <div className={label}>Modelos prontos</div>
-        <div className="flex flex-wrap gap-1.5">
-          {PRESETS.map((p) => <button key={p.id} className="btn !py-1 text-xs" onClick={() => set({ look: { ...DEFAULT_LOOK, ...p.look } })}><Wand2 size={12} /> {p.name}</button>)}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <div className={label}>Imagem</div>
-        <Segmented value={L.image} onChange={(v) => setL({ image: v })} options={[{ value: "full", label: "Corpo" }, { value: "bust", label: "Busto" }, { value: "icon", label: "Ícone" }, { value: "custom", label: "Minha foto" }, { value: "none", label: "Nenhuma" }]} />
-        {L.image === "custom" && <button className="btn !py-1 text-xs" onClick={() => setPicker("img")}><ImagePlus size={13} /> {L.customId && media.some((m) => m.id === L.customId) ? "Trocar a foto" : "Escolher da galeria"}</button>}
-        {L.image !== "none" && (
-          <>
-            <Slider label="Tamanho" value={L.imgScale} min={0.4} max={2.2} step={0.05} onChange={(v) => setL({ imgScale: v })} format={(v) => `${Math.round(v * 100)}%`} />
-            <Slider label="Posição horizontal" value={L.imgX} min={-50} max={50} onChange={(v) => setL({ imgX: v })} />
-            <Slider label="Posição vertical" value={L.imgY} min={-50} max={50} onChange={(v) => setL({ imgY: v })} />
-            <Switch label="Espelhar" checked={L.flip} onChange={(v) => setL({ flip: v })} />
-            <Switch label="Brilho na cor do agente" checked={L.glow} onChange={(v) => setL({ glow: v })} />
-          </>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <div className={label}>Fundo</div>
-        <Segmented value={L.bg} onChange={(v) => setL({ bg: v })} options={[{ value: "gradient", label: "Degradê do agente" }, { value: "art", label: "Arte do agente" }, { value: "color", label: "Cor" }, { value: "custom", label: "Minha imagem" }]} />
-        {(L.bg === "gradient" || L.bg === "art") && (
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span>Cores</span>
-            <input type="color" value={L.c1 || "#ff4655"} onChange={(e) => setL({ c1: e.target.value })} className="h-7 w-7 cursor-pointer rounded border-0 bg-transparent" />
-            <input type="color" value={L.c2 || "#0f1923"} onChange={(e) => setL({ c2: e.target.value })} className="h-7 w-7 cursor-pointer rounded border-0 bg-transparent" />
-            {(L.c1 || L.c2) && <button className="text-xs text-fg-muted hover:text-fg" onClick={() => setL({ c1: undefined, c2: undefined })}>cores do agente</button>}
+    <>
+      <Group title="Agente" flush note="Com o modo automático ligado, o agente escolhido aqui aparece quando você não está em partida.">
+        <Toggle label="Acompanhar o agente em jogo" hint="Troca sozinho para o agente que você está jogando." checked={c.auto !== false} onChange={(v) => set({ auto: v })} />
+        <div className="space-y-2 border-t border-line p-2">
+          <input className="wi-input" aria-label="Buscar agente" placeholder="Buscar agente" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div className="wi-scroll grid max-h-40 grid-cols-7 gap-1.5 overflow-y-auto pr-0.5">
+            {shown.map((a) => (
+              <button key={a.uuid} type="button" title={a.displayName} aria-label={a.displayName} aria-pressed={c.agent === a.uuid} onClick={() => set({ agent: a.uuid })} className={cn("relative overflow-hidden rounded-[9px] border-2 transition-colors", c.agent === a.uuid ? "border-brand" : "border-transparent hover:border-[color-mix(in_srgb,var(--fg)_30%,transparent)]")} style={{ background: hex(a.backgroundGradientColors?.[0]) }}>
+                <img src={a.displayIcon} className="aspect-square w-full" draggable={false} alt="" />
+              </button>
+            ))}
           </div>
-        )}
-        {L.bg === "art" && <Slider label="Força da arte" value={L.artOpacity} min={0.1} max={1} step={0.05} onChange={(v) => setL({ artOpacity: v })} format={(v) => `${Math.round(v * 100)}%`} />}
-        {L.bg === "color" && <ColorPicker value={L.bgColor} onChange={(v) => setL({ bgColor: v })} swatches={["#0f1923", "#ff4655", "#ece8e1", "#111111", "#1f2937", "#3b0a45", "#0b3d2e"]} />}
-        {L.bg === "custom" && <button className="btn !py-1 text-xs" onClick={() => setPicker("bg")}><ImagePlus size={13} /> Escolher da galeria</button>}
-        <Slider label="Sombra para o texto" value={L.shade} min={0} max={0.95} step={0.05} onChange={(v) => setL({ shade: v })} format={(v) => `${Math.round(v * 100)}%`} />
-      </div>
+        </div>
+      </Group>
 
-      <div className="space-y-2">
-        <div className={label}>Texto</div>
-        <Switch label="Mostrar o nome" checked={L.showName} onChange={(v) => setL({ showName: v })} />
-        {L.showName && (
-          <>
-            <input className="field !py-1 text-sm" placeholder="Nome (vazio = nome do agente)" value={L.nameText ?? ""} onChange={(e) => setL({ nameText: e.target.value || undefined })} />
-            <div className="flex gap-2">
-              <select className="field !py-1 text-sm" value={L.font} onChange={(e) => setL({ font: e.target.value })}>{FONTS.map((f) => <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>{f.label}</option>)}</select>
-              <Segmented value={L.namePos} onChange={(v) => setL({ namePos: v })} options={[{ value: "top", label: "Em cima" }, { value: "bottom", label: "Embaixo" }]} />
-            </div>
-            <Slider label="Tamanho do nome" value={L.nameSize} min={0.5} max={2.5} step={0.05} onChange={(v) => setL({ nameSize: v })} format={(v) => `${Math.round(v * 100)}%`} />
-            <div className="flex items-center gap-3 text-sm"><span>Cor do nome</span><ColorPicker value={L.nameColor} onChange={(v) => setL({ nameColor: v })} swatches={["#ffffff", "#ff4655", "#ece8e1", "#ffd36e", "#7cc8ff", "#0f1923"]} /></div>
-            <Switch label="LETRAS MAIÚSCULAS" checked={L.upper} onChange={(v) => setL({ upper: v })} />
-          </>
-        )}
-        <input className="field !py-1 text-sm" placeholder="Frase embaixo do nome (opcional)" value={L.subtitle} onChange={(e) => setL({ subtitle: e.target.value })} />
-        <div className="flex items-center gap-3 text-sm"><span>Cor da frase e da função</span><ColorPicker value={L.textColor} onChange={(v) => setL({ textColor: v })} swatches={["#ffffff", "#ece8e1", "#ff4655", "#ffd36e", "#0f1923"]} /></div>
-        <Switch label="Mostrar a função (Duelista, Controlador…)" checked={L.showRole} onChange={(v) => setL({ showRole: v })} />
-        <Switch label="Mostrar as habilidades" checked={L.showAbilities} onChange={(v) => setL({ showAbilities: v })} />
-        <Switch label="Mostrar há quanto tempo estou jogando" checked={L.showTimer} onChange={(v) => setL({ showTimer: v })} />
-      </div>
+      <Group title="Modelos prontos" flush>
+        <div className="flex flex-wrap gap-1.5 p-2.5">
+          {PRESETS.map((p) => <MiniButton key={p.id} onClick={() => set({ look: { ...DEFAULT_LOOK, ...p.look } })}><Wand2 size={12} /> {p.name}</MiniButton>)}
+        </div>
+      </Group>
 
-      {/* templates */}
-      <div className="space-y-2 rounded-xl border border-line p-3">
-        <div className={label}>Meus templates</div>
-        <div className="text-[11px] text-fg-muted">Salve o visual atual. Ligando a um agente, ele é usado sozinho quando você jogar com ele.</div>
-        <div className="flex flex-wrap gap-2">
-          <input className="field !w-40 !py-1 text-sm" placeholder="Nome do template" value={tplName} onChange={(e) => setTplName(e.target.value)} />
-          <select className="field !w-auto !py-1 text-sm" value={tplAgent} onChange={(e) => setTplAgent(e.target.value)}>
-            <option value="">Sem agente fixo</option>
-            {agents.map((a) => <option key={a.uuid} value={a.uuid}>{a.displayName}</option>)}
-          </select>
-          <button className="btn !py-1 text-xs" onClick={() => {
-            const name = tplName.trim() || (tplAgent ? agents.find((a) => a.uuid === tplAgent)?.displayName : "") || `Template ${templates.length + 1}`
+      <Group title="Imagem do agente">
+        <Row stack>
+          <Choice label="Imagem do agente" value={L.image} onChange={(v) => setL({ image: v })} options={[{ value: "full", label: "Corpo" }, { value: "bust", label: "Busto" }, { value: "icon", label: "Ícone" }, { value: "custom", label: "Foto" }, { value: "none", label: "Sem" }]} />
+        </Row>
+        {L.image === "custom" && (
+          <Row label="Sua foto">
+            <MiniButton onClick={() => setPicker("img")}><ImagePlus size={12} /> {L.customId && media.some((m) => m.id === L.customId) ? "Trocar" : "Escolher"}</MiniButton>
+          </Row>
+        )}
+        {L.image !== "none" && <Range label="Tamanho" value={L.imgScale} min={0.4} max={2.2} step={0.05} onChange={(v) => setL({ imgScale: v })} format={(v) => `${Math.round(v * 100)}%`} def={DEFAULT_LOOK.imgScale} />}
+        {L.image !== "none" && <Range label="Posição horizontal" value={L.imgX} min={-50} max={50} onChange={(v) => setL({ imgX: v })} def={DEFAULT_LOOK.imgX} />}
+        {L.image !== "none" && <Range label="Posição vertical" value={L.imgY} min={-50} max={50} onChange={(v) => setL({ imgY: v })} def={DEFAULT_LOOK.imgY} />}
+        {L.image !== "none" && <Toggle label="Espelhar" checked={L.flip} onChange={(v) => setL({ flip: v })} />}
+        {L.image !== "none" && <Toggle label="Brilho na cor do agente" checked={L.glow} onChange={(v) => setL({ glow: v })} />}
+      </Group>
+
+      <Group title="Fundo">
+        <Row stack>
+          <Choice label="Fundo" value={L.bg} onChange={(v) => setL({ bg: v })} options={[{ value: "gradient", label: "Degradê" }, { value: "art", label: "Arte" }, { value: "color", label: "Cor" }, { value: "custom", label: "Imagem" }]} />
+        </Row>
+        {(L.bg === "gradient" || L.bg === "art") && (
+          <Row label="Cores" hint={L.c1 || L.c2 ? "Escolhidas por você." : "As do agente."}>
+            <label className={dot} title="Primeira cor" style={{ background: L.c1 || "#ff4655" }}><input type="color" aria-label="Primeira cor" value={L.c1 || "#ff4655"} onChange={(e) => setL({ c1: e.target.value })} className="absolute inset-0 cursor-pointer opacity-0" /></label>
+            <label className={dot} title="Segunda cor" style={{ background: L.c2 || "#0f1923" }}><input type="color" aria-label="Segunda cor" value={L.c2 || "#0f1923"} onChange={(e) => setL({ c2: e.target.value })} className="absolute inset-0 cursor-pointer opacity-0" /></label>
+            {(L.c1 || L.c2) && <button type="button" className="wi-icon" title="Voltar às cores do agente" aria-label="Voltar às cores do agente" onClick={() => setL({ c1: undefined, c2: undefined })}><RotateCcw size={13} /></button>}
+          </Row>
+        )}
+        {L.bg === "art" && <Range label="Força da arte" value={L.artOpacity} min={0.1} max={1} step={0.05} onChange={(v) => setL({ artOpacity: v })} format={(v) => `${Math.round(v * 100)}%`} />}
+        {L.bg === "color" && <Row stack label="Cor"><Swatches label="Cor do fundo" value={L.bgColor} onChange={(v) => v && setL({ bgColor: v })} colors={["#0f1923", "#ff4655", "#ece8e1", "#111111", "#1f2937", "#3b0a45", "#0b3d2e"]} /></Row>}
+        {L.bg === "custom" && <Row label="Sua imagem"><MiniButton onClick={() => setPicker("bg")}><ImagePlus size={12} /> Escolher</MiniButton></Row>}
+        <Range label="Escurecer para o texto" value={L.shade} min={0} max={0.95} step={0.05} onChange={(v) => setL({ shade: v })} format={(v) => `${Math.round(v * 100)}%`} />
+      </Group>
+
+      <Group title="Nome">
+        <Toggle label="Mostrar o nome" checked={L.showName} onChange={(v) => setL({ showName: v })} />
+        {L.showName && <Row stack label="Texto" hint="Vazio usa o nome do agente."><TextField label="Nome mostrado" value={L.nameText ?? ""} placeholder="Nome do agente" onCommit={(v) => setL({ nameText: v || undefined })} /></Row>}
+        {L.showName && <Row stack label="Posição"><Choice label="Posição do nome" value={L.namePos} onChange={(v) => setL({ namePos: v })} options={[{ value: "top", label: "Em cima" }, { value: "bottom", label: "Embaixo" }]} /></Row>}
+        {L.showName && <Range label="Tamanho" value={L.nameSize} min={0.5} max={2.5} step={0.05} onChange={(v) => setL({ nameSize: v })} format={(v) => `${Math.round(v * 100)}%`} def={DEFAULT_LOOK.nameSize} />}
+        {L.showName && <Row stack label="Cor"><Swatches label="Cor do nome" value={L.nameColor} onChange={(v) => v && setL({ nameColor: v })} colors={["#ffffff", "#ff4655", "#ece8e1", "#ffd36e", "#7cc8ff", "#0f1923"]} /></Row>}
+        {L.showName && <Toggle label="Letras maiúsculas" checked={L.upper} onChange={(v) => setL({ upper: v })} />}
+        {L.showName && <div className="p-2"><FontPicker label="Fonte do nome" value={L.font} onChange={(v) => v && setL({ font: v })} sample="JETT" /></div>}
+      </Group>
+
+      <Group title="Outros textos">
+        <Row stack label="Frase embaixo do nome"><TextField label="Frase embaixo do nome" value={L.subtitle} placeholder="Opcional" onCommit={(v) => setL({ subtitle: v })} /></Row>
+        <Row stack label="Cor da frase e da função"><Swatches label="Cor da frase e da função" value={L.textColor} onChange={(v) => v && setL({ textColor: v })} colors={["#ffffff", "#ece8e1", "#ff4655", "#ffd36e", "#0f1923"]} /></Row>
+        <Toggle label="Função" hint="Duelista, Controlador…" checked={L.showRole} onChange={(v) => setL({ showRole: v })} />
+        <Toggle label="Habilidades" checked={L.showAbilities} onChange={(v) => setL({ showAbilities: v })} />
+        <Toggle label="Tempo de jogo" hint="Há quanto tempo você está jogando." checked={L.showTimer} onChange={(v) => setL({ showTimer: v })} />
+      </Group>
+
+      <Group title="Meus modelos" flush note="Salve o visual atual. Ligado a um agente, o modelo é usado sozinho quando você jogar com ele.">
+        <div className="space-y-2 p-2">
+          <div className="flex gap-2">
+            <input className="wi-input" aria-label="Nome do modelo" placeholder="Nome do modelo" value={tplName} onChange={(e) => setTplName(e.target.value)} />
+            <select className="wi-input !w-[132px] shrink-0 cursor-pointer" aria-label="Agente do modelo" value={tplAgent} onChange={(e) => setTplAgent(e.target.value)}>
+              <option value="">Sem agente fixo</option>
+              {agents.map((a) => <option key={a.uuid} value={a.uuid}>{a.displayName}</option>)}
+            </select>
+          </div>
+          <MiniButton onClick={() => {
+            const name = tplName.trim() || (tplAgent ? agents.find((a) => a.uuid === tplAgent)?.displayName : "") || `Modelo ${templates.length + 1}`
             setTemplates((t) => [...t.map((x) => (tplAgent && x.agent === tplAgent ? { ...x, agent: undefined } : x)), { id: uid(), name, agent: tplAgent || undefined, look: L }])
             setTplName(""); setTplAgent("")
-          }}><Plus size={12} /> Salvar visual atual</button>
+          }}><Plus size={12} /> Salvar o visual atual</MiniButton>
         </div>
-        <div className="space-y-1">
-          {templates.map((t) => {
-            const ag = agents.find((a) => a.uuid === t.agent)
-            return (
-              <div key={t.id} className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:bg-[color-mix(in_srgb,var(--fg)_5%,transparent)]">
-                {ag ? <img src={ag.displayIcon} className="h-6 w-6 rounded" draggable={false} /> : <span className="h-6 w-6" />}
-                <span className="min-w-0 flex-1 truncate">{t.name}{ag && <span className="text-xs text-fg-muted"> · {ag.displayName}</span>}</span>
-                <button className="btn !py-0.5 text-xs" title="Aplicar no widget" onClick={() => set({ look: { ...DEFAULT_LOOK, ...t.look } })}><Check size={12} /> Usar</button>
-                <button className="btn btn-ghost btn-icon !p-1" title="Atualizar com o visual atual" onClick={() => setTemplates((all) => all.map((x) => (x.id === t.id ? { ...x, look: L } : x)))}><Pencil size={12} /></button>
-                <button className="btn btn-ghost btn-icon !p-1" title="Apagar" onClick={() => setTemplates((all) => all.filter((x) => x.id !== t.id))}><Trash2 size={12} /></button>
-              </div>
-            )
-          })}
-          {!templates.length && <div className="text-xs text-fg-muted">Nenhum template ainda.</div>}
-        </div>
-      </div>
+        {templates.length > 0 && (
+          <div className="divide-y divide-[var(--line)] border-t border-line">
+            {templates.map((t) => {
+              const ag = agents.find((a) => a.uuid === t.agent)
+              return (
+                <div key={t.id} className="flex min-h-[42px] items-center gap-2 px-3 py-1.5">
+                  {ag ? <img src={ag.displayIcon} className="size-6 rounded" draggable={false} alt="" /> : <span className="size-6 rounded" style={{ background: "color-mix(in srgb, var(--fg) 8%, transparent)" }} />}
+                  <span className="min-w-0 flex-1 truncate text-[13px]">{t.name}{ag && <span className="text-[11.5px] text-fg-muted"> · {ag.displayName}</span>}</span>
+                  <MiniButton title="Aplicar no widget" onClick={() => set({ look: { ...DEFAULT_LOOK, ...t.look } })}><Check size={12} /> Usar</MiniButton>
+                  <button type="button" className="wi-icon" title="Atualizar com o visual atual" aria-label="Atualizar com o visual atual" onClick={() => setTemplates((all) => all.map((x) => (x.id === t.id ? { ...x, look: L } : x)))}><Pencil size={13} /></button>
+                  <button type="button" className="wi-icon hover:!text-red-400" title="Apagar" aria-label="Apagar modelo" onClick={() => setTemplates((all) => all.filter((x) => x.id !== t.id))}><Trash2 size={13} /></button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Group>
 
       <MediaPicker open={!!picker} onClose={() => setPicker(null)} onPick={(ids) => { if (ids[0]) setL(picker === "img" ? { customId: ids[0], image: "custom" } : { customBgId: ids[0], bg: "custom" }); setPicker(null) }} />
-    </div>
+    </>
   )
 }

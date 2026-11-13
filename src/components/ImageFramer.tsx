@@ -30,12 +30,12 @@ export function frameImgStyle(f?: Partial<Frame>, fit: "cover" | "contain" = "co
 
 /** Editor visual: arraste a imagem para enquadrar; role o mouse para zoom. */
 export function ImageFramer({
-  media, aspect, value, onChange, effects = true,
-}: { media: MediaItem; aspect: number; value: Partial<Frame>; onChange: (f: Frame) => void; effects?: boolean }) {
+  media, aspect, value, onChange, effects = true, max = 420,
+}: { media: MediaItem; aspect: number; value: Partial<Frame>; onChange: (f: Frame) => void; effects?: boolean; /** lado maior da caixa de enquadrar, em px */ max?: number }) {
   const f = { ...DEFAULT_FRAME, ...value }
   const box = useRef<HTMLDivElement>(null)
-  const W = aspect >= 1 ? 420 : Math.round(420 * aspect)
-  const H = aspect >= 1 ? Math.round(420 / aspect) : 420
+  const W = aspect >= 1 ? max : Math.round(max * aspect)
+  const H = aspect >= 1 ? Math.round(max / aspect) : max
 
   const drag = (e: React.PointerEvent) => {
     e.preventDefault()

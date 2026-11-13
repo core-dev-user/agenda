@@ -5,7 +5,7 @@ import { bridge, friendlyError, type FavTeam, type SportMatch, type SportTeam } 
 import { useStore } from "@/lib/store"
 import type { Widget } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { Switch } from "@/components/ui/controls"
+import { Group, Toggle } from "./inspector"
 
 type Sport = "cs2" | "valorant" | "football"
 
@@ -345,45 +345,38 @@ function SportIcon({ sport, color }: { sport: Sport; color: string }) {
 export function SportsSettings({ w, set }: { w: Widget; set: (p: Record<string, any>) => void }) {
   const c = w.config
   const leagues: string[] = c.leagues?.length ? c.leagues : DEFAULT_LEAGUES
+  const chip = (on: boolean) => cn("rounded-full border px-2.5 py-[3px] text-[12px] transition-colors", on ? "border-transparent bg-brand text-white" : "border-line text-fg-muted hover:text-fg")
   return (
     <>
-      {w.type === "football" && (
-        <>
-          <div className="text-sm text-fg-muted">Campeonatos</div>
-          {[...new Set(LEAGUES.map((l) => l.group))].map((g) => (
-          <div key={g}>
-          <div className="mt-1 mb-1 text-[11px] tracking-wide text-fg-muted uppercase">{g}</div>
-          <div className="flex flex-wrap gap-1.5">
-            {LEAGUES.filter((l) => l.group === g).map((l) => {
-              const on = leagues.includes(l.id)
-              return (
-                <button
-                  key={l.id}
-                  className={cn("rounded-full border px-2.5 py-1 text-xs transition-colors", on ? "border-transparent bg-brand text-white" : "border-line text-fg-muted hover:text-fg")}
-                  onClick={() => {
-                    const next = on ? leagues.filter((x) => x !== l.id) : [...leagues, l.id]
-                    set({ leagues: next.length ? next : [l.id] })
-                  }}
-                >
-                  {l.label}
-                </button>
-              )
-            })}
-          </div>
-          </div>
-          ))}
-        </>
-      )}
       <TeamPicker w={w} set={set} leagues={leagues} />
-      <Switch label="Mostrar só os jogos dos meus times" checked={!!c.onlyFav} onChange={(v) => set({ onlyFav: v })} />
-      <div className="text-sm text-fg-muted">Ícones</div>
-      <Switch label="Ícone do widget (no canto de cima)" checked={c.showIcon !== false} onChange={(v) => set({ showIcon: v })} />
-      <Switch label={w.type === "football" ? "Escudos dos times" : "Logos e bandeiras dos times"} checked={c.crests !== false} onChange={(v) => set({ crests: v })} />
-      <Switch label="Logos dos campeonatos" checked={c.leagueLogos !== false} onChange={(v) => set({ leagueLogos: v })} />
-      <div className="text-xs text-fg-muted">
-        O próximo jogo de cada time escolhido fica fixado no topo do widget; embaixo vêm os outros jogos. Clique numa partida para abrir no {META[w.type as Sport].site}.
-        {w.type === "cs2" && " Dados de jogos via Liquipedia (a HLTV não permite leitura automática)."}
-      </div>
+      {w.type === "football" && (
+        <Group title="Campeonatos" flush>
+          <div className="space-y-2.5 p-3">
+            {[...new Set(LEAGUES.map((l) => l.group))].map((g) => (
+              <div key={g}>
+                <div className="mb-1.5 text-[11.5px] text-fg-muted">{g}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {LEAGUES.filter((l) => l.group === g).map((l) => {
+                    const on = leagues.includes(l.id)
+                    return (
+                      <button key={l.id} type="button" aria-pressed={on} className={chip(on)} onClick={() => {
+                        const next = on ? leagues.filter((x) => x !== l.id) : [...leagues, l.id]
+                        set({ leagues: next.length ? next : [l.id] })
+                      }}>{l.label}</button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Group>
+      )}
+      <Group title="O que mostrar" note={<>Clique numa partida para abrir no {META[w.type as Sport].site}.{w.type === "cs2" && " Jogos via Liquipedia (a HLTV não permite leitura automática)."}</>}>
+        <Toggle label="Só os jogos dos meus times" checked={!!c.onlyFav} onChange={(v) => set({ onlyFav: v })} />
+        <Toggle label="Ícone do widget" hint="No canto de cima." checked={c.showIcon !== false} onChange={(v) => set({ showIcon: v })} />
+        <Toggle label={w.type === "football" ? "Escudos dos times" : "Logos e bandeiras dos times"} checked={c.crests !== false} onChange={(v) => set({ crests: v })} />
+        <Toggle label="Logos dos campeonatos" checked={c.leagueLogos !== false} onChange={(v) => set({ leagueLogos: v })} />
+      </Group>
     </>
   )
 }
@@ -421,12 +414,12 @@ function TeamPicker({ w, set, leagues }: { w: Widget; set: (p: Record<string, an
   const leagueIds = sport === "football" ? [...new Set((all ?? []).map((t) => t.league).filter(Boolean) as string[])] : []
 
   return (
-    <div className="space-y-2">
-      <div className="text-sm">Seus times <span className="text-fg-muted">— ficam fixados no topo</span></div>
+    <Group title="Seus times" flush note="O próximo jogo de cada time escolhido fica fixado no topo do widget.">
+    <div className="space-y-2 p-2">
       {favs.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
           {favs.map((f, i) => (
-            <span key={f.id || f.name} className="group flex items-center gap-1.5 rounded-full border border-line py-0.5 pr-1 pl-1 text-sm">
+            <span key={f.id || f.name} className="group flex items-center gap-1.5 rounded-full border border-line py-0.5 pr-1 pl-1 text-[12.5px]">
               <Crest t={asTeam(f)} size={18} color={color} />
               <span className="max-w-[9rem] truncate">{f.name}</span>
               {favs.length > 1 && (
@@ -440,12 +433,12 @@ function TeamPicker({ w, set, leagues }: { w: Widget; set: (p: Record<string, an
           ))}
         </div>
       ) : (
-        <div className="text-xs text-fg-muted">Nenhum time escolhido ainda. Toque nos times abaixo.</div>
+        <div className="px-1 text-[12px] text-fg-muted">Nenhum time escolhido ainda. Escolha na lista abaixo.</div>
       )}
 
       <div className="relative">
         <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-muted" />
-        <input className="field w-full !pl-8" placeholder={sport === "football" ? "Buscar time (ex.: Palmeiras)" : sport === "cs2" ? "Buscar time (ex.: FURIA)" : "Buscar time (ex.: LOUD)"} value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="wi-input !pl-8" aria-label="Buscar time" placeholder={sport === "football" ? "Buscar time (ex.: Palmeiras)" : sport === "cs2" ? "Buscar time (ex.: FURIA)" : "Buscar time (ex.: LOUD)"} value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       {leagueIds.length > 1 && (
         <div className="flex flex-wrap gap-1">
@@ -457,7 +450,7 @@ function TeamPicker({ w, set, leagues }: { w: Widget; set: (p: Record<string, an
         </div>
       )}
 
-      <div className="max-h-60 overflow-auto rounded-xl border border-line p-1">
+      <div className="wi-scroll max-h-56 overflow-auto rounded-[9px] p-1" style={{ background: "rgb(0 0 0 / .16)" }}>
         {!all && <div className="p-3 text-center text-xs text-fg-muted">Carregando times…</div>}
         {all && shown.length === 0 && !q && <div className="p-3 text-center text-xs text-fg-muted">Não consegui carregar a lista agora. Dá para buscar pelo nome e adicionar.</div>}
         <div className="grid grid-cols-2 gap-0.5">
@@ -485,5 +478,6 @@ function TeamPicker({ w, set, leagues }: { w: Widget; set: (p: Record<string, an
         )}
       </div>
     </div>
+    </Group>
   )
 }
