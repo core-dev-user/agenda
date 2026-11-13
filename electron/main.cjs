@@ -230,14 +230,14 @@ app.whenReady().then(() => {
     const name = path.basename(decodeURIComponent(u.pathname))
     // vídeo (papel de parede): responde por pedaços (Range), como um servidor de vídeo, para tocar e repetir sem travar
     const range = req.headers.get("range")
-    if (range && /\.(mp4|webm|mov|m4v|ogv)$/i.test(name)) {
+    if (range && /\.(mp4|webm|mov|m4v|mkv|ogv)$/i.test(name)) {
       const full = path.join(mediaDir, name)
       try {
         const size = (await fsp.stat(full)).size
         const m = /bytes=(\d*)-(\d*)/.exec(range) || []
         const start = m[1] ? Number(m[1]) : 0
-        const end = Math.min(size - 1, m[2] ? Number(m[2]) : start + 4 * 1024 * 1024 - 1)
-        const type = { ".webm": "video/webm", ".ogv": "video/ogg", ".mov": "video/quicktime" }[path.extname(name).toLowerCase()] || "video/mp4"
+        const end = Math.min(size - 1, m[2] ? Number(m[2]) : start + 16 * 1024 * 1024 - 1)
+        const type = { ".webm": "video/webm", ".mkv": "video/x-matroska", ".ogv": "video/ogg", ".mov": "video/quicktime" }[path.extname(name).toLowerCase()] || "video/mp4"
         const stream = require("node:stream").Readable.toWeb(fs.createReadStream(full, { start, end }))
         return new Response(stream, { status: 206, headers: { "Content-Type": type, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": String(end - start + 1), "Accept-Ranges": "bytes", "Access-Control-Allow-Origin": "*" } })
       } catch { return new Response("not found", { status: 404 }) }
@@ -438,13 +438,14 @@ ipcMain.handle("media:import", async () => {
 })
 
 /** papel de parede animado: escolhe um vídeo ou GIF, copia para a pasta do app e devolve o nome */
-const WALL_EXT = ["mp4", "webm", "mov", "m4v", "gif"]
-ipcMain.handle("media:wallAnim", async () => {
+const VIDEO_EXT = ["mp4", "webm", "mov", "m4v", "mkv"]
+ipcMain.handle("media:wallAnim", async (_e, kind) => {
+  const gif = kind === "gif"
   const r = await dialog.showOpenDialog(win, {
-    title: "Papel de parede animado (vídeo ou GIF)",
-    defaultPath: prefs().lastImportDir || app.getPath("videos"),
+    title: gif ? "Papel de parede: GIF animado" : "Papel de parede: vídeo",
+    defaultPath: prefs().lastImportDir || app.getPath(gif ? "pictures" : "videos"),
     properties: ["openFile"],
-    filters: [{ name: "Vídeos e GIFs", extensions: WALL_EXT }],
+    filters: [gif ? { name: "GIF animado", extensions: ["gif"] } : { name: "Vídeos", extensions: VIDEO_EXT }],
   })
   if (r.canceled || !r.filePaths.length) return null
   const src = r.filePaths[0]

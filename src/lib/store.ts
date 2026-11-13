@@ -212,6 +212,12 @@ const fileStorage = createJSONStorage(() => ({
   removeItem: () => bridge.store.set("{}"),
 }))
 
+/** antes vídeo e GIF ficavam juntos em `video`; agora o GIF tem o próprio tipo */
+function splitGif(wp: Settings["wallpaper"]): Settings["wallpaper"] {
+  if (wp.video && /\.gif$/i.test(wp.video)) return { ...wp, gif: wp.gif ?? wp.video, video: null, type: wp.type === "video" ? "gif" : wp.type }
+  return wp
+}
+
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
@@ -434,7 +440,7 @@ export const useStore = create<State>()(
           ...DEFAULT_SETTINGS,
           ...(persisted?.settings ?? {}),
           taskbar: { ...DEFAULT_SETTINGS.taskbar, ...(persisted?.settings?.taskbar ?? {}) },
-          wallpaper: { ...DEFAULT_SETTINGS.wallpaper, ...(persisted?.settings?.wallpaper ?? {}) },
+          wallpaper: splitGif({ ...DEFAULT_SETTINGS.wallpaper, ...(persisted?.settings?.wallpaper ?? {}) }),
           sakura: { ...DEFAULT_SETTINGS.sakura, ...(persisted?.settings?.sakura ?? {}) },
           overlay: { ...DEFAULT_SETTINGS.overlay, ...(persisted?.settings?.overlay ?? {}) },
         },

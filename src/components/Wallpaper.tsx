@@ -79,7 +79,7 @@ export function Wallpaper({ screenId }: { screenId?: number }) {
   const fg = lock?.depth && wp.type === "image" && wp.fg && wp.fgFor === wp.image ? wp.fg : null
   const filter = [wp.blur ? `blur(${wp.blur}px)` : "", wp.dim ? `brightness(${1 - wp.dim})` : ""].filter(Boolean).join(" ") || undefined
 
-  const anim = wp.type === "video" && wp.video ? wp.video : null
+  const anim = wp.type === "video" && wp.video ? wp.video : wp.type === "gif" && wp.gif ? wp.gif : null
   return (
     <div className="absolute inset-0 overflow-hidden">
       {/* camadas que se movem juntas (parallax): fundo → relógio → assunto na frente */}
@@ -102,18 +102,40 @@ function AnimWall({ file, filter }: { file: string; filter?: string }) {
     const v = ref.current
     if (!v) return
     const sync = () => { if (perfPaused() || document.hidden) v.pause(); else v.play().catch(() => {}) }
+    // vídeo inteiro, do início ao fim, e recomeça. Se o carregamento engasgar
+    // (vídeos 4K pesados), retoma do mesmo ponto em vez de ficar parado num quadro.
+    let stuck: ReturnType<typeof setTimeout> | null = null
+    const unstick = () => {
+      if (stuck) clearTimeout(stuck)
+      stuck = setTimeout(() => {
+        stuck = null
+        if (perfPaused() || document.hidden || !v.paused && v.readyState >= 3) return
+        const t = v.currentTime
+        v.load()
+        v.currentTime = t
+        sync()
+      }, 4000)
+    }
+    const ended = () => { v.currentTime = 0; sync() }
     // O vídeo só precisa reagir quando a visibilidade/desempenho muda.
     // Um setInterval por monitor ficava acordando o renderer sem necessidade.
     document.addEventListener("visibilitychange", sync)
     window.addEventListener("widgy:perf-state", sync)
+    v.addEventListener("stalled", unstick)
+    v.addEventListener("waiting", unstick)
+    v.addEventListener("ended", ended)
     sync()
     return () => {
+      if (stuck) clearTimeout(stuck)
       document.removeEventListener("visibilitychange", sync)
       window.removeEventListener("widgy:perf-state", sync)
+      v.removeEventListener("stalled", unstick)
+      v.removeEventListener("waiting", unstick)
+      v.removeEventListener("ended", ended)
     }
   }, [file, isGif])
   if (isGif) return <img src={mediaUrl(file)} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" style={{ filter }} />
-  return <video ref={ref} src={mediaUrl(file)} autoPlay loop muted playsInline disablePictureInPicture className="absolute inset-0 h-full w-full object-cover" style={{ filter }} />
+  return <video ref={ref} src={mediaUrl(file)} autoPlay loop muted playsInline preload="auto" disablePictureInPicture className="absolute inset-0 h-full w-full object-cover" style={{ filter }} />
 }
 
 export function Overlays() {

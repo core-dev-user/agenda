@@ -133,7 +133,7 @@ export interface AgendaBridge {
   media: {
     import(): Promise<{ file: string; name: string; width: number; height: number; animated?: boolean }[]>
     /** escolhe um vídeo ou GIF para o papel de parede (copia para a pasta do app) */
-    wallAnim(): Promise<{ file: string; name: string } | null>
+    wallAnim(kind: "video" | "gif"): Promise<{ file: string; name: string } | null>
     saveAnimation(p: { width: number; height: number; frames: Uint8Array; delay: number; name: string; loopName?: string }): Promise<{ file: string; name: string; width: number; height: number; animated?: boolean }>
     remove(file: string): Promise<void>
     /** abre no programa padrão do Windows */

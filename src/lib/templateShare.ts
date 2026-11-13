@@ -112,6 +112,7 @@ export function safeAppearance(raw: unknown): Partial<Settings> {
   if (record(wp)) {
     if (wp.type !== "gradient" && wp.type !== "color" && wp.type !== "engine") wp.type = "gradient"
     delete wp.video
+    delete wp.gif
     delete wp.image
     delete wp.fg
     delete wp.fgFor

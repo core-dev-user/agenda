@@ -49,7 +49,9 @@ export interface Settings {
     smartHide?: boolean
   }
   wallpaper: {
-    type: "gradient" | "image" | "color" | "video" | "engine"
+    type: "gradient" | "image" | "color" | "video" | "gif" | "engine"
+    /** GIF animado (separado do vídeo) */
+    gif?: string | null
     gradient: string
     /** papel de parede animado: vídeo (mp4/webm/mov) ou GIF */
     video?: string | null

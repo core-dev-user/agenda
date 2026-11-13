@@ -135,7 +135,7 @@ contextBridge.exposeInMainWorld("agenda", {
   },
   media: {
     import: () => ipcRenderer.invoke("media:import"),
-    wallAnim: () => ipcRenderer.invoke("media:wallAnim"),
+    wallAnim: (kind) => ipcRenderer.invoke("media:wallAnim", kind),
     remove: (file) => ipcRenderer.invoke("media:delete", file),
     open: (file) => ipcRenderer.invoke("media:open", file),
     attach: (kind) => ipcRenderer.invoke("media:attach", kind),

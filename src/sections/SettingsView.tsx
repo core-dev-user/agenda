@@ -546,6 +546,35 @@ const hasEngineWallpaper = (settings: Settings) =>
   settings.wallpaper.type === "engine" ||
   Object.values(settings.wallpaperBy ?? {}).some((item) => item.type === "engine")
 
+const fmtDur = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
+
+/** papel de parede de vídeo: toca o vídeo inteiro, do começo ao fim, e recomeça */
+function VideoWallPanel({ file, onPick }: { file?: string | null; onPick: (file: string) => void }) {
+  const [info, setInfo] = useState<{ dur: number; w: number; h: number } | null>(null)
+  const [bad, setBad] = useState(false)
+  useEffect(() => { setInfo(null); setBad(false) }, [file])
+  return (
+    <div className="flex items-center gap-4">
+      {file
+        ? <video
+            key={file}
+            src={mediaUrl(file)}
+            autoPlay loop muted playsInline preload="metadata"
+            className="h-28 w-48 rounded-xl bg-black object-cover"
+            onLoadedMetadata={(e) => { const v = e.currentTarget; setInfo({ dur: v.duration, w: v.videoWidth, h: v.videoHeight }) }}
+            onError={() => setBad(true)}
+          />
+        : <div className="flex h-28 w-48 items-center justify-center rounded-xl border border-dashed border-line text-sm text-fg-muted">Nenhum</div>}
+      <div className="flex flex-col gap-2">
+        <ThemedButton size="sm" onClick={async () => { const r = await bridge.media.wallAnim("video"); if (r) onPick(r.file) }}>Escolher vídeo</ThemedButton>
+        {info && Number.isFinite(info.dur) && <span className="font-num text-xs">{fmtDur(info.dur)} · {info.w}×{info.h}</span>}
+        {bad && <span className="max-w-[260px] text-xs text-[var(--danger,#f87171)]">Esse vídeo não abre aqui (formato não suportado, como HEVC/H.265). Converta para MP4 H.264 ou WebM.</span>}
+        <span className="max-w-[260px] text-xs text-fg-muted">MP4, WebM, MOV ou MKV. Toca o vídeo inteiro sem som e recomeça no fim. Pausa durante jogos para não pesar.</span>
+      </div>
+    </div>
+  )
+}
+
 /** O Wallpaper Engine renderiza no Windows; a janela transparente do Widgy só sobrepõe widgets. */
 function WallpaperEnginePanel() {
   const mode = useUiMode((x) => x.mode)
@@ -687,7 +716,7 @@ function WallpaperTab() {
       )}
       <Section title="Fundo">
         <p className="mb-2 text-xs text-fg-muted">Os 17 fundos do pacote visual já estão incluídos offline em forma de degradês adaptáveis à resolução.</p>
-        <Segmented value={wp.type} onChange={(v) => p({ type: v })} options={[{ value: "gradient", label: "Degradê" }, { value: "image", label: "Imagem" }, { value: "color", label: "Cor sólida" }, { value: "video", label: "Vídeo ou GIF" }, { value: "engine", label: "Wallpaper Engine" }]} />
+        <Segmented value={wp.type} onChange={(v) => p({ type: v })} options={[{ value: "gradient", label: "Degradê" }, { value: "image", label: "Imagem" }, { value: "color", label: "Cor sólida" }, { value: "video", label: "Vídeo" }, { value: "gif", label: "GIF" }, { value: "engine", label: "Wallpaper Engine" }]} />
         <div className="pt-3">
           {wp.type === "gradient" && (
             <div className="grid grid-cols-3 gap-3">
@@ -713,16 +742,15 @@ function WallpaperTab() {
               <MediaPicker open={pick} onClose={() => setPick(false)} onPick={([id]) => { const m = media.find((x) => x.id === id); if (m) p({ image: m.file }) }} />
             </div>
           )}
-          {wp.type === "video" && (
+          {wp.type === "video" && <VideoWallPanel file={wp.video} onPick={(f) => p({ video: f, type: "video" })} />}
+          {wp.type === "gif" && (
             <div className="flex items-center gap-4">
-              {wp.video
-                ? /\.gif$/i.test(wp.video)
-                  ? <img src={mediaUrl(wp.video)} className="h-28 w-48 rounded-xl object-cover" />
-                  : <video src={mediaUrl(wp.video)} autoPlay loop muted playsInline className="h-28 w-48 rounded-xl object-cover" />
+              {wp.gif
+                ? <img src={mediaUrl(wp.gif)} className="h-28 w-48 rounded-xl object-cover" />
                 : <div className="flex h-28 w-48 items-center justify-center rounded-xl border border-dashed border-line text-sm text-fg-muted">Nenhum</div>}
               <div className="flex flex-col gap-2">
-                <ThemedButton size="sm" onClick={async () => { const r = await bridge.media.wallAnim(); if (r) p({ video: r.file, type: "video" }) }}>Escolher vídeo ou GIF</ThemedButton>
-                <span className="max-w-[260px] text-xs text-fg-muted">MP4, WebM, MOV ou GIF. O vídeo fica sem som, repete sozinho e pausa durante jogos para não pesar.</span>
+                <ThemedButton size="sm" onClick={async () => { const r = await bridge.media.wallAnim("gif"); if (r) p({ gif: r.file, type: "gif" }) }}>Escolher GIF</ThemedButton>
+                <span className="max-w-[260px] text-xs text-fg-muted">GIF animado, repetindo sem parar.</span>
               </div>
             </div>
           )}
