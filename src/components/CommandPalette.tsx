@@ -13,6 +13,7 @@ import { openAssistant } from "./Assistant"
 import { Bot } from "lucide-react"
 import { brl, cn, todayISO } from "@/lib/utils"
 import type { SectionId, ThemeId } from "@/lib/types"
+import { toggleHibernate } from "@/lib/hibernate"
 
 interface Item { id: string; group: string; title: string; sub?: string; icon: React.ReactNode; run: () => void; words?: string }
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
@@ -62,6 +63,7 @@ function Palette({ close }: { close: () => void }) {
     for (const s of SECTIONS) out.push({ id: "sec-" + s.id, group: "Abrir", title: s.label, icon: <AppIcon id={s.id} size={22} />, run: () => openW(s.id) })
     const today = todayISO()
     out.push({ id: "focus", group: "Ações", title: st.focusManual ? "Desligar modo foco" : "Ligar modo foco", icon: "i:Target", run: () => { useStore.setState((s) => ({ focusManual: !s.focusManual })); close() }, words: "foco concentrar estudar" })
+    out.push({ id: "hibernate", group: "Ações", title: st.settings.hibernate?.on ? "Acordar widgets (sair da hibernação)" : "Hibernar widgets", icon: "i:Moon", run: () => { toggleHibernate(); close() } })
     out.push({ id: "lock", group: "Ações", title: st.settings.widgetsLocked ? "Destravar widgets" : "Travar widgets", icon: "i:Lock", run: () => { st.setSettings({ widgetsLocked: !st.settings.widgetsLocked }); close() } })
     for (const t of Object.keys(THEME_PRESETS) as ThemeId[]) out.push({ id: "theme-" + t, group: "Ações", title: `Tema: ${THEME_NAMES[t]}`, icon: "i:Palette", run: () => { st.applyTheme(t); close() }, words: "tema aparencia" })
     for (const t of st.templates) out.push({ id: "tpl-" + t.id, group: "Ações", title: `Aplicar template: ${t.name}`, icon: "i:Sparkles", run: () => { st.applyTemplate(t.id); close() }, words: "template estilo" })

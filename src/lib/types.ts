@@ -41,7 +41,7 @@ export interface Settings {
     autoHide: boolean
     showLabels: boolean
     magnify: boolean
-    /** itens escondidos da barra: ids das abas do Agenda e dos botões ("widgets", "lock", "bell", "tray", "clock", "corner") */
+    /** itens escondidos da barra: ids das abas do Agenda e dos botões ("widgets", "lock", "hibernate", "bell", "tray", "clock", "corner") */
     hide?: string[]
     /** mostrar os programas do Windows abertos (os fixados aparecem sempre) */
     pcOpen?: boolean
@@ -69,6 +69,8 @@ export interface Settings {
   sakura: { ambient: boolean; density: number; splash: boolean; splashSeconds: number }
   overlay: { scanlines: boolean; grain: boolean; vignette: boolean }
   widgetsLocked: boolean
+  /** hibernar: todos os widgets em descanso; ids = os que estavam acordados (acordam ao sair) */
+  hibernate?: { on: boolean; ids: string[] }
   iconStyle: IconStyle
   iconPackStyle?: IconPackStyle
   iconShape: "squircle" | "circle" | "square"

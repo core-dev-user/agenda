@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Lock, Maximize, Minus, Plus, Power, Search, Square, Unlock, X } from "lucide-react"
+import { Lock, Maximize, Moon, Minus, Plus, Power, Search, Square, Unlock, X } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge } from "@/lib/bridge"
+import { toggleHibernate } from "@/lib/hibernate"
 import { cn } from "@/lib/utils"
 import type { SectionId, WidgetType } from "@/lib/types"
 import { SECTIONS } from "./sections-meta"
@@ -173,6 +174,9 @@ export function Taskbar() {
           </DockBtn>}
           {!tb.hide?.includes("lock") && <DockBtn label={s.widgetsLocked ? "Destravar widgets" : "Travar widgets"} size={size} onClick={() => setSettings({ widgetsLocked: !s.widgetsLocked })} scaleFn={(el) => magnify(100, el)} position={tb.position} vertical={vertical}>
             {s.widgetsLocked ? <Lock size={icon * 0.8} /> : <Unlock size={icon * 0.8} />}
+          </DockBtn>}
+          {!tb.hide?.includes("hibernate") && <DockBtn label={s.hibernate?.on ? "Acordar widgets" : "Hibernar widgets"} size={size} active={!!s.hibernate?.on} onClick={toggleHibernate} scaleFn={(el) => magnify(102, el)} position={tb.position} vertical={vertical}>
+            <Moon size={icon * 0.78} fill={s.hibernate?.on ? "currentColor" : "none"} />
           </DockBtn>}
           {!tb.hide?.includes("bell") && <DockBtn label="Avisos" size={size} active={menu === "bell"} onClick={() => setMenu(menu === "bell" ? null : "bell")} scaleFn={(el) => magnify(101, el)} position={tb.position} vertical={vertical}>
             <BellIcon size={Math.round(icon * 0.8)} />

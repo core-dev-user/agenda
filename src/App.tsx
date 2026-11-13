@@ -40,6 +40,7 @@ import { useUiMode } from "@/lib/uimode"
 import { Pet, PET_DEFAULT } from "@/pet/Pet"
 import { UpdatePrompt } from "@/components/Updates"
 import { PawPrint } from "lucide-react"
+import { toggleHibernate } from "@/lib/hibernate"
 
 /**
  * Um monitor dentro da página: o que estiver aqui dentro com "fixed" fica preso a ele
@@ -141,6 +142,7 @@ function useMainBar() {
               magnify: false, showLabels: false }
           : s.settings.taskbar,
         locked: s.settings.widgetsLocked,
+        hibernating: !!s.settings.hibernate?.on,
         icons: { iconStyle: s.settings.iconStyle, theme: s.settings.theme, iconShape: s.settings.iconShape, iconColors: s.settings.iconColors as Record<string, string> | undefined, iconPackStyle: s.settings.iconPackStyle ?? "original" },
         secs: (() => {
           const top = [...s.windows].filter((w) => !w.minimized).sort((a, b) => b.z - a.z)[0]
@@ -176,6 +178,7 @@ function useMainBar() {
         else s.openWindow(id)
       }
       else if (m.type === "lock") s.setSettings({ widgetsLocked: !s.settings.widgetsLocked })
+      else if (m.type === "hibernate") toggleHibernate()
       else if (m.type === "widgets") useBarPanels.setState({ panel: "widgets" })
       else if (m.type === "palette") useStore.setState({ paletteOpen: true })
       else if (m.type === "bell") useBarPanels.setState({ panel: "bell" })

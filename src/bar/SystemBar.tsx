@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Bell, ChevronUp, Grid2X2, Lock, Plus, Search, Unlock, Volume2, Wifi } from "lucide-react"
+import { Bell, ChevronUp, Grid2X2, Lock, Moon, Plus, Search, Unlock, Volume2, Wifi } from "lucide-react"
 import { bridge, type BarMenu, type BarSync, type PcWindow } from "@/lib/bridge"
 import { Logo } from "@/components/Logo"
 import { AppIconView, type IconPrefs } from "@/components/AppIconView"
@@ -246,6 +246,11 @@ export function SystemBar() {
           {shows("lock") && (
             <Btn {...btn} label={sync?.locked ? "Destravar widgets" : "Travar widgets"} onClick={() => bridge.bar.toMain({ type: "lock" })}>
               {sync?.locked ? <Lock size={icon * 0.8} /> : <Unlock size={icon * 0.8} />}
+            </Btn>
+          )}
+          {shows("hibernate") && (
+            <Btn {...btn} label={sync?.hibernating ? "Acordar widgets" : "Hibernar widgets"} active={!!sync?.hibernating} onClick={() => bridge.bar.toMain({ type: "hibernate" })}>
+              <Moon size={icon * 0.78} fill={sync?.hibernating ? "currentColor" : "none"} />
             </Btn>
           )}
           {shows("bell") && <Btn {...btn} label="Avisos" onClick={() => bridge.bar.toMain({ type: "bell" })}>

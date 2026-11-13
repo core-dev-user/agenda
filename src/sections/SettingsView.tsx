@@ -496,6 +496,7 @@ const BAR_BUTTONS: { id: string; label: string; pcOnly?: boolean }[] = [
   { id: "winstart", label: "Botão do Windows (abre o Iniciar do Windows)", pcOnly: true },
   { id: "widgets", label: "Adicionar widget" },
   { id: "lock", label: "Travar widgets" },
+  { id: "hibernate", label: "Hibernar widgets (todos em descanso, para jogar)" },
   { id: "bell", label: "Avisos" },
   { id: "clock", label: "Relógio" },
   { id: "tray", label: "Ícones do Windows (perto do relógio)", pcOnly: true },
