@@ -304,7 +304,9 @@ function start() {
       engine = "powershell"
     } catch { proc = null; retry(); return }
     // prepara o programa próprio e troca para ele assim que ficar pronto
-    void compile().then((ok) => { if (ok && proc && engine === "powershell" && want && !quitting) swap() })
+    // só troca se o programa próprio ainda não falhou (o Smart App Control pode barrar o .exe; sem esta checagem
+    // o swap reabria o PowerShell e trocava de novo, num loop de ~13 processos por segundo que travava o PC)
+    if (exeFailures < 2) void compile().then((ok) => { if (ok && exeFailures < 2 && proc && engine === "powershell" && want && !quitting) swap() })
   }
   status.engine = engine
   status.hook = "starting"
