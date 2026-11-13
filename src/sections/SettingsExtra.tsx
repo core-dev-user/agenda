@@ -52,7 +52,7 @@ export function RoutineTab() {
         <Switch label="Tirar o som do WhatsApp e do Discord (a call do Discord continua normal)" checked={fp.muteApps} onChange={(v) => set({ focus: { ...fp, muteApps: v } })} />
         <Switch label="Mostrar só o essencial na área de trabalho (relógio, música, tarefas, agenda)" checked={fp.hideWidgets} onChange={(v) => set({ focus: { ...fp, hideWidgets: v } })} />
         <div className="pt-1 text-sm">Playlist do foco (link do YouTube Music, opcional)</div>
-        <input className="field" placeholder="https://music.youtube.com/playlist?list=…" value={fp.playlist} onChange={(e) => set({ focus: { ...fp, playlist: e.target.value } })} />
+        <input className="field w-full" aria-label="Playlist do foco" placeholder="https://music.youtube.com/playlist?list=…" value={fp.playlist} onChange={(e) => set({ focus: { ...fp, playlist: e.target.value } })} />
         <div className="pt-2"><button className="btn" onClick={() => useStore.setState((x) => ({ focusManual: !x.focusManual }))}>{useStore.getState().focusManual ? "Desligar" : "Ligar"} modo foco agora</button></div>
       </Section>
 
@@ -188,6 +188,7 @@ export function IntegrationsTab() {
     setRunning(true)
     const out: Check[] = []
     const push = (c: Check) => { out.push(c); setChecks([...out]) }
+    const body = async () => {
     const st = await bridge.webapp.status().catch(() => null)
     // YouTube Music
     await new Promise<void>((res) => {
@@ -235,12 +236,21 @@ export function IntegrationsTab() {
     // backup na nuvem
     const sys = await bridge.sys.get().catch(() => null)
     if (sys) push({ label: "Backup na nuvem", emoji: "☁️", state: !sys.cloudOn ? "wait" : sys.cloudError ? "err" : "ok", msg: !sys.cloudOn ? "Desligado (Configurações → Sistema)" : sys.cloudError ? sys.cloudError : sys.lastCloud ? `Última cópia: ${new Date(sys.lastCloud).toLocaleString("pt-BR")}` : "Ligado, aguardando a primeira cópia" })
-    setRunning(false)
+    }
+    // A verificação nunca fica rodando para sempre: se uma fonte não responder ou algo der erro no meio,
+    // o que já respondeu continua na lista e aparece uma linha dizendo o que houve.
+    try {
+      await Promise.race([body(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 45_000))])
+    } catch (e) {
+      push({ label: "Verificação", emoji: "i:TriangleAlert", state: "err", msg: (e as Error)?.message === "timeout" ? "Demorou demais e foi interrompida. O que respondeu está acima." : "Parou no meio por um erro. Tente de novo." })
+    } finally {
+      setRunning(false)
+    }
   }
-  useEffect(() => { run() }, [])
+  useEffect(() => { void run() }, [])
   const icon = (s: Check["state"]) => s === "ok" ? <CheckCircle2 size={16} color="#5ee3a1" /> : s === "warn" ? <AlertTriangle size={16} color="#ffd36e" /> : s === "err" ? <XCircle size={16} color="#ff6b8b" /> : <Moon size={16} className="text-fg-muted" />
   return (
-    <Section title="Status das integrações" desc="O que está conectado e funcionando. Se algo ficar vermelho ou amarelo depois de uma atualização do site, me conte o nome que aparece aqui.">
+    <Section title="Status das integrações" desc="O que está conectado e funcionando. Se algo ficar vermelho ou amarelo depois de uma atualização do site, o nome que aparece aqui é o que precisa de conserto.">
       <div className="mb-2 flex justify-end"><button className="btn !py-1 text-xs" disabled={running} onClick={run}><RefreshCw size={12} className={cn(running && "animate-spin")} /> Verificar de novo</button></div>
       <div className="divide-y divide-[var(--line)]">
         {checks.map((c) => (

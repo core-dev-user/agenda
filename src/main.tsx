@@ -4,6 +4,7 @@ import { MotionConfig } from "framer-motion"
 import "@/lib/fonts"
 import "./index.css"
 import App from "./App"
+import { RootBoundary } from "@/components/RootBoundary"
 import { useStore } from "@/lib/store"
 import { bridge } from "@/lib/bridge"
 import { useUiMode } from "@/lib/uimode"
@@ -37,7 +38,9 @@ Promise.all([
   if (m.mode === "desktop") initScreens()
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
-      <Root />
+      <RootBoundary>
+        <Root />
+      </RootBoundary>
     </React.StrictMode>
   )
 })

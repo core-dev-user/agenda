@@ -304,6 +304,8 @@ html.dark[data-theme="retro"] .btn, html.dark[data-theme="retro"] .btn-accent { 
   outline: 2px solid color-mix(in srgb, var(--accent) 78%, var(--fg));
   outline-offset: 2px;
 }
+/* caixas de marcar na cor de destaque do tema (eram o azul padrão do navegador) */
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .agenda-range:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 78%, var(--fg)); outline-offset: 5px; }
 
 /* =================== RANGE =================== */

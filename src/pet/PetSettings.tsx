@@ -3,9 +3,10 @@ import { Plus, Trash2 } from "lucide-react"
 import { useStore } from "@/lib/store"
 import type { PetOne, PetPrefs } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { Card, Slider, Switch } from "@/components/ui/controls"
+import { Slider, Switch } from "@/components/ui/controls"
 import { frame, GH, GW, isSpecies, SPECIES, type Pose, type Species } from "./sprites"
 import { callPet, PET_DEFAULT, petList } from "./Pet"
+import { SettingsSection } from "@/components/ui/SettingsSection"
 
 const MAX_PETS = 8
 
@@ -72,12 +73,7 @@ export function PetTab() {
 
   return (
     <>
-      <Card>
-        <div className="font-display mb-1 text-lg font-semibold">Bichinhos</div>
-        <div className="mb-3 text-sm text-fg-muted">
-          Bichinhos em pixel art que moram na sua área de trabalho: andam pela barra de tarefas, pulam em cima dos widgets, sentam e tiram sonecas.
-          Clique em um para mudar o que está fazendo (anda → senta → dorme), ou segure e arraste para pegar no colo. Dá para ter vários ao mesmo tempo — até do mesmo tipo, cada um com seu nome.
-        </div>
+      <SettingsSection title="Bichinhos" desc="Bichinhos em pixel art que andam pela barra, sobem nos widgets, sentam e dormem. Clique em um para mudar o que ele faz (anda → senta → dorme); segure e arraste para pegar no colo. Dá para ter vários, cada um com seu nome.">
         <Switch label="Bichinhos na tela" checked={pet.on} onChange={(v) => set({ on: v })} />
         <Switch label="Mostrar o nome em cima de cada um" checked={pet.showNames !== false} onChange={(v) => set({ showNames: v })} />
 
@@ -99,12 +95,12 @@ export function PetTab() {
         <div className="pt-3">
           <button className="btn !py-1 text-xs" disabled={!pet.on} onClick={callPet}>Chamar {many ? "todos" : ""} para o meio da tela</button>
         </div>
-      </Card>
+      </SettingsSection>
 
       {sel && (
-        <Card>
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div className="font-display text-lg font-semibold">{sel.name?.trim() || SPECIES[species].label}</div>
+        <SettingsSection title="Bicho e pelagem">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="text-sm font-medium">{sel.name?.trim() || SPECIES[species].label}</div>
             {many && <button className="btn btn-ghost !py-1 text-xs" onClick={remove}><Trash2 size={14} /> Tirar este</button>}
           </div>
           <label className="block text-sm">Nome (aparece em cima dele)
@@ -132,17 +128,16 @@ export function PetTab() {
               </button>
             ))}
           </div>
-        </Card>
+        </SettingsSection>
       )}
 
-      <Card>
-        <div className="font-display mb-3 text-lg font-semibold">Jeito {many ? "(vale para todos)" : ""}</div>
+      <SettingsSection title="Jeito" desc={many ? "Vale para todos os bichinhos." : undefined}>
         <Slider label="Tamanho" value={pet.scale} min={2} max={6} step={1} onChange={(v) => set({ scale: v })} format={(v) => ["", "", "Pequeno", "Normal", "Grande", "Bem grande", "Gigante"][v] ?? String(v)} />
         <Slider label="Energia" value={pet.energy} min={0.3} max={1.6} step={0.1} onChange={(v) => set({ energy: v })} format={(v) => (v < 0.6 ? "Preguiçoso" : v < 0.9 ? "Calmo" : v < 1.25 ? "Normal" : "Elétrico")} />
         <Switch label="Deixar subir e andar em cima dos widgets" checked={pet.widgets} onChange={(v) => set({ widgets: v })} />
         <Switch label="Continuar andando com o Widgy em segundo plano (mesmo jogando)" checked={pet.background !== false} onChange={(v) => set({ background: v })} />
         <div className="pt-1 text-xs text-fg-muted">De madrugada eles ficam com mais sono. Com um jogo aberto continuam andando, só que mais leves (30 quadros por segundo) para não pesar no jogo. Param só quando o Widgy está minimizado ou coberto por outras janelas.</div>
-      </Card>
+      </SettingsSection>
     </>
   )
 }

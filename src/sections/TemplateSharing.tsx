@@ -9,6 +9,7 @@ import {
   type SharedTemplate,
 } from "@/lib/templateShare"
 import { Card, ThemedButton } from "@/components/ui/controls"
+import { SettingsSection } from "@/components/ui/SettingsSection"
 
 type InstallMode = "save" | "replace" | "add"
 
@@ -134,9 +135,7 @@ export function TemplateSharing({ selected, onClose }: { selected: LookTemplate 
           )}
         </Card>
       )}
-      <Card>
-        <div className="mb-1 flex items-center gap-2 text-base font-semibold"><Download size={17} /> Importar template compartilhado</div>
-        <div className="mb-3 text-sm text-fg-muted">Cole um código WDG1 ou link widgy://template/… de outra pessoa. Veja a prévia antes de aplicar.</div>
+      <SettingsSection title="Importar template compartilhado" desc="Cole um código WDG1 ou link widgy://template/… de outra pessoa. Veja a prévia antes de aplicar.">
         <textarea className="field mb-2 min-h-20 w-full resize-y text-xs" maxLength={18000} spellCheck={false}
           placeholder="Cole aqui o código WDG1-… ou o link widgy://template/…"
           value={input} onChange={(e) => { setInput(e.target.value); setPreview(null); setError("") }} />
@@ -165,7 +164,7 @@ export function TemplateSharing({ selected, onClose }: { selected: LookTemplate 
             </div>
           </div>
         )}
-      </Card>
+      </SettingsSection>
     </div>
   )
 }

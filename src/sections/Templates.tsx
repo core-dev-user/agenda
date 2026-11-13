@@ -6,9 +6,10 @@ import { mediaUrl } from "@/lib/bridge"
 import type { LookTemplate, Settings } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { fontFamily } from "@/lib/fonts"
-import { Card, Switch, ThemedButton } from "@/components/ui/controls"
+import { Switch, ThemedButton } from "@/components/ui/controls"
 import { GRADIENTS } from "@/components/Wallpaper"
 import { TemplateSharing } from "./TemplateSharing"
+import { SettingsSection } from "@/components/ui/SettingsSection"
 
 const THEME_LABEL: Record<string, string> = { glass: "Vidro líquido", metal: "Metal", retro: "Retrô 95", terminal: "Terminal CRT", minimal: "Minimal" }
 
@@ -62,11 +63,7 @@ export function TemplatesTab() {
 
   return (
     <div className="space-y-5">
-      <Card>
-        <div className="font-display mb-1 text-lg font-semibold">Salvar o estilo atual como template</div>
-        <div className="mb-3 text-sm text-fg-muted">
-          Guarda tema, cores, fontes, cursor, ícones, barra de tarefas, papel de parede e efeitos. Seus hábitos, listas, serviços e estudos nunca são alterados por templates.
-        </div>
+      <SettingsSection title="Salvar o estilo atual" desc="Guarda tema, cores, fontes, cursor, ícones, barra de tarefas, papel de parede e efeitos. Seus hábitos, listas, serviços e estudos nunca são alterados por templates.">
         <div className="flex items-center gap-3">
           <div className="w-44 shrink-0"><Preview s={settings} widgets={withWidgets ? useStore.getState().widgets.length : undefined} /></div>
           <div className="min-w-0 flex-1 space-y-2">
@@ -83,7 +80,7 @@ export function TemplatesTab() {
             </ThemedButton>
           </div>
         </div>
-      </Card>
+      </SettingsSection>
 
       <TemplateSharing selected={sharing} onClose={() => setSharing(null)} />
 
@@ -99,7 +96,8 @@ export function TemplatesTab() {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-2 gap-3">
+      <SettingsSection title="Templates salvos">
+      <div className="grid grid-cols-2 gap-3 pt-1">
         {templates.map((t) => (
           <TemplateCard
             key={t.id}
@@ -126,6 +124,7 @@ export function TemplatesTab() {
           </div>
         </div>
       </div>
+      </SettingsSection>
       {templates.length === 0 && <div className="text-center text-sm text-fg-muted">Nenhum template ainda. Personalize do seu jeito e salve acima — depois é só um clique para voltar a ele.</div>}
     </div>
   )

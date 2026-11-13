@@ -1,7 +1,7 @@
 {
   "name": "widgy",
   "productName": "Widgy",
-  "version": "0.3.31",
+  "version": "0.3.32",
   "description": "Widgy — sua área de trabalho personalizada",
   "main": "electron/main.cjs",
   "type": "module",
@@ -14,7 +14,7 @@
     "release": "node scripts/release.mjs",
     "predev": "npm run icon && node scripts/generate-icon-pack.mjs",
     "test:media": "node --experimental-strip-types --test tests/pcmedia.test.cjs tests/spectrum.test.cjs tests/cover-match.test.mjs",
-    "test:security": "node --test tests/security-network.test.cjs",
+    "test:security": "node --experimental-strip-types --test tests/security-network.test.cjs tests/backup.test.mjs",
     "test:finance": "node --test tests/finance-save.test.cjs",
     "test:perf": "node --experimental-strip-types --test tests/perf-policy.test.cjs tests/carbono-icons.test.mjs",
     "test:wallpaper": "node --test tests/wallpaper-engine.test.cjs",

@@ -10,12 +10,12 @@ export interface SettingsTabInfo { id: SettingsTabId; label: string; sections: s
 export const SETTINGS_GROUPS: { label: string; tabs: SettingsTabInfo[] }[] = [
   { label: "Geral", tabs: [
     { id: "mode", label: "Modo de uso", sections: ["Modo de uso", "Monitor", "Barra de tarefas"], words: "area de trabalho aplicativo tela propria monitores" },
-    { id: "templates", label: "Templates", sections: [], words: "estilo salvar compartilhar codigo link importar" },
+    { id: "templates", label: "Templates", sections: ["Salvar o estilo atual", "Importar template compartilhado", "Templates salvos"], words: "estilo salvar compartilhar codigo link importar" },
     { id: "packs", label: "Pacotes", sections: ["Pacotes de interface", "Ajustes do Carbono"], words: "carbono painel busca barra lateral moldura" },
   ] },
   { label: "Aparência", tabs: [
     { id: "look", label: "Aparência", sections: ["Tema", "Cores", "Forma e profundidade 3D", "Prévia dos botões"], words: "modo escuro claro destaque arredondamento desfoque blur opacidade transparencia vidro metal retro terminal minimal" },
-    { id: "fonts", label: "Fontes", sections: [], words: "tipografia letra tamanho do texto numeros titulos" },
+    { id: "fonts", label: "Fontes", sections: ["Letras (interface)", "Números (relógios, valores)", "Títulos"], words: "tipografia letra tamanho do texto numeros titulos" },
     { id: "cursor", label: "Cursor", sections: ["Formato do cursor", "Efeito ao mover", "Cor e tamanho", "Efeito ao clicar"], words: "mouse seta rastro particulas" },
     { id: "wallpaper", label: "Papel de parede", sections: ["Monitor", "Fundo", "Personalizar pela foto", "Ajustes", "Relógio da tela (estilo iPhone)"], words: "imagem video gif degrade wallpaper engine fundo relogio" },
     { id: "fx", label: "Sakura e efeitos", sections: ["Flores de sakura", "Camadas de efeito"], words: "petalas abertura splash granulado vinheta scanlines animacao" },
@@ -23,7 +23,7 @@ export const SETTINGS_GROUPS: { label: string; tabs: SettingsTabInfo[] }[] = [
   { label: "Área de trabalho", tabs: [
     { id: "taskbar", label: "Barra e ícones", sections: ["Barra de tarefas", "Barra de tarefas do PC", "O que aparece na barra", "Ícones dos apps"], words: "dock posicao tamanho ocultar tecla windows atalhos iniciar icones" },
     { id: "widgets", label: "Widgets", sections: ["Padrões dos widgets"], words: "travar arrumar clima cidade noticias" },
-    { id: "pet", label: "Bichinho", sections: [], words: "pet gato cachorro sapo dragao cabra nome" },
+    { id: "pet", label: "Bichinho", sections: ["Bichinhos", "Bicho e pelagem", "Jeito"], words: "pet gato cachorro sapo dragao cabra nome" },
   ] },
   { label: "Sistema", tabs: [
     { id: "routine", label: "Rotina e avisos", sections: ["Avisos", "Times favoritos", "Modo foco", "Tela Hoje", "Agenda do Google"], words: "notificacoes som calendario foco futebol" },

@@ -6,7 +6,7 @@ import {
   Heart, House, Image, Keyboard, Languages, Laptop, Leaf, Lightbulb, Link, Monitor, Moon, Mountain, Mouse, Music, Newspaper, Notebook, Package, Palette,
   PawPrint, Pencil, PenLine, PhoneOff, PiggyBank, Pill, Pin, Pizza, Plane, Plug, Printer, Rainbow, Receipt, Rocket, Salad, Sandwich, Scissors, Shirt,
   ShoppingBag, ShoppingBasket, ShoppingCart, Smartphone, Snowflake, Sofa, Sparkles, SprayCan, Star, Stethoscope, StickyNote, Sun, Sunrise, Tag, Target,
-  Tent, Timer, TreePalm, TrendingUp, Trophy, Tv, Utensils, Volleyball, Wallet, Watch, Waves, Wine, Wrench, Search, Flower, Circle, Flag, Map, Mic, TriangleAlert, Settings, Lock, Bell, Triangle, type LucideIcon,
+  Tent, Timer, TreePalm, TrendingUp, Trophy, Tv, Utensils, Volleyball, Wallet, Watch, Waves, Wine, Wrench, Search, Flower, Circle, Flag, Map, Mic, TriangleAlert, Settings, Lock, Bell, Triangle, MessageCircle, type LucideIcon,
 } from "lucide-react"
 
 /** Ícones que o usuário pode escolher (hábitos, listas, matérias, categorias). Guardados como "i:<nome>". */
@@ -17,12 +17,12 @@ export const ICONS: Record<string, LucideIcon> = {
   Heart, House, Image, Keyboard, Languages, Laptop, Leaf, Lightbulb, Link, Monitor, Moon, Mountain, Mouse, Music, Newspaper, Notebook, Package, Palette,
   PawPrint, Pencil, PenLine, PhoneOff, PiggyBank, Pill, Pin, Pizza, Plane, Plug, Printer, Rainbow, Receipt, Rocket, Salad, Sandwich, Scissors, Shirt,
   ShoppingBag, ShoppingBasket, ShoppingCart, Smartphone, Snowflake, Sofa, Sparkles, SprayCan, Star, Stethoscope, StickyNote, Sun, Sunrise, Tag, Target,
-  Tent, Timer, TreePalm, TrendingUp, Trophy, Tv, Utensils, Volleyball, Wallet, Watch, Waves, Wine, Wrench, Search, Flower, Circle, Flag, Map, Mic, TriangleAlert, Settings, Lock, Bell, Triangle,
+  Tent, Timer, TreePalm, TrendingUp, Trophy, Tv, Utensils, Volleyball, Wallet, Watch, Waves, Wine, Wrench, Search, Flower, Circle, Flag, Map, Mic, TriangleAlert, Settings, Lock, Bell, Triangle, MessageCircle,
 }
 
 /** Emojis antigos (já salvos nos dados) → ícone equivalente, para tudo aparecer com o mesmo visual. */
 const FROM_EMOJI: Record<string, string> = {
-  "🛒": "ShoppingCart", "🛍️": "ShoppingBag", "🧾": "Receipt", "💳": "CreditCard", "💰": "PiggyBank", "🏷️": "Tag", "🎁": "Gift", "📦": "Package", "🧺": "ShoppingBasket", "🪙": "Coins",
+  "💬": "MessageCircle", "🛒": "ShoppingCart", "🛍️": "ShoppingBag", "🧾": "Receipt", "💳": "CreditCard", "💰": "PiggyBank", "🏷️": "Tag", "🎁": "Gift", "📦": "Package", "🧺": "ShoppingBasket", "🪙": "Coins",
   "🏠": "House", "🛋️": "Sofa", "🛏️": "BedDouble", "🧹": "Brush", "🧼": "SprayCan", "🪴": "Leaf", "🔧": "Wrench", "💡": "Lightbulb", "🧴": "Droplet", "🧻": "Package",
   "🍎": "Apple", "🥦": "Carrot", "🥩": "Beef", "🍞": "Croissant", "🧀": "Croissant", "🍕": "Pizza", "🍔": "Sandwich", "☕": "Coffee", "🍷": "Wine", "🍰": "Cake", "🥗": "Salad", "🍣": "Fish",
   "👕": "Shirt", "👖": "Shirt", "👗": "Shirt", "👟": "Footprints", "🧥": "Shirt", "👜": "ShoppingBag", "🕶️": "Glasses", "💍": "Gem", "⌚": "Watch", "🧢": "Shirt",

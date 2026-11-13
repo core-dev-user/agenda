@@ -5,7 +5,8 @@ import { SettingsSection } from "@/components/ui/SettingsSection"
 import { SETTINGS_GROUPS, SETTINGS_TABS, searchSettings, type SettingsTabId } from "./settingsIndex"
 import { motion } from "framer-motion"
 import { Download, Upload, RotateCcw, Ban, Bell, Boxes, Circle, CircleDashed, CircleDot, Crosshair, Droplets, Flame, Flashlight, Flower2, Gem, Grid3x3, HardDrive, Heart, Image, LayoutGrid, LayoutTemplate, Leaf, MonitorSmartphone, MousePointer, MousePointer2, Navigation, Orbit, Palette, PanelBottom, PartyPopper, PawPrint, Plug, Rainbow, Scissors, Snowflake, Sparkles, Spline, Star, Type, Wand2, WandSparkles, Waves, type LucideIcon, Search } from "lucide-react"
-import { useStore, THEME_PRESETS } from "@/lib/store"
+import { useStore, THEME_PRESETS, DEFAULT_SETTINGS, WIDGET_SIZES } from "@/lib/store"
+import { buildBackup, parseBackup } from "@/lib/backup"
 import { bridge, isDesktop, mediaUrl } from "@/lib/bridge"
 import { FONTS } from "@/lib/fonts"
 import { FontPicker } from "@/components/FontPicker"
@@ -424,10 +425,11 @@ function TaskbarTab() {
   const [s, set] = useS()
   const tb = s.taskbar
   const p = (patch: Partial<Settings["taskbar"]>) => set({ taskbar: { ...tb, ...patch } })
+  // a barra do Widgy está no lugar da do Windows? (só aí "esconder com programa maximizado" tem efeito)
+  const pcBar = useUiMode((x) => x.mainBar)
   return (
     <>
     <PcBarChoice />
-    <IconsSection />
     <Section title="Barra de tarefas">
       <div className="flex flex-wrap gap-4 py-2">
         <div><div className="mb-1 text-sm">Posição</div><Segmented value={tb.position} onChange={(v) => p({ position: v })} options={[{ value: "bottom", label: "Embaixo" }, { value: "top", label: "Em cima" }, { value: "left", label: "Esquerda" }, { value: "right", label: "Direita" }]} /></div>
@@ -438,16 +440,17 @@ function TaskbarTab() {
         <Segmented
           value={tb.autoHide ? "hide" : "show"}
           onChange={(v) => p({ autoHide: v === "hide" })}
-          options={[{ value: "show", label: "Sempre visível" }, { value: "hide", label: "Escondida — aparece ao passar o mouse na borda" }]}
+          options={[{ value: "show", label: "Sempre visível" }, { value: "hide", label: "Escondida (aparece ao passar o mouse na borda)" }]}
         />
         {tb.autoHide && <div className="mt-1.5 text-xs text-fg-muted">Leve o mouse até a borda da tela (onde está a linha brilhante) para a barra subir. Ela se esconde sozinha quando o mouse sai.</div>}
-        {!tb.autoHide && <Switch label="Esconder a barra do PC quando um programa estiver maximizado (ele usa a tela toda; a barra volta ao encostar o mouse na borda)" checked={tb.smartHide !== false} onChange={(v) => p({ smartHide: v })} />}
+        {!tb.autoHide && pcBar && <Switch label="Esconder a barra do PC quando um programa estiver maximizado (ele usa a tela toda; a barra volta ao encostar o mouse na borda)" checked={tb.smartHide !== false} onChange={(v) => p({ smartHide: v })} />}
       </div>
       <Slider label="Tamanho dos ícones" value={tb.size} min={36} max={84} onChange={(v) => p({ size: v })} format={(v) => v + "px"} />
       <Switch label="Ampliar ícones ao passar o mouse (efeito Mac)" checked={tb.magnify} onChange={(v) => p({ magnify: v })} />
-      <Switch label="Mostrar nomes das seções" checked={tb.showLabels} onChange={(v) => p({ showLabels: v })} />
+      <Switch label="Mostrar o nome dos apps na barra" checked={tb.showLabels} onChange={(v) => p({ showLabels: v })} />
     </Section>
     <BarItemsSection />
+    <IconsSection />
     </>
   )
 }
@@ -511,7 +514,7 @@ function BarItemsSection() {
   const pins = s.pcPins ?? []
   return (
     <Section title="O que aparece na barra" desc="Ligue ou desligue cada item. Vale para a barra do Widgy e, com ela no lugar da barra do Windows, para a barra do PC.">
-      <div className="mb-1 text-xs text-fg-muted">As abas do Widgy ligam e desligam lá em cima, junto da cor de cada app.</div>
+      <div className="mb-1 text-xs text-fg-muted">As abas do Widgy ligam e desligam mais abaixo, em Ícones dos apps.</div>
       <div className="mt-2 mb-1 text-sm">Botões</div>
       {BAR_BUTTONS.filter((b) => !b.pcOnly || pcBar).map((b) => (
         <Switch key={b.id} label={b.label} checked={!hide.has(b.id)} onChange={(v) => toggle(b.id, v)} />
@@ -894,22 +897,22 @@ function System() {
   useEffect(() => { bridge.app.autostart().then(setAuto) }, [])
 
   const exportData = () => {
-    const st = useStore.getState()
-    const data = { settings: st.settings, widgets: st.widgets, media: st.media, habits: st.habits, habitLog: st.habitLog, subjects: st.subjects, services: st.services, lists: st.lists, tasks: st.tasks, templates: st.templates }
+    const data = buildBackup(useStore.getState() as unknown as Record<string, unknown>)
     const a = document.createElement("a")
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }))
-    a.download = `agenda-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `widgy-backup-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
   }
+  // O arquivo é conferido antes de entrar (lib/backup): só dados conhecidos, no formato certo, e as
+  // configurações completadas com os padrões. Um arquivo qualquer não consegue deixar o app sem abrir.
   const importData = (f: File) =>
     f.text().then((t) => {
-      try {
-        const d = JSON.parse(t)
-        if (confirm("Substituir todos os dados atuais pelo backup?")) useStore.setState(d)
-      } catch {
-        alert("Arquivo inválido")
-      }
-    })
+      const r = parseBackup(t, { defaults: DEFAULT_SETTINGS as unknown as Record<string, unknown>, widgetTypes: Object.keys(WIDGET_SIZES), oneOf: { theme: Object.keys(THEME_PRESETS) } })
+      if (!r.ok) { alert(r.error); return }
+      const notes = r.warnings.length ? "\n\nObservações:\n- " + r.warnings.join("\n- ") : ""
+      if (confirm(`Substituir os dados atuais pelo backup (${r.summary})?${notes}`)) useStore.setState(r.data)
+    }).catch(() => alert("Não foi possível ler o arquivo."))
 
   return (
     <>
@@ -926,16 +929,16 @@ function System() {
         </button>
         <div className="mt-2 text-xs text-fg-muted">Arquivo local: %APPDATA%\Agenda\widgy-diagnostics.log. O histórico é limitado para não consumir espaço ou RAM.</div>
       </Section>
-      <Section title="Backup" desc="Exporta hábitos, estudos, serviços, listas, widgets e configurações (as imagens ficam na pasta do app).">
+      <Section title="Backup" desc="Exporta configurações, widgets, hábitos, estudos, serviços, listas, tarefas, galerias e os históricos de música e de jogos. As imagens ficam na pasta do app e as Finanças não entram neste arquivo.">
         <div className="flex gap-2">
           <button className="btn" onClick={exportData}><Download size={14} /> Exportar backup</button>
-          <label className="btn clickable cursor-pointer"><Upload size={14} /> Importar backup<input type="file" accept=".json" className="hidden" onChange={(e) => e.target.files?.[0] && importData(e.target.files[0])} /></label>
+          <label className="btn clickable cursor-pointer"><Upload size={14} /> Importar backup<input type="file" accept=".json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void importData(f) }} /></label>
         </div>
       </Section>
       <Section title="Restaurar">
         <div className="flex flex-wrap gap-2">
           {(Object.keys(THEME_PRESETS) as ThemeId[]).length > 0 && (
-            <button className="btn" onClick={() => confirm("Voltar todas as configurações visuais ao padrão?") && reset()}><RotateCcw size={14} /> Configurações padrão</button>
+            <button className="btn" onClick={() => confirm("Voltar todas as configurações ao padrão? Isso inclui aparência, barra, avisos, agendas conectadas e times favoritos. Seus widgets e seus dados (hábitos, listas, tarefas…) não mudam.") && reset()}><RotateCcw size={14} /> Configurações padrão</button>
           )}
           <button className="btn" onClick={() => set({ widgetsLocked: false })}>Destravar widgets</button>
         </div>
