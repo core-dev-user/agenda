@@ -71,7 +71,7 @@ export interface AgendaBridge {
   }
   bar: {
     get(): Promise<BarConfig>
-    set(p: Partial<Pick<BarConfig, "on" | "height" | "position" | "keys" | "winKey">>): Promise<BarConfig>
+    set(p: Partial<Pick<BarConfig, "on" | "height" | "position" | "keys" | "winKey">> & { restartKeys?: boolean }): Promise<BarConfig>
     sync(data: BarSync): void
     hello(): Promise<BarSync | null>
     toMain(msg: BarToMain): void
@@ -215,7 +215,9 @@ export interface RunningGame { id: string; name: string; color: string; start: n
 export interface ValAgentNow { id: string; locked: boolean; state: string }
 export interface GamesState { playing: RunningGame[]; at: number }
 
-export interface BarConfig { on: boolean; height: number; position: "bottom" | "top"; keys: boolean; winKey: "windows" | "agenda"; available: boolean; active: boolean }
+/** estado do atalho da tecla Windows (Configurações mostram para a pessoa saber o que está acontecendo) */
+export interface KeyStatus { engine: "" | "exe" | "powershell"; hook: "off" | "starting" | "on" | "error"; error: string; policy: string; lastKey: "" | "start" | "windows"; lastKeyAt: number; since: number; winAlone: boolean; wanted: boolean; log: string }
+export interface BarConfig { on: boolean; height: number; position: "bottom" | "top"; keys: boolean; winKey: "windows" | "agenda"; available: boolean; active: boolean; keyStatus?: KeyStatus }
 export interface PcWindow { h: string; title: string; exe: string; name: string; min: boolean; icon: string }
 export interface PinnedApp { path: string; name: string }
 export interface PreviewItem { h: string; title: string; icon: string; min: boolean }

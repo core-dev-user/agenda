@@ -38,3 +38,22 @@ test("disabled bar or disabled Widgy hotkeys never intercept Windows shortcuts",
 test("no foreground sample yet means native Windows controls retain ownership", () => {
   assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground: null }), false)
 })
+test("Widgy's own full-screen desktop in front keeps the Windows key working", () => {
+  // a área de trabalho do Widgy ocupa a tela e fica fora da lista de janelas da barra; antes isso desligava o atalho
+  const foreground = foregroundInfo({ fg: "77", fx: "C:\\Users\\a\\AppData\\Local\\Programs\\Widgy\\Widgy.exe", wins: [{ h: "5", exe: "chrome.exe" }], full: true })
+  assert.equal(foreground.unresolvedFullscreen, false)
+  assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground }), true)
+})
+test("a protected game found only through the foreground program still turns the hook off", () => {
+  const foreground = foregroundInfo({ fg: "8", fx: "D:\\Riot\\VALORANT-Win64-Shipping.exe", wins: [], full: true })
+  assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground }), false)
+})
+test("every reason for the hook being off is explained in words", () => {
+  const { captureBlockReason } = require("../electron/taskbar-key-policy.cjs")
+  const fg = foregroundInfo({ fg: "1", wins: [{ h: "1", exe: "notepad.exe" }] })
+  assert.equal(captureBlockReason({ barActive: true, enabled: true, foreground: fg }), "")
+  assert.match(captureBlockReason({ barActive: false, enabled: true, foreground: fg }), /barra do Widgy/)
+  assert.match(captureBlockReason({ barActive: true, enabled: false, foreground: fg }), /atalhos/)
+  assert.match(captureBlockReason({ barActive: true, enabled: true, foreground: null }), /esperando/)
+  assert.match(captureBlockReason({ barActive: true, enabled: true, foreground: foregroundInfo({ fg: "2", wins: [{ h: "2", exe: "C:\\G\\cs2.exe" }] }) }), /anti-cheat.*cs2\.exe/)
+})

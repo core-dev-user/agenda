@@ -13,7 +13,7 @@ const winh = require("./winhelper.cjs")
 const modes = require("./mode.cjs")
 const keys = require("./keys.cjs")
 const games = require("./games.cjs")
-const { foregroundInfo, shouldCaptureKeys } = require("./taskbar-key-policy.cjs")
+const { foregroundInfo, captureBlockReason } = require("./taskbar-key-policy.cjs")
 const { createRecoveryBudget } = require("./taskbar-recovery.cjs")
 const { collectStartApps, isAppsFolderTarget } = require("./startapps.cjs")
 
@@ -24,6 +24,8 @@ try { cfg = { ...cfg, ...JSON.parse(fs.readFileSync(cfgFile(), "utf8")) } } catc
 if (!cfg.controlVersion) { cfg.winKey = "agenda"; cfg.keys = true; cfg.controlVersion = 1 }
 // v2: a tecla Windows sozinha volta a abrir o Iniciar do Windows (igual ao botão "Iniciar do Windows")
 if (cfg.controlVersion < 2) { cfg.winKey = "windows"; cfg.controlVersion = 2; try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null, 2)) } catch {} }
+// v3: pedido do usuário — a tecla Windows sozinha abre o Iniciar do Widgy (dá para voltar ao do Windows em Configurações)
+if (cfg.controlVersion < 3) { cfg.winKey = "agenda"; cfg.keys = true; cfg.controlVersion = 3; try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null, 2)) } catch {} }
 const save = () => { try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null, 2)) } catch {} }
 
 /* ---------------- fixados da barra do Windows ---------------- */
@@ -642,7 +644,8 @@ function leavePreview() {
 /* ---------------- tecla Windows ---------------- */
 function syncKeys() {
   keys.winKey(cfg.winKey === "agenda")
-  keys.enable(shouldCaptureKeys({ barActive: bars.size > 0, enabled: cfg.keys !== false, foreground }))
+  const why = captureBlockReason({ barActive: bars.size > 0, enabled: cfg.keys !== false, foreground })
+  keys.enable(!why, why)
 }
 function toggleDesktop() {
   if (!bars.size) return
@@ -707,7 +710,7 @@ function teardown(restore = true, notify = true) {
   icons.clear()
   iconBytes = 0
   bars.clear(); desks.clear(); hiddenOn.clear()
-  keys.enable(false)
+  keys.enable(false, "a barra do Widgy não está no lugar da do Windows")
   if (!restore) return
   const main = getMain()
   if (notify && main && !main.isDestroyed()) main.webContents.send("bar:main", { type: "shell-failed" })
@@ -742,7 +745,7 @@ async function startApps() {
   return refreshApps()
 }
 
-const state = () => ({ on: cfg.on, height: cfg.height, position: cfg.position, keys: cfg.keys !== false, winKey: cfg.winKey === "agenda" ? "agenda" : "windows", available: modes.mode() === "desktop", active: bars.size > 0 })
+const state = () => ({ on: cfg.on, height: cfg.height, position: cfg.position, keys: cfg.keys !== false, winKey: cfg.winKey === "agenda" ? "agenda" : "windows", available: modes.mode() === "desktop", active: bars.size > 0, keyStatus: keys.status?.() })
 
 function register(ipcMain, mainGetter) {
   getMain = mainGetter
@@ -762,6 +765,7 @@ function register(ipcMain, mainGetter) {
     if (typeof q.on === "boolean") cfg.on = q.on
     if (typeof q.keys === "boolean") cfg.keys = q.keys
     if (q.winKey === "agenda" || q.winKey === "windows") cfg.winKey = q.winKey
+    if (q.restartKeys === true) keys.restart?.()
     if (typeof q.height === "number") cfg.height = q.height
     if (q.position === "top" || q.position === "bottom") cfg.position = q.position
     save()

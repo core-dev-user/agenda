@@ -12,6 +12,7 @@ import type { NotifySource, SportKind } from "@/lib/types"
 import { SPORTS } from "@/lib/favs"
 import { isWeakDevice, performanceBudget, type PerfPreset, type PreloadMode } from "@/lib/perf-policy"
 import { SettingsSection } from "@/components/ui/SettingsSection"
+import { WinKeyStatus } from "@/components/WinKeyStatus"
 
 function Section({ title, children, desc }: { title: string; desc?: ReactNode; children: ReactNode }) {
   return <SettingsSection title={title} desc={desc}>{children}</SettingsSection>
@@ -410,11 +411,13 @@ function MainBarSwitch() {
           />
           {keys && (
             <Switch
-              label="Tecla Windows sozinha abre o Iniciar do Widgy (desligado: abre o Iniciar do Windows)"
+              label="Tecla Windows abre o Iniciar do Widgy"
               checked={winKey === "agenda"}
               onChange={async (v) => setWinKey((await bridge.bar.set({ winKey: v ? "agenda" : "windows" })).winKey)}
             />
           )}
+          {keys && <div className="pb-1 text-xs text-fg-muted">Desligado, ela abre o Iniciar do Windows. O botão do Windows na barra do Widgy sempre abre o Iniciar do Windows.</div>}
+          {keys && <WinKeyStatus className="mb-2" />}
           <div className="text-xs text-fg-muted">Os programas fixados na barra do Windows aparecem também na do Widgy. Os atalhos Win+D e Win+S funcionam em outros aplicativos, mesmo com jogos abertos em segundo plano. Em jogos protegidos por anti-cheat, o Widgy não instala um capturador de teclado sobre o jogo: use Win+D nativo ou Ctrl+Alt+D para mostrar a área de trabalho (caso a combinação esteja disponível). Jogos em tela cheia exclusiva podem limitar atalhos globais.</div>
         </>
       )}

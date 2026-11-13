@@ -257,7 +257,11 @@ public static class AgWin {
         }
       }
     }
-    sb.Append("{\"fg\":\"").Append(fg.ToInt64()).Append("\",\"full\":").Append(full ? "true" : "false")
+    // programa dono da janela da frente, mesmo quando ela não entra na lista (janelas do próprio Widgy, que
+    // ficam fora da barra): sem isso a área de trabalho do Widgy na frente parecia um jogo em tela cheia
+    // desconhecido e o atalho da tecla Windows era desligado
+    uint fpid = 0; if (fg != IntPtr.Zero) GetWindowThreadProcessId(fg, out fpid);
+    sb.Append("{\"fg\":\"").Append(fg.ToInt64()).Append("\",\"fx\":\"").Append(fpid != 0 ? Esc(Exe(fpid)) : "").Append("\",\"full\":").Append(full ? "true" : "false")
       .Append(",\"fz\":").Append(zoomed ? "true" : "false").Append(",\"fl\":").Append(fl).Append(",\"ft\":").Append(ft).Append(",\"wins\":[");
     bool first = true;
     EnumWindows((h, l) => {
@@ -292,7 +296,8 @@ public static class AgWin {
     if (!IsWindow(h)) return;
     if (IsIconic(h)) ShowWindow(h, 9);
     // tecla Alt "fantasma": libera trazer outra janela para a frente
-    keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero);
+    // marcada com a assinatura do Widgy: o gancho de teclado (keys.cjs) sabe que não foi o usuário
+    keybd_event(0x12, 0, 0, (UIntPtr)0x57444759u); keybd_event(0x12, 0, 2, (UIntPtr)0x57444759u);
     SetForegroundWindow(h);
   }
   // ---- ícone de qualquer arquivo/atalho, igual ao do Explorer (atalhos .lnk/.url, .msc, .exe…) ----
@@ -413,7 +418,10 @@ public static class AgWin {
   }
 
   /** abre o Iniciar do Windows (a tecla Windows "apertada" por programa; o atalho do Agenda deixa essa passar) */
-  public static void WinStart() { keybd_event(0x5B, 0, 1, UIntPtr.Zero); keybd_event(0x5B, 0, 1 | 2, UIntPtr.Zero); }
+  // botão "Iniciar do Windows" da barra do Widgy: a tecla Windows vai marcada com a assinatura do Widgy, então o
+  // gancho de teclado deixa passar (sem a marca, com "tecla Windows abre o Iniciar do Widgy" ligado, o botão
+  // abriria o Iniciar do Widgy em vez do do Windows)
+  public static void WinStart() { keybd_event(0x5B, 0, 1, (UIntPtr)0x57444759u); keybd_event(0x5B, 0, 1 | 2, (UIntPtr)0x57444759u); }
 
   public static void Minimize(string s) { ShowWindow(H(s), 6); }
   public static void Close(string s) { PostMessage(H(s), 0x0010, IntPtr.Zero, IntPtr.Zero); }

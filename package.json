@@ -1,7 +1,7 @@
 {
   "name": "widgy",
   "productName": "Widgy",
-  "version": "0.3.34",
+  "version": "0.3.35",
   "description": "Widgy — sua área de trabalho personalizada",
   "main": "electron/main.cjs",
   "type": "module",
@@ -18,7 +18,7 @@
     "test:finance": "node --test tests/finance-save.test.cjs",
     "test:perf": "node --experimental-strip-types --test tests/perf-policy.test.cjs tests/carbono-icons.test.mjs",
     "test:wallpaper": "node --test tests/wallpaper-engine.test.cjs",
-    "test:taskbar": "node --test tests/taskbar*.test.cjs",
+    "test:taskbar": "node --test tests/taskbar*.test.cjs tests/keys-native.test.cjs",
     "test:taskbar:windows": "electron tests/taskbar-preview-smoke.cjs",
     "test:rooms": "node --experimental-strip-types --test tests/rtc-tuning.test.mjs tests/share-picker.test.cjs",
     "test:templates": "node --experimental-strip-types --test tests/template-share.test.mjs tests/settings-index.test.mjs tests/icon-support.test.mjs",

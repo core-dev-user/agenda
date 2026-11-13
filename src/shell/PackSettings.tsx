@@ -6,6 +6,7 @@ import { bridge, type BarConfig } from "@/lib/bridge"
 import { cn } from "@/lib/utils"
 import { SettingsSection } from "@/components/ui/SettingsSection"
 import { ACCENTS, SURFACES, applyCarbono, removePack, setShellPrefs, shellPrefs, type CarbonoAccent } from "./pack"
+import { WinKeyStatus } from "@/components/WinKeyStatus"
 
 /** Miniatura desenhada do Carbono: moldura, barra fina, painel de cima e busca de baixo. */
 function CarbonoPreview({ accent, bg, rail }: { accent: string; bg: string; rail: string }) {
@@ -53,6 +54,7 @@ function WinKeySwitch() {
       <Switch label="Tecla Windows abre a busca do Carbono" checked={bar.winKey === "agenda"}
         onChange={(v) => void bridge.bar.set({ winKey: v ? "agenda" : "windows" }).then(setBar)} />
       {!bar.active && <p className="mt-1 text-xs text-fg-muted">Funciona quando a barra do Widgy substitui a do Windows (Barra e ícones). Win+S abre a busca nesse modo.</p>}
+      {bar.active && <WinKeyStatus className="mt-2" />}
     </div>
   )
 }
