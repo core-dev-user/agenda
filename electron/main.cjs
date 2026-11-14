@@ -251,7 +251,9 @@ app.whenReady().then(() => {
   })
   createWindow()
   // Wallpaper Engine sempre animado no modo área de trabalho (exceto com um jogo aberto)
-  const weKeeper = wallpaperEngine.createKeeper({ userDir, playing: () => !!require("./games.cjs").playing() })
+  // não força o Wallpaper Engine a tocar com um jogo aberto nem com outro programa em tela cheia na frente
+  // (ele mesmo pausa nesses casos; forçar deixava o papel de parede animado disputando a placa de vídeo com o jogo)
+  const weKeeper = wallpaperEngine.createKeeper({ userDir, playing: () => !!require("./games.cjs").playing() || require("./fullscreen-state.cjs").get() })
   if (win) weKeeper.watch(win)
   weKeeper.start()
   app.on("before-quit", () => weKeeper.stop())

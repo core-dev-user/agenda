@@ -26,6 +26,7 @@ function apply(st: GamesState) {
   if (JSON.stringify(previous) !== JSON.stringify(st.playing)) {
     useStore.setState({ gamesRunning: st.playing })
   }
+  if (!!st.fullscreen !== current.fullscreenOther) useStore.setState({ fullscreenOther: !!st.fullscreen })
   const history = current.gaming ?? emptyGaming()
   const live = new Set(st.playing.map((p) => p.id))
   const changed = history.sessions.some((s) => s.open && !live.has(s.game))

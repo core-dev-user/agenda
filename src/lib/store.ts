@@ -162,6 +162,8 @@ interface State {
   paletteOpen: boolean
   /** jogos abertos agora (detectados no PC) */
   gamesRunning: RunningGame[]
+  /** outro programa em tela cheia na frente: conta como jogo para pausar animações e vídeo */
+  fullscreenOther: boolean
   /** agente do Valorant em uso */
   valAgentNow: ValAgentNow | null
   /** aba Música: player ou estatísticas */
@@ -247,6 +249,7 @@ export const useStore = create<State>()(
       paletteOpen: false,
       musicTab: "player",
       gamesRunning: [],
+      fullscreenOther: false,
       valAgentNow: null,
 
       setSettings: (patch) =>

@@ -89,6 +89,7 @@ function windowOptions() {
 }
 
 const winh = require("./winhelper.cjs")
+const fsState = require("./fullscreen-state.cjs")
 const native = (cmd) => { winh.call(cmd) }
 const hwndOf = winh.hwndOf
 
@@ -123,8 +124,11 @@ function attach(win, externalWallpaper = false) {
   win.once("ready-to-show", () => { native("own " + h); sink() })
   win.on("focus", () => setTimeout(sink, 0))
   win.on("show", () => setTimeout(sink, 50))
-  // resolução, escala ou barra do Windows mudaram: acompanha a área livre da tela
-  for (const ev of ["display-metrics-changed", "display-added", "display-removed"]) screen.on(ev, fit)
+  // resolução, escala ou barra do Windows mudaram: acompanha a área livre da tela. Com outro programa em tela
+  // cheia na frente (um jogo trocando a resolução), espera ele sair: mover a janela do Widgy no meio da troca
+  // pode tirar o jogo da tela cheia ou derrubar o jogo.
+  const fitSafe = () => fsState.whenFree("desk-fit", fit)
+  for (const ev of ["display-metrics-changed", "display-added", "display-removed"]) screen.on(ev, fitSafe)
   if (process.env.AGENDA_DEBUG_BOUNDS) {
     const orig = win.setBounds.bind(win)
     win.setBounds = (b, ...r) => { console.log("[bounds]", (performance.now() / 1000).toFixed(3), "setBounds", JSON.stringify(b), new Error().stack.split(String.fromCharCode(10)).slice(2, 5).join(" | ")); return orig(b, ...r) }
@@ -142,6 +146,7 @@ function attach(win, externalWallpaper = false) {
   // (no meio da reorganização do Windows a ordem é ignorada: manda de novo logo em seguida, até ficar no lugar)
   const putBack = () => {
     if (win.isDestroyed()) return false
+    if (fsState.get()) { fsState.whenFree("desk-fit", fit); return false }
     const want = workArea(), cur = win.getBounds()
     if (cur.x === want.x && cur.y === want.y && cur.width === want.width && cur.height === want.height) return false
     win.setBounds(want)

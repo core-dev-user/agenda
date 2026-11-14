@@ -26,6 +26,7 @@ function modeHarness(cfg, all) {
   return load('mode.cjs', {
     electron: { app: { getPath: () => '.' }, screen: screenFor(all) },
     'node:fs': { readFileSync: () => JSON.stringify(cfg) }, './winhelper.cjs': {},
+    './fullscreen-state.cjs': require('../electron/fullscreen-state.cjs'),
   })
 }
 test('desktop covers the full single monitor while widgets retain reserved work area', () => {
@@ -77,6 +78,7 @@ function barHarness(t) {
     './mode.cjs': { mode: () => 'desktop', target: () => all[0], spans: () => false },
     './keys.cjs': { onKey() {}, enable() {}, winKey() {} }, './games.cjs': { onPlaying() {}, playing: () => false },
     './taskbar-key-policy.cjs': require('../electron/taskbar-key-policy.cjs'),
+    './fullscreen-state.cjs': require('../electron/fullscreen-state.cjs'),
     './startapps.cjs': { collectStartApps: async () => [], isAppsFolderTarget: () => false },
     './taskbar-recovery.cjs': require('../electron/taskbar-recovery.cjs'),
   })

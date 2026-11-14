@@ -21,9 +21,20 @@ test("low-level hook is not installed over protected foreground games by default
     assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground }), false, exe)
   }
 })
-test("Win+D remains handled in ordinary fullscreen apps where Windows allows it", () => {
+test("any other program in fullscreen turns the hook off (Windows' own Win+D keeps working)", () => {
+  // antes o gancho continuava ligado em tela cheia; jogos que o Widgy não conhece ficavam com o gancho por cima
   const foreground = foregroundInfo({ fg: "33", wins: [{ h: "33", exe: "C:\\Program Files\\Video\\player.exe" }], full: true })
-  assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground }), true)
+  assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground }), false)
+  const windowed = foregroundInfo({ fg: "33", wins: [{ h: "33", exe: "C:\\Program Files\\Video\\player.exe" }], full: false })
+  assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground: windowed }), true)
+})
+test("any game the Widgy detected turns the hook off while it is in front, even windowed", () => {
+  const foreground = foregroundInfo({ fg: "9", wins: [{ h: "9", exe: "D:\\Games\\Rust\\RustClient.exe" }], full: false })
+  assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground, gameExes: new Set(["rustclient.exe"]) }), false)
+  assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground, gameExes: new Set(["outro.exe"]) }), true)
+  // jogo aberto, mas atrás: o atalho continua no programa da frente
+  const chrome = foregroundInfo({ fg: "2", wins: [{ h: "2", exe: "chrome.exe" }, { h: "9", exe: "RustClient.exe" }], full: false })
+  assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground: chrome, gameExes: new Set(["rustclient.exe"]) }), true)
 })
 test("unknown exclusive fullscreen foreground fails safe rather than hooking blindly", () => {
   const foreground = foregroundInfo({ fg: "40", wins: [], full: true })
@@ -40,7 +51,8 @@ test("no foreground sample yet means native Windows controls retain ownership", 
 })
 test("Widgy's own full-screen desktop in front keeps the Windows key working", () => {
   // a área de trabalho do Widgy ocupa a tela e fica fora da lista de janelas da barra; antes isso desligava o atalho
-  const foreground = foregroundInfo({ fg: "77", fx: "C:\\Users\\a\\AppData\\Local\\Programs\\Widgy\\Widgy.exe", wins: [{ h: "5", exe: "chrome.exe" }], full: true })
+  const own = "C:\\Users\\a\\AppData\\Local\\Programs\\Widgy\\Widgy.exe"
+  const foreground = foregroundInfo({ fg: "77", fx: own, wins: [{ h: "5", exe: "chrome.exe" }], full: true }, own)
   assert.equal(foreground.unresolvedFullscreen, false)
   assert.equal(shouldCaptureKeys({ barActive: true, enabled: true, foreground }), true)
 })

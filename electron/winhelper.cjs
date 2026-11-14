@@ -227,7 +227,10 @@ public static class AgWin {
       // Reaplica só se mudou, evitando notificações de layout a cada consulta.
       int hiddenState = (abOrig < 0 ? AbState() : abOrig) | 1;
       if (AbState() != hiddenState) AbSet(hiddenState);
-      foreach (var t in Trays()) Ghost(t, true);
+      // Só mexe na barra do Windows quando ela voltou a aparecer ou perdeu o "invisível". Antes isso rodava a
+      // cada consulta (todo segundo): estilo, transparência e ShowWindow na barra do Explorer mesmo com um jogo
+      // em tela cheia, o que faz o Windows refazer a composição da tela sem necessidade.
+      foreach (var t in Trays()) if (IsWindowVisible(t) || (GetWindowLongPtr(t, -20).ToInt64() & 0x80020) != 0x80020) Ghost(t, true);
     }
     foreach (var kv in wants) {
       RECT cur = WorkOf(new IntPtr(kv.Key)); RECT w = kv.Value;

@@ -8,18 +8,20 @@ import { performanceBudget, petAnimationFps } from "./perf-policy"
 import { bridge } from "./bridge"
 
 let paused = false
+/** jogo conhecido aberto, ou outro programa em tela cheia na frente (um jogo que o Widgy não reconhece) */
+const inGame = (s: { gamesRunning: unknown[]; fullscreenOther?: boolean }) => s.gamesRunning.length > 0 || !!s.fullscreenOther
 export const perfPaused = () => paused
 export const perfVisualFps = () => {
   const s = useStore.getState()
-  return performanceBudget(s.settings, s.gamesRunning.length > 0).fps
+  return performanceBudget(s.settings, inGame(s)).fps
 }
 export const perfPetFps = () => {
   const s = useStore.getState()
-  return petAnimationFps(s.settings, s.gamesRunning.length > 0)
+  return petAnimationFps(s.settings, inGame(s))
 }
 export const perfEmbedHz = () => {
   const s = useStore.getState()
-  return performanceBudget(s.settings, s.gamesRunning.length > 0).embedHz
+  return performanceBudget(s.settings, inGame(s)).embedHz
 }
 
 /** Cada visualização usa apenas a taxa configurada; não fica desenhando a 60 FPS à toa. */
@@ -42,11 +44,11 @@ export function rafLoop(step: () => void) {
 }
 
 export function usePerf() {
-  const gaming = useStore((s) => s.gamesRunning.length > 0)
+  const gaming = useStore((s) => inGame(s))
   const pauseInGame = useStore((s) => s.settings.perfPauseInGame ?? true)
   const lite = useStore((s) => !!s.settings.perfLite)
-  const monitorMs = useStore((s) => performanceBudget(s.settings, s.gamesRunning.length > 0).monitorMs)
-  const fps = useStore((s) => performanceBudget(s.settings, s.gamesRunning.length > 0).fps)
+  const monitorMs = useStore((s) => performanceBudget(s.settings, inGame(s)).monitorMs)
+  const fps = useStore((s) => performanceBudget(s.settings, inGame(s)).fps)
   useEffect(() => { void bridge.sysmon.rate(monitorMs).catch(() => {}) }, [monitorMs])
   useEffect(() => { window.dispatchEvent(new Event("widgy:perf-settings")) }, [fps])
   useEffect(() => {

@@ -3,6 +3,7 @@
 const { app } = require("electron")
 const { execFile } = require("node:child_process")
 const path = require("node:path")
+const fsState = require("./fullscreen-state.cjs")
 
 /** executável → jogo */
 const KNOWN = [
@@ -126,8 +127,11 @@ let last = ""
 let lastList = []
 let busy = false
 
-// lista de processos pelo WMI: rápido (~1 s) e funciona até com jogos protegidos por anti-cheat
-const PS = `$ErrorActionPreference='SilentlyContinue'; Get-CimInstance Win32_Process -Property Name,ExecutablePath,CreationDate,SessionId,CommandLine | Where-Object { $_.SessionId -ne 0 } | ForEach-Object { [pscustomobject]@{ n = $_.Name; p = $_.ExecutablePath; s = $(if ($_.CreationDate) { $_.CreationDate.ToUniversalTime().ToString('o') } else { '' }); c = $(if ($_.Name -eq 'javaw.exe') { $_.CommandLine } else { '' }) } } | ConvertTo-Json -Compress`
+// lista de processos pelo WMI: rápido (~1 s) e funciona até com jogos protegidos por anti-cheat.
+// A linha de comando NÃO é pedida para todos os processos: para obtê-la, o Windows abre cada programa com
+// permissão de ler a memória dele (inclusive o jogo aberto), o que anti-cheats vigiam. Só o javaw.exe
+// (Minecraft Java) precisa dela, então só ele é consultado.
+const PS = `$ErrorActionPreference='SilentlyContinue'; $cl = @{}; Get-CimInstance Win32_Process -Filter "Name='javaw.exe'" -Property ProcessId,CommandLine | ForEach-Object { $cl[[string]$_.ProcessId] = $_.CommandLine }; Get-CimInstance Win32_Process -Property Name,ExecutablePath,CreationDate,SessionId,ProcessId | Where-Object { $_.SessionId -ne 0 } | ForEach-Object { [pscustomobject]@{ n = $_.Name; p = $_.ExecutablePath; s = $(if ($_.CreationDate) { $_.CreationDate.ToUniversalTime().ToString('o') } else { '' }); c = $(if ($_.Name -eq 'javaw.exe') { $cl[[string]$_.ProcessId] } else { '' }) } } | ConvertTo-Json -Compress`
 
 function scan() {
   if (busy || process.platform !== "win32") return
@@ -175,13 +179,16 @@ let scanned = false // primeira varredura feita (antes disso não se sabe se tem
 let announced = false
 function push() {
   const w = getMain()
-  if (w && !w.isDestroyed()) w.webContents.send("games:state", { playing: lastList, at: Date.now() })
+  // `fullscreen`: outro programa em tela cheia na frente (um jogo que o Widgy não conhece, por exemplo):
+  // a interface trata como jogo aberto e pausa animações e vídeo
+  if (w && !w.isDestroyed()) w.webContents.send("games:state", { playing: lastList, at: Date.now(), fullscreen: fsState.get() })
 }
+fsState.onChange(() => push())
 
 function register(ipcMain, mainGetter) {
   getMain = mainGetter
   if (!process.env.AGENDA_SHOT) app.whenReady().then(() => { setTimeout(scan, 4000); setInterval(scan, 20000) })
-  ipcMain.handle("games:get", () => ({ playing: lastList, at: Date.now() }))
+  ipcMain.handle("games:get", () => ({ playing: lastList, at: Date.now(), fullscreen: fsState.get() }))
   ipcMain.handle("games:config", (_e, cfg) => {
     custom = Array.isArray(cfg && cfg.custom) ? cfg.custom : []
     ignored = new Set(Array.isArray(cfg && cfg.ignored) ? cfg.ignored : [])
@@ -195,4 +202,8 @@ function register(ipcMain, mainGetter) {
   })
 }
 
-module.exports = { register, playing: () => (scanned ? lastList.length > 0 : null), onPlaying: (f) => watchers.push(f) }
+module.exports = {
+  register, playing: () => (scanned ? lastList.length > 0 : null), onPlaying: (f) => watchers.push(f),
+  /** executáveis dos jogos abertos agora (minúsculo, só o nome): o atalho de teclado desliga com um deles na frente */
+  exes: () => new Set(lastList.map((g) => String(g.exe || "").toLowerCase()).filter(Boolean)),
+}

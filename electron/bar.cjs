@@ -13,6 +13,7 @@ const winh = require("./winhelper.cjs")
 const modes = require("./mode.cjs")
 const keys = require("./keys.cjs")
 const games = require("./games.cjs")
+const fsState = require("./fullscreen-state.cjs")
 const { foregroundInfo, captureBlockReason } = require("./taskbar-key-policy.cjs")
 const { createRecoveryBudget } = require("./taskbar-recovery.cjs")
 const { collectStartApps, isAppsFolderTarget } = require("./startapps.cjs")
@@ -306,8 +307,10 @@ async function tickWindows() {
   }
   let j
   try { j = JSON.parse(raw) } catch { return }
-  const nextForeground = foregroundInfo(j)
-  if (!foreground || foreground.exe !== nextForeground.exe || foreground.unresolvedFullscreen !== nextForeground.unresolvedFullscreen) {
+  const nextForeground = foregroundInfo(j, process.execPath)
+  // outro programa em tela cheia na frente: o resto do Widgy deixa a tela quieta (ver fullscreen-state.cjs)
+  fsState.set(nextForeground.fullscreen)
+  if (!foreground || foreground.exe !== nextForeground.exe || foreground.unresolvedFullscreen !== nextForeground.unresolvedFullscreen || foreground.fullscreen !== nextForeground.fullscreen) {
     foreground = nextForeground
     syncKeys()
   }
@@ -462,9 +465,13 @@ function runAppbars() {
 }
 let tbT = null
 let rebuildT = null
+// Monitor ligado/desligado ou resolução trocada: com um jogo em tela cheia na frente (muitos trocam a resolução ao
+// entrar), refazer as barras ou reposicionar o espaço reservado nesse instante pode tirar o jogo da tela cheia,
+// minimizar ou derrubar o jogo. Espera um pouco (a barra confere a janela da frente a cada segundo) e, se ainda
+// houver tela cheia, deixa para quando ela acabar.
 function rebuild() {
   clearTimeout(rebuildT)
-  rebuildT = setTimeout(() => { teardown(false); create() }, 800)
+  rebuildT = setTimeout(() => fsState.whenFree("bar-rebuild", () => { teardown(false); create() }), 1500)
 }
 /** Safe fallback while restarting: show the native taskbar, retry at most 3
  * times per 5-minute window, and keep the user's on/off choice unchanged.
@@ -480,7 +487,12 @@ function recoverTaskbar(reason) {
   }, plan.delayMs)
   recoveryTimer.unref?.()
 }
-function onMetrics() { if (bars.size) layout() }
+let metricsT = null
+function onMetrics() {
+  if (!bars.size) return
+  clearTimeout(metricsT)
+  metricsT = setTimeout(() => fsState.whenFree("bar-layout", () => { if (bars.size) layout() }), 1200)
+}
 
 /* ---------------- menus em cima da barra ---------------- */
 let menuKind = ""
@@ -644,7 +656,7 @@ function leavePreview() {
 /* ---------------- tecla Windows ---------------- */
 function syncKeys() {
   keys.winKey(cfg.winKey === "agenda")
-  const why = captureBlockReason({ barActive: bars.size > 0, enabled: cfg.keys !== false, foreground })
+  const why = captureBlockReason({ barActive: bars.size > 0, enabled: cfg.keys !== false, foreground, gameExes: games.exes?.() })
   keys.enable(!why, why)
 }
 function toggleDesktop() {
@@ -656,6 +668,8 @@ function toggleDesktop() {
       if (!b.isDestroyed() && !hiddenOn.has(id) && !b.isVisible()) b.showInactive()
   })
 }
+// jogo abriu ou fechou: o atalho de teclado sai (ou volta) com ele na frente
+games.onPlaying(() => { if (bars.size) syncKeys() })
 keys.onKey((ev) => {
   if (!bars.size) return
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
@@ -686,7 +700,7 @@ keys.onKey((ev) => {
 // Foreground changes are detected by tickWindows() above.
 
 function teardown(restore = true, notify = true) {
-  clearTimeout(settleT); clearTimeout(warmupT); clearTimeout(rebuildT); clearTimeout(peekT); clearTimeout(recoveryTimer)
+  clearTimeout(settleT); clearTimeout(warmupT); clearTimeout(rebuildT); clearTimeout(peekT); clearTimeout(recoveryTimer); clearTimeout(metricsT)
   recoveryTimer = null
   helperFailures = 0
   barFailureTimes.length = 0
@@ -695,6 +709,8 @@ function teardown(restore = true, notify = true) {
   recoveryShortcut = false
   desktopShortcut = false
   foreground = null
+  // sem a barra ninguém acompanha a janela da frente: não deixa nada esperando por uma tela cheia que não será vista
+  fsState.set(false)
   if (poll) { clearInterval(poll); poll = null }
   for (const ev of ["display-added", "display-removed"]) screen.removeListener(ev, rebuild)
   screen.removeListener("display-metrics-changed", onMetrics)
