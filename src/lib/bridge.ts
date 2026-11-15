@@ -11,6 +11,16 @@ export interface SysStats {
   top: { name: string; mem: number }[]
   uptime: number
 }
+/** resultado de um pedido do teste de conexão das Salas (electron/net-probe.cjs) */
+export interface ProbeHit { ok: boolean; ms: number; status: number; kind: string; error: string; date: string }
+export interface NetProbe {
+  at: number
+  dns: { ok: boolean; addresses: string[]; sinkhole: boolean; error: string }
+  signal: ProbeHit
+  control: ProbeHit
+  /** relógio do PC menos a hora da internet, em ms (null: não deu para saber) */
+  clockSkewMs: number | null
+}
 export interface AgendaBridge {
   store: { get(): string | null; set(data: string): void; flush?(): void; drain?(): Promise<boolean> }
   win: {
@@ -154,7 +164,7 @@ export interface AgendaBridge {
     onProgress(cb: (p: { file: string; pct: number; stage: string }) => void): Unsub
   }
   ai: { status(): Promise<{ installed: boolean; sharp: boolean }>; install(): Promise<boolean>; onProgress(cb: (n: number) => void): Unsub }
-  net: { text(url: string): Promise<string> }
+  net: { text(url: string): Promise<string>; roomsProbe?(): Promise<NetProbe> }
   team: {
     /** busca times de um jogo (sem texto: lista inicial, quando o jogo tiver) */
     search(game: string, q: string, opts?: { leagues?: string[] }): Promise<TeamHit[]>

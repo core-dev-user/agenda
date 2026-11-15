@@ -726,3 +726,5 @@ ipcMain.handle("media:saveAnimation", async (_e, { width, height, frames, delay,
 
 /* ---------------- Notícias (RSS sem CORS) ---------------- */
 ipcMain.handle("net:text", async (_e, url) => fetchSafeText(net.fetch.bind(net), url))
+// Salas: teste de conexão (endereços fixos, só leitura)
+require("./net-probe.cjs").register(ipcMain, net)

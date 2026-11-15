@@ -49,6 +49,8 @@ interface RoomState {
   reconnecting?: boolean
   /** a rede bloqueou a conexão direta com alguém (sugere configurar um servidor de retransmissão) */
   netHint?: string
+  /** o último erro foi de rede (não deu para falar com o servidor de encontro): a tela oferece o teste de conexão */
+  netError?: boolean
 }
 
 export const useRoom = create<RoomState>(() => ({
@@ -72,6 +74,11 @@ const iceConfig = (): RTCConfiguration => {
   const turn = turnConfig()
   const own: RTCIceServer[] = turn ? [{ urls: turn.urls.trim().split(/[\s,]+/).filter(Boolean), username: turn.username || undefined, credential: turn.credential || undefined }] : []
   return { iceServers: [...STUN, ...own, PEERJS_TURN] }
+}
+/** os servidores ICE separados, para o teste de conexão (roomsDiag.ts) testar cada um */
+export const iceParts = () => {
+  const all = iceConfig().iceServers ?? []
+  return { stun: STUN as RTCIceServer[], own: all.filter((x) => x !== PEERJS_TURN && !STUN.includes(x as typeof STUN[number])), peerjs: PEERJS_TURN }
 }
 const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 export const newCode = () => Array.from({ length: 6 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join("")
@@ -448,15 +455,39 @@ function dropPeer(id: string) {
 }
 
 /* ---------------- entrar / sair ---------------- */
-async function makePeer(id?: string): Promise<PeerT> {
-  const { Peer } = await import("peerjs")
+/** erros em que vale tentar de novo: a rede piscou ou o servidor de encontro demorou */
+const NET_ERRORS = ["network", "server-error", "socket-error", "socket-closed"]
+export const isNetError = (e: any) => NET_ERRORS.includes(e?.type)
+/** id próprio para quem entra como membro: assim não depende do pedido HTTPS de id do PeerJS, só do WebSocket */
+const memberId = () => "agenda-m-" + Array.from(crypto.getRandomValues(new Uint8Array(9)), (b) => b.toString(16).padStart(2, "0")).join("")
+
+function openPeer(Peer: typeof import("peerjs").Peer, id: string, wait = 15000): Promise<PeerT> {
   return new Promise((res, rej) => {
-    const p = id ? new Peer(id, { config: iceConfig(), debug: 0 }) : new Peer({ config: iceConfig(), debug: 0 })
-    const fail = (e: any) => { p.off("open", ok); rej(e) }
-    const ok = () => { p.off("error", fail); res(p) }
+    const p = new Peer(id, { config: iceConfig(), debug: 0 })
+    const timer = setTimeout(() => { p.off("open", ok); p.off("error", fail); p.destroy(); rej(Object.assign(new Error("tempo esgotado"), { type: "network" })) }, wait)
+    const fail = (e: any) => { clearTimeout(timer); p.off("open", ok); p.destroy(); rej(e) }
+    const ok = () => { clearTimeout(timer); p.off("error", fail); res(p) }
     p.once("open", ok)
     p.once("error", fail)
   })
+}
+
+/**
+ * Abre a conexão com o servidor de encontro. Falha de rede (internet piscando, servidor lento) tenta de novo
+ * até 3 vezes antes de desistir; "nome ocupado" volta na hora (é assim que se descobre que a sala já existe).
+ */
+async function makePeer(id?: string, attempts = 3): Promise<PeerT> {
+  const { Peer } = await import("peerjs")
+  let last: any
+  for (let i = 0; i < attempts; i++) {
+    if (i) await new Promise((r) => setTimeout(r, 1200 * i))
+    if (leaving && i) break
+    try { return await openPeer(Peer, id ?? memberId()) } catch (e: any) {
+      last = e
+      if (!isNetError(e)) throw e
+    }
+  }
+  throw last
 }
 
 /**
@@ -492,7 +523,7 @@ export async function joinRoom(code: string, name: string) {
   await leaveRoom(true)
   leaving = false
   myName = name.trim() || "Eu"
-  set({ status: "connecting", error: "", code, chat: [], members: [], screens: {} })
+  set({ status: "connecting", error: "", netError: false, code, chat: [], members: [], screens: {} })
   try {
     // tenta ser o anfitrião; se já tem alguém, entra como membro
     try {
@@ -528,8 +559,9 @@ export async function joinRoom(code: string, name: string) {
     set({ status: "in", members: [me()] })
     if (useRoom.getState().host) hostUpdate()
   } catch (e: any) {
-    const msg = e?.type === "network" || e?.type === "server-error" || e?.type === "socket-error" ? "Sem conexão com o servidor de encontro. Confira a internet." : String(e?.message || e)
-    set({ status: "error", error: msg })
+    const net = isNetError(e)
+    const msg = net ? "Não deu para falar com o servidor de encontro (0.peerjs.com). Clique em “Testar conexão” para ver o que está bloqueando." : String(e?.message || e)
+    set({ status: "error", error: msg, netError: net })
     peer?.destroy(); peer = null
   }
 }

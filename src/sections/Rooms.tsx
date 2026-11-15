@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Cast, Copy, Crown, Expand, Lock, LockOpen, LogOut, MessageSquare, Mic, MicOff, MonitorUp, Plus, Send, Trash2, Users, X } from "lucide-react"
+import { Activity, Cast, Copy, Crown, Expand, Lock, LockOpen, LogOut, MessageSquare, Mic, MicOff, MonitorUp, Plus, Send, Trash2, Users, X } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { bridge, type ShareSource } from "@/lib/bridge"
 import { cleanCode, joinRoom, kickMember, leaveRoom, lockRoom, newCode, refreshLatency, sendChat, setMic, setShareQuality, startShare, stopShare, useRoom, type ShareOpts, type ShareState } from "@/lib/rooms"
@@ -10,6 +10,7 @@ import { useImmersive } from "@/lib/immersive"
 import { useUiMode } from "@/lib/uimode"
 import { activeScreen } from "@/lib/screens"
 import { cn } from "@/lib/utils"
+import { diagnoseRooms, report, type DiagResult } from "@/lib/roomsDiag"
 import { Modal, Segmented, Switch } from "@/components/ui/controls"
 
 function Video({ stream, muted, className }: { stream: MediaStream; muted?: boolean; className?: string }) {
@@ -73,6 +74,47 @@ function TurnSettings() {
   )
 }
 
+/**
+ * Teste de conexão: diz em português o que está impedindo de entrar (internet, relógio, DNS, antivírus,
+ * firewall, rede que bloqueia UDP) e o que fazer. O resultado pode ser copiado para mandar a quem ajuda.
+ */
+function ConnTest({ highlight }: { highlight?: boolean }) {
+  const [busy, setBusy] = useState(false)
+  const [res, setRes] = useState<DiagResult | null>(null)
+  const run = async () => {
+    setBusy(true)
+    try { setRes(await diagnoseRooms()) } finally { setBusy(false) }
+  }
+  const copy = async () => {
+    if (!res) return
+    try { await navigator.clipboard.writeText(report(res.input, res.verdict)); toast("Resultado copiado") } catch { toast("Não deu para copiar") }
+  }
+  const v = res?.verdict
+  return (
+    <div className={cn("rounded-xl border p-3 text-sm", highlight && !res ? "border-amber-400/50 bg-amber-500/5" : "border-line")}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Activity size={15} className="text-fg-muted" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <div className="font-medium">Testar conexão</div>
+          <div className="text-xs text-fg-muted">Não consegue entrar ou a tela fica preta? Leva uns 10 segundos e não entra em nenhuma sala.</div>
+        </div>
+        <button className="btn" onClick={run} disabled={busy} aria-busy={busy}>{busy ? "Testando…" : res ? "Testar de novo" : "Testar"}</button>
+      </div>
+      {v && (
+        <div role="status" className={cn("mt-3 rounded-lg p-3", v.level === "ok" ? "bg-emerald-500/10" : v.level === "warn" ? "bg-amber-500/10" : "bg-red-500/10")}>
+          <div className="font-medium leading-snug">{v.title}</div>
+          {v.fixes.length > 0 && (
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-relaxed text-fg-muted">
+              {v.fixes.map((f) => <li key={f}>{f}</li>)}
+            </ol>
+          )}
+          <button className="btn mt-3 text-xs" onClick={copy}><Copy size={13} /> Copiar resultado</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Lobby() {
   const s = useStore((x) => x.settings)
   const set = useStore((x) => x.setSettings)
@@ -121,6 +163,7 @@ function Lobby() {
 
       {st.status === "connecting" && <div className="text-sm text-fg-muted">Conectando…</div>}
       {st.status === "error" && <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm">{st.error}</div>}
+      <ConnTest highlight={st.status === "error" && !!st.netError} />
       <TurnSettings />
 
       <div>
